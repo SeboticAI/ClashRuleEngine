@@ -1,0 +1,193 @@
+<Window x:Class="ClashRuleEngine.UI.RuleEditorDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Edit Rule" Width="660" Height="700"
+        WindowStartupLocation="CenterOwner"
+        Background="#F8F9FA" Foreground="#1A1A2E"
+        ResizeMode="CanResizeWithGrip">
+    <Window.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,4"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="Padding" Value="6,4"/>
+        </Style>
+        <Style TargetType="Label">
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="0,0,0,3"/>
+        </Style>
+        <Style x:Key="SmBtn" TargetType="Button">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#374151"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#F3F4F6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- Rule name + color -->
+            <RowDefinition Height="Auto"/>  <!-- Group + Assignee -->
+            <RowDefinition Height="Auto"/>  <!-- Logic + Status + Enabled -->
+            <RowDefinition Height="Auto"/>  <!-- Conditions toolbar -->
+            <RowDefinition Height="Auto"/>  <!-- No-props warning bar -->
+            <RowDefinition Height="*"/>     <!-- Conditions list -->
+            <RowDefinition Height="Auto"/>  <!-- Footer buttons -->
+        </Grid.RowDefinitions>
+
+        <!-- ROW 0: Rule name + description + color -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <Label Content="RULE NAME"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="txtName" FontSize="14" FontWeight="SemiBold"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center">
+                    <Label Content="Color:" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="cmbColor" Width="90">
+                        <ComboBoxItem Content="Blue"   Tag="#2563EB"/>
+                        <ComboBoxItem Content="Green"  Tag="#16A34A"/>
+                        <ComboBoxItem Content="Red"    Tag="#DC2626"/>
+                        <ComboBoxItem Content="Amber"  Tag="#D97706"/>
+                        <ComboBoxItem Content="Purple" Tag="#7C3AED"/>
+                        <ComboBoxItem Content="Teal"   Tag="#0D9488"/>
+                        <ComboBoxItem Content="Orange" Tag="#EA580C"/>
+                        <ComboBoxItem Content="Pink"   Tag="#DB2777"/>
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+            <Label Content="DESCRIPTION" Margin="0,8,0,0"/>
+            <TextBox x:Name="txtDescription" Height="36" TextWrapping="Wrap" AcceptsReturn="True"/>
+        </StackPanel>
+
+        <!-- ROW 1: Group + Assignee -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <Label Content="GROUP NAME"/>
+                <ComboBox x:Name="cmbGroup" IsEditable="True"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <Label Content="ASSIGNEE"/>
+                <ComboBox x:Name="cmbAssignee" IsEditable="True"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ROW 2: Logic + Status + Enabled -->
+        <Grid Grid.Row="2" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <Label Content="CONDITION LOGIC"/>
+                <ComboBox x:Name="cmbLogic">
+                    <ComboBoxItem Content="ALL must match (AND)" IsSelected="True"/>
+                    <ComboBoxItem Content="ANY can match (OR)"/>
+                </ComboBox>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <Label Content="SET CLASH STATUS"/>
+                <ComboBox x:Name="cmbStatus">
+                    <ComboBoxItem Content="Active"   IsSelected="True"/>
+                    <ComboBoxItem Content="Reviewed"/>
+                    <ComboBoxItem Content="Approved"/>
+                    <ComboBoxItem Content="Resolved"/>
+                </ComboBox>
+            </StackPanel>
+            <CheckBox Grid.Column="4" x:Name="chkEnabled" Content="Enabled"
+                      Foreground="#374151" IsChecked="True" VerticalAlignment="Bottom"/>
+        </Grid>
+
+        <!-- ROW 3: Conditions toolbar -->
+        <Grid Grid.Row="3" Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label Content="CONDITIONS" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <!-- Common-only filter toggle -->
+            <Border Grid.Column="1" x:Name="bdFilterToggle" CornerRadius="3" Margin="0,0,6,0"
+                    Cursor="Hand" Padding="7,3"
+                    Background="#F3F4F6" BorderBrush="#D1D5DB" BorderThickness="1"
+                    MouseLeftButtonDown="OnToggleCommonFilter"
+                    ToolTip="Show only commonly-used property categories (Item, Dimensions, Identity Data, Mechanical, etc.)">
+                <TextBlock x:Name="txtFilterToggle" Text="&#x1F4CC; Common only"
+                           FontSize="11" Foreground="#374151" VerticalAlignment="Center"/>
+            </Border>
+            <Button Grid.Column="2" Content="&#x1F504; Scan Model" Style="{StaticResource SmBtn}"
+                    Click="OnScanModel" Margin="0,0,6,0"
+                    Background="#EFF6FF" Foreground="#2563EB" BorderBrush="#93C5FD"/>
+            <Button Grid.Column="3" Content="+ Add Condition" Style="{StaticResource SmBtn}"
+                    Click="OnAddCondition"/>
+        </Grid>
+
+        <!-- ROW 4: No-properties warning bar -->
+        <Border Grid.Row="4" x:Name="pnlNoPropsWarning" Background="#FFFBEB"
+                BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="4"
+                Padding="10,6" Margin="0,0,0,4" Visibility="Collapsed">
+            <TextBlock FontSize="11" Foreground="#92400E" TextWrapping="Wrap">
+                <Run Text="&#x26A0; No model properties loaded. Click"/>
+                <Run Text="Scan Model" FontWeight="SemiBold"/>
+                <Run Text="to enable property autocomplete in conditions."/>
+            </TextBlock>
+        </Border>
+
+        <!-- ROW 5: Condition rows (scrollable) -->
+        <Border Grid.Row="5" Background="#FFFFFF" CornerRadius="4" Padding="8"
+                BorderBrush="#E5E7EB" BorderThickness="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="pnlConditions"/>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ROW 6: Footer -->
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Cancel" Width="80" Padding="8,6" Style="{StaticResource SmBtn}"
+                    Click="OnCancel" Margin="0,0,8,0"/>
+            <Button Content="Save Rule" Width="100" Padding="8,6"
+                    Background="#2563EB" Foreground="White" FontWeight="SemiBold"
+                    BorderBrush="#2563EB" Click="OnSave" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

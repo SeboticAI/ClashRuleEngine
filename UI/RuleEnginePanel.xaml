@@ -1,0 +1,325 @@
+<UserControl x:Class="ClashRuleEngine.UI.RuleEnginePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ClashRuleEngine.UI"
+             Background="#F8F9FA" Foreground="#1A1A2E">
+
+    <UserControl.Resources>
+        <local:BoolToVisibilityConverter x:Key="BoolToVis"/>
+        <local:HexToBrushConverter x:Key="HexToBrush"/>
+        <local:EnabledToOpacityConverter x:Key="EnabledToOpacity"/>
+        <local:PriorityToDisplayConverter x:Key="PriorityToDisplay"/>
+
+        <Style x:Key="Btn" TargetType="Button">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#374151"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#F3F4F6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource Btn}">
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#2563EB"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource Btn}">
+            <Setter Property="Foreground" Value="#DC2626"/>
+            <Setter Property="BorderBrush" Value="#FCA5A5"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- Header -->
+            <RowDefinition Height="Auto"/>  <!-- Clash test selector -->
+            <RowDefinition Height="*"/>     <!-- Tab content -->
+            <RowDefinition Height="Auto"/>  <!-- Results panel -->
+            <RowDefinition Height="Auto"/>  <!-- Footer -->
+        </Grid.RowDefinitions>
+
+        <!-- HEADER -->
+        <Border Grid.Row="0" Background="#FFFFFF" Padding="12,10" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Clash Rule Engine" FontSize="16" FontWeight="Bold" Foreground="#111827"/>
+                    <TextBlock x:Name="txtStatus" Text="Select a clash test" FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="+ New Rule" Style="{StaticResource BtnPrimary}" Click="OnAddRule" Margin="0,0,4,0"/>
+                    <Button Content="&#x2699;" Style="{StaticResource Btn}" Click="OnSettings" Width="30" ToolTip="Settings"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- CLASH TEST SELECTOR -->
+        <Border Grid.Row="1" Background="#EFF6FF" Padding="12,8" BorderBrush="#BFDBFE" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Clash test:" VerticalAlignment="Center" Foreground="#1E40AF" FontSize="12" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                <ComboBox x:Name="cmbClashTest" Grid.Column="1" FontSize="12" SelectionChanged="OnClashTestChanged"/>
+                <Button Grid.Column="2" Content="&#x1F504; Refresh" Style="{StaticResource Btn}" Click="OnRefreshTests" Margin="6,0,0,0" FontSize="11"/>
+            </Grid>
+        </Border>
+
+        <!-- TAB STRIP + CONTENT -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>  <!-- Tab strip -->
+                <RowDefinition Height="*"/>     <!-- Tab content -->
+            </Grid.RowDefinitions>
+
+            <!-- TAB STRIP -->
+            <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal" Margin="8,0,0,0">
+                    <!-- Rules tab -->
+                    <Border x:Name="bdTabRules" Padding="14,8" Cursor="Hand"
+                            MouseLeftButtonDown="OnTabRulesClick"
+                            BorderBrush="#2563EB" BorderThickness="0,0,0,2"
+                            Background="Transparent">
+                        <TextBlock x:Name="txtTabRules" Text="Rules" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="#2563EB"/>
+                    </Border>
+                    <!-- Clashes tab -->
+                    <Border x:Name="bdTabClashes" Padding="14,8" Cursor="Hand"
+                            MouseLeftButtonDown="OnTabClashesClick"
+                            BorderBrush="Transparent" BorderThickness="0,0,0,2"
+                            Background="Transparent">
+                        <TextBlock x:Name="txtTabClashes" Text="Clashes" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="#9CA3AF"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- RULES TAB CONTENT -->
+            <Grid Grid.Row="1" x:Name="pnlTabRules">
+
+                <!-- Rule list -->
+                <ListBox x:Name="lstRules" Background="Transparent" BorderThickness="0" Padding="8"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         AllowDrop="True"
+                         PreviewMouseLeftButtonDown="OnRuleListPreviewMouseDown"
+                         PreviewMouseMove="OnRuleListPreviewMouseMove"
+                         Drop="OnRuleListDrop" DragOver="OnRuleListDragOver">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="Margin" Value="0,0,0,4"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#FFFFFF" CornerRadius="6" BorderThickness="1" BorderBrush="#E5E7EB"
+                                    Opacity="{Binding IsEnabled, Converter={StaticResource EnabledToOpacity}}" Cursor="Hand">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="6"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Background="{Binding Color, Converter={StaticResource HexToBrush}}" CornerRadius="6,0,0,6"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,8" Width="36">
+                                        <TextBlock Text="{Binding Priority, Converter={StaticResource PriorityToDisplay}}" FontSize="14" FontWeight="Bold" Foreground="#2563EB" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="&#x22EE;&#x22EE;" FontSize="10" Foreground="#9CA3AF" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="4,8,8,8">
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="#111827"/>
+                                        <ItemsControl ItemsSource="{Binding Conditions}" Margin="0,3,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontSize="10.5" Foreground="#6B7280" Margin="0,1,0,0">
+                                                        <Run Text="  &#x2022;  "/><Run Text="{Binding Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                            <Border Background="#F0FDF4" CornerRadius="3" Padding="5,2" Margin="0,0,4,0">
+                                                <TextBlock FontSize="10" Foreground="#166534">
+                                                    <Run Text="&#x1F4C1; "/><Run Text="{Binding GroupName}"/>
+                                                </TextBlock>
+                                            </Border>
+                                            <Border Background="#FFFBEB" CornerRadius="3" Padding="5,2">
+                                                <TextBlock FontSize="10" Foreground="#92400E">
+                                                    <Run Text="&#x1F464; "/><Run Text="{Binding Assignee}"/>
+                                                </TextBlock>
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3" Orientation="Vertical" VerticalAlignment="Center" Margin="4,4,6,4">
+                                        <Button Content="&#x25B2;" Width="24" Height="22" FontSize="9" Style="{StaticResource Btn}" Click="OnMoveRuleUp" Tag="{Binding}" Margin="0,0,0,2"/>
+                                        <Button Content="&#x270E;" Width="24" Height="22" FontSize="11" Style="{StaticResource Btn}" Click="OnEditRule" Tag="{Binding}" Margin="0,0,0,2"/>
+                                        <Button Content="&#x25BC;" Width="24" Height="22" FontSize="9" Style="{StaticResource Btn}" Click="OnMoveRuleDown" Tag="{Binding}" Margin="0,0,0,2"/>
+                                        <Button Content="&#x2715;" Width="24" Height="22" FontSize="10" Style="{StaticResource BtnDanger}" Click="OnDeleteRule" Tag="{Binding}" Padding="0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Empty state (rules) -->
+                <StackPanel x:Name="pnlEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <TextBlock Text="No rules for this test" FontSize="14" Foreground="#9CA3AF" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Select a clash test above, then click '+ New Rule'" FontSize="11" Foreground="#D1D5DB"
+                               HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap"
+                               TextAlignment="Center" MaxWidth="240"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- CLASHES TAB CONTENT -->
+            <Grid Grid.Row="1" x:Name="pnlTabClashes" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>  <!-- Toolbar -->
+                    <RowDefinition Height="*"/>     <!-- List / empty state -->
+                </Grid.RowDefinitions>
+
+                <!-- Clash tab toolbar -->
+                <Border Grid.Row="0" Background="#FFFFFF" Padding="8,6"
+                        BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="txtClashCount" VerticalAlignment="Center"
+                                   FontSize="11" Foreground="#6B7280" Margin="4,0,0,0"/>
+                        <Button Grid.Column="1" Content="&#x1F504; Refresh" Style="{StaticResource Btn}"
+                                Click="OnRefreshClashes" FontSize="11"/>
+                    </Grid>
+                </Border>
+
+                <!-- Clash results list -->
+                <ListBox Grid.Row="1" x:Name="lstClashes" Background="Transparent"
+                         BorderThickness="0" Padding="8"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="Margin" Value="0,0,0,3"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#FFFFFF" CornerRadius="5" BorderThickness="1"
+                                    BorderBrush="#E5E7EB" Padding="0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="4"/>   <!-- Status strip -->
+                                        <ColumnDefinition Width="*"/>   <!-- Name + items -->
+                                        <ColumnDefinition Width="Auto"/><!-- Inspect button -->
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Status colour strip -->
+                                    <Border Grid.Column="0"
+                                            Background="{Binding StatusColor, Converter={StaticResource HexToBrush}}"
+                                            CornerRadius="5,0,0,5"/>
+                                    <!-- Main content -->
+                                    <StackPanel Grid.Column="1" Margin="8,6,4,6">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Background="{Binding StatusColor, Converter={StaticResource HexToBrush}}"
+                                                    CornerRadius="2" Padding="4,1" Margin="0,0,6,0">
+                                                <TextBlock Text="{Binding StatusLabel}" FontSize="9"
+                                                           FontWeight="Bold" Foreground="White"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding ClashName}" FontSize="12"
+                                                       FontWeight="SemiBold" Foreground="#111827"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock FontSize="10.5" Foreground="#6B7280" Margin="0,2,0,0">
+                                            <Run Text="{Binding Item1Name}"/>
+                                            <Run Text=" &#x2192; "/>
+                                            <Run Text="{Binding Item2Name}"/>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Description}" FontSize="10"
+                                                   Foreground="#9CA3AF" TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="260" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <!-- Inspect button -->
+                                    <Button Grid.Column="2" Content="Inspect" Tag="{Binding}"
+                                            Click="OnInspectClash" Margin="4,0,6,0"
+                                            VerticalAlignment="Center" FontSize="11"
+                                            Padding="8,4" Cursor="Hand"
+                                            Background="#EFF6FF" Foreground="#2563EB"
+                                            BorderBrush="#BFDBFE" BorderThickness="1"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Empty state (clashes) -->
+                <StackPanel x:Name="pnlClashEmptyState" Grid.Row="1"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <TextBlock Text="No clashes found" FontSize="14" Foreground="#9CA3AF"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Select a clash test above, or click Refresh"
+                               FontSize="11" Foreground="#D1D5DB"
+                               HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap"
+                               TextAlignment="Center" MaxWidth="240"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- RESULTS PANEL (after running rules) -->
+        <Border Grid.Row="3" x:Name="pnlResults" Background="#FFFFFF" Padding="10"
+                BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Visibility="Collapsed">
+            <TextBlock x:Name="txtResults" FontSize="10.5" Foreground="#374151"
+                       TextWrapping="Wrap" FontFamily="Consolas"/>
+        </Border>
+
+        <!-- FOOTER -->
+        <Border Grid.Row="4" Background="#FFFFFF" Padding="10,8" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Content="&#x1F4BE; Save" Style="{StaticResource Btn}" Click="OnSaveRules" HorizontalAlignment="Left"/>
+                <Button Grid.Column="1" Content="Run This Test" Style="{StaticResource BtnPrimary}" Click="OnRunSelectedTest" Margin="0,0,4,0"/>
+                <Button Grid.Column="2" Content="Run All Tests" Style="{StaticResource Btn}" Click="OnRunAllTests"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

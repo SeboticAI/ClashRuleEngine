@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage
+  SchemaVersion="1.0"
+  ProductType="Application"
+  Name="ClashRuleEngine"
+  Description="Rule-based clash grouping and assignment engine for Navisworks"
+  Author="ACME"
+  AppVersion="1.0.0"
+  FriendlyVersion="1.0.0">
+
+  <CompanyDetails Name="ACME"
+                  Url="https://example.com"
+                  Email="support@example.com"/>
+
+  <RuntimeRequirements OS="Win64"
+                       Platform="Navisworks"
+                       SeriesMin="R2020"
+                       SeriesMax="R2026"/>
+
+  <Components Description="Main plugin components">
+    <RuntimeRequirements OS="Win64" Platform="Navisworks"/>
+    <ComponentEntry AppName="ClashRuleEngine"
+                    Version="1.0.0"
+                    ModuleName="./ClashRuleEngine.dll"
+                    AppDescription="Clash Rule Engine - Rule-based clash management"
+                    LoadOnNavisworksStartup="True"/>
+  </Components>
+</ApplicationPackage>

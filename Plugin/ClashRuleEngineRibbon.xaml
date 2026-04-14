@@ -1,0 +1,11 @@
+<RibbonTab Name="ID_ClashRuleEngine_Tab" Text="Clash Rules"
+           xmlns="http://schemas.autodesk.com/navisworks/2023">
+  <RibbonPanel Text="Rule Engine">
+    <RibbonSplitButton>
+      <RibbonButton Name="ID_OpenPanel" 
+                    Text="Open Panel" 
+                    ShowText="true"
+                    ToolTip="Open the Clash Rule Engine dockable panel" />
+    </RibbonSplitButton>
+  </RibbonPanel>
+</RibbonTab>
