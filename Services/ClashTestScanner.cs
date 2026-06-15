@@ -23,23 +23,10 @@ namespace ClashRuleEngine.Services
             {
                 var clashPlugin = doc.GetClash();
                 if (clashPlugin == null) return results;
-                foreach (SavedItem item in clashPlugin.TestsData.Tests)
+                foreach (ClashTest ct in ClashApiCompat.GetAllTests(clashPlugin.TestsData))
                 {
-                    if (!(item is ClashTest ct)) continue;
                     if (!string.Equals(ct.DisplayName, testName, StringComparison.OrdinalIgnoreCase)) continue;
-                    foreach (SavedItem child in ct.Children)
-                    {
-                        if (!(child is ClashResult cr)) continue;
-                        results.Add(new ClashResultInfo
-                        {
-                            ClashName = cr.DisplayName,
-                            Status = cr.Status,
-                            Description = cr.Description ?? string.Empty,
-                            Item1Name = cr.Item1?.DisplayName ?? "Unknown",
-                            Item2Name = cr.Item2?.DisplayName ?? "Unknown",
-                            SourceResult = cr
-                        });
-                    }
+                    CollectResultInfos(ct.Children, results);
                     break; // found the test
                 }
             }
@@ -61,41 +48,72 @@ namespace ClashRuleEngine.Services
                 var clashPlugin = doc.GetClash();
                 if (clashPlugin == null) return tests;
 
-                foreach (SavedItem item in clashPlugin.TestsData.Tests)
+                foreach (ClashTest ct in ClashApiCompat.GetAllTests(clashPlugin.TestsData))
                 {
-                    if (item is ClashTest ct)
+                    int totalClashes = 0;
+                    int activeClashes = 0;
+                    int resolvedClashes = 0;
+                    CountResults(ct.Children, ref totalClashes, ref activeClashes, ref resolvedClashes);
+
+                    tests.Add(new ClashTestInfo
                     {
-                        int totalClashes = 0;
-                        int activeClashes = 0;
-                        int resolvedClashes = 0;
-
-                        foreach (SavedItem child in ct.Children)
-                        {
-                            if (child is ClashResult cr)
-                            {
-                                totalClashes++;
-                                if (cr.Status == ClashResultStatus.Resolved)
-                                    resolvedClashes++;
-                                else
-                                    activeClashes++;
-                            }
-                        }
-
-                        tests.Add(new ClashTestInfo
-                        {
-                            Name = ct.DisplayName,
-                            TotalClashes = totalClashes,
-                            ActiveClashes = activeClashes,
-                            ResolvedClashes = resolvedClashes,
-                            Status = ct.Status.ToString(),
-                            LastRun = ct.LastRun ?? DateTime.MinValue
-                        });
-                    }
+                        Name = ct.DisplayName,
+                        TotalClashes = totalClashes,
+                        ActiveClashes = activeClashes,
+                        ResolvedClashes = resolvedClashes,
+                        Status = ct.Status.ToString(),
+                        LastRun = ct.LastRun ?? DateTime.MinValue
+                    });
                 }
             }
             catch { }
 
             return tests;
+        }
+
+        /// <summary>
+        /// Recursively collects result infos, descending into clash groups
+        /// (results live inside ClashResultGroups once grouping has run).
+        /// </summary>
+        private static void CollectResultInfos(SavedItemCollection children, List<ClashResultInfo> results)
+        {
+            foreach (SavedItem child in children)
+            {
+                if (child is ClashResultGroup grp)
+                {
+                    CollectResultInfos(grp.Children, results);
+                }
+                else if (child is ClashResult cr)
+                {
+                    results.Add(new ClashResultInfo
+                    {
+                        ClashName = cr.DisplayName,
+                        Status = cr.Status,
+                        Description = cr.Description ?? string.Empty,
+                        Item1Name = cr.Item1?.DisplayName ?? "Unknown",
+                        Item2Name = cr.Item2?.DisplayName ?? "Unknown",
+                        SourceResult = cr
+                    });
+                }
+            }
+        }
+
+        private static void CountResults(SavedItemCollection children,
+            ref int total, ref int active, ref int resolved)
+        {
+            foreach (SavedItem child in children)
+            {
+                if (child is ClashResultGroup grp)
+                {
+                    CountResults(grp.Children, ref total, ref active, ref resolved);
+                }
+                else if (child is ClashResult cr)
+                {
+                    total++;
+                    if (cr.Status == ClashResultStatus.Resolved) resolved++;
+                    else active++;
+                }
+            }
         }
     }
 

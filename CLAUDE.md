@@ -1,7 +1,9 @@
 # CLAUDE.md — Project Context for Claude Code
 
 ## Project overview
-This is a **Navisworks Manage 2026** dockable panel plugin (C# / WPF / .NET Framework 4.8) for BIM coordination clash management. It provides a rule-based engine for grouping and assigning clash detection results, with per-test rule hierarchies and AI-assisted analysis planned.
+This is a **Navisworks Manage** dockable panel plugin (C# / WPF / .NET Framework 4.8) for BIM coordination clash management. It provides a rule-based engine for grouping and assigning clash detection results, with per-test rule hierarchies and AI-assisted analysis planned.
+
+Builds are per-Navisworks-version (`/p:NavisworksVersion=2027`, default = newest installed). **This machine has Navisworks Manage 2027** (2026 was removed in the 2026-04 upgrade cycle); older-version builds need that version's API DLLs dropped in `Refs\<version>\`.
 
 The business context: we're building a product to help companies automate BIM coordination workflows, following Australian BIM coordination standards (system hierarchy, clash matrix, discipline responsibility).
 
@@ -38,9 +40,28 @@ ClashRuleEngine/
 - **Persistence**: Rules saved as `.clashre` XML file alongside the NW document (not embedded in the NW file — the Navisworks 2026 API doesn't expose reliable document-level user data storage).
 - **Light theme UI**: White backgrounds, dark text, blue accents. The dark theme was hard to read inside Navisworks.
 
-## Navisworks 2026 API quirks (IMPORTANT)
-These were discovered through trial and error during development:
+## Navisworks API quirks (IMPORTANT)
+These were discovered through trial and error during development (2026/2027 APIs):
 
+0. **Writing to clash results (THE big one — caused the 2026-era crashes):** attached
+   `ClashResult` objects are read-only; direct property sets are ignored, and pushing
+   reflection-built groups/results into a live test via `TestsAddCopy` duplicates result
+   GUIDs and **crashes Navisworks** (corrupts Clash Detective state). The correct pattern
+   (proven by the open-source GroupClashes plugin, NW 2015→2027):
+   `var copy = (ClashTest)test.CreateCopy();` → edit/regroup children on the detached copy
+   (plain property sets work there) → swap back atomically with
+   `TestsEditTestFromCopy(test, copy)` — **renamed in 2027**; it was
+   `TestsEditTestFromCustom` in ≤2026 (`WriteBack` resolves whichever exists).
+   One atomic write per test. See `ClashProcessingService.ProcessTestCore`.
+   Verified against the real DLLs with `tools\Dump-NavisApi.ps1` → `tools\navis-api-2027.txt`:
+   `ClashResult.Description/Status/AssignedTo/Center/Guid` are all RW, `AssignedTo` is
+   typed `Assignee`, `ClashResultGroup` has a public ctor + RW DisplayName + mutable Children.
+
+0b. **2027 moved the tests collection**: `DocumentClashTests.Tests` no longer exists.
+   2027+ uses `TestsData.Value.TestsRoot` — a `ClashTestFolder` TREE (2027 added clash
+   test folders), so tests must be collected recursively. ALL test enumeration goes
+   through `ClashApiCompat.GetAllTests()` (typed per-version via the `NW_TESTS_TREE`
+   define) — never enumerate `TestsData` directly.
 1. **`DockPanePluginRecord.IsVisible`** — does NOT exist. Use `LoadedPlugin != null` to check if loaded.
 2. **`DockPanePluginRecord.Enabled`** — does NOT exist. Can't toggle visibility programmatically.
 3. **`ModelItemEnumerableCollection.DescendantsAndSelf`** — does NOT exist. Use `model.RootItem.Descendants` instead, iterating through `doc.Models` first.
@@ -60,17 +81,42 @@ These were discovered through trial and error during development:
 - Ribbon XAML: must be `<EmbeddedResource>`, not `<Page>` or `<None>`.
 
 ### Build and deploy
-1. Build in Visual Studio 2022 as Release | x64
-2. Copy `ClashRuleEngine.dll` + `PackageContents.xml` to:
-   `C:\Program Files\Autodesk\Navisworks Manage 2026\Plugins\`
-   (requires admin — or use `%AppData%\Autodesk Navisworks Manage 2026\Plugins\`)
+1. Build: `msbuild ClashRuleEngine.csproj /p:Configuration=Release /p:Platform=x64 /p:NavisworksVersion=2027`
+   (version defaults to newest installed Navisworks; output goes to `bin\x64\Release\<version>\`)
+   MSBuild on this machine: VS2022 BuildTools (`C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe`) or VS 2026 Community. `tools\build.ps1` does dump→build→deploy in one go.
+2. Deploy: `tools\deploy.ps1 -Version 2027` — installs the bundle to
+   `C:\ProgramData\Autodesk\ApplicationPlugins\ClashRuleEngine.bundle\` (user-writable, no admin).
+   Alternatives: `-UserPlugins` → `%AppData%\Autodesk Navisworks Manage 2027\Plugins\ClashRuleEngine\`,
+   `-Flat` (elevated) → `C:\Program Files\Autodesk\Navisworks Manage 2027\Plugins\`.
 3. Restart Navisworks
 4. Panel appears via View → Windows → Clash Rule Engine
 
-### Plugin loading notes
-- `PackageContents.xml` MUST have the `.xml` extension (Windows sometimes strips it)
-- Files can go directly in the Plugins folder (no subfolder required)
-- The `%LocalAppData%` path did NOT work on this machine; `Program Files` path works
+### Plugin loading notes — FINAL, debugged to ground truth 2026-06-12
+**The ONLY way third-party .NET plugins load in Navisworks 2027** (confirmed via Autodesk
+forums "Plugin location under profile no longer supported in Version 2027" + live testing):
+
+```
+C:\Program Files\Autodesk\Navisworks Manage <year>\Plugins\ClashRuleEngine\ClashRuleEngine.dll
+```
+— a **name-matched folder/DLL pair** in the INSTALL's Plugins folder (admin to deploy).
+This layout works on ≤2026 as well → single mechanism for every version.
+
+Things that DO NOT work (each cost a debugging round — do not retry):
+- **Any per-user folder.** Navisworks 2027 DEPRECATED the user-profile plugin location
+  (`%AppData%\Autodesk Navisworks Manage <year>\Plugins`). ≤2026 honoured it; 2027 ignores it.
+- `%LocalAppData%\Autodesk\Navisworks Manage <year>\Plugins` — never scanned by any version.
+- **ApplicationPlugins bundles** (`ProgramData` or `AppData`) + PackageContents.xml — Navisworks
+  does not use this mechanism for .NET plugins (it's Revit/AutoCAD's). PackageContents.xml in
+  this repo is retained only for potential App Store packaging.
+- Flat DLL directly in `Plugins\` root (no subfolder) — loaded in ≤2026, NOT in 2027.
+- Naming the DLL `*.Plugin.dll` — that convention is for Autodesk-INTERNAL plugins
+  (install root + `InternalPlugins\`); irrelevant and ineffective for third-party.
+
+Useful diagnostics that survive in `tools\`: `Dump-NavisApi.ps1` (offline API surface),
+`PluginProbe.cs/.exe` (loads the DLL exactly like Navisworks would; proves type/attribute
+health and catches missing-dependency skips without restarting Navisworks).
+- `tools\Dump-NavisApi.ps1` reflection-dumps the installed version's Clash API surface to
+  `tools\navis-api-<version>.txt` — use it to verify API members offline before building/running
 
 ## Model property structure (from actual Revit export)
 Properties are accessed via `ModelItem.PropertyCategories` → `PropertyCategory.Properties` → `DataProperty`.
@@ -98,20 +144,29 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
 
 ## Current state and next steps
 
-### Working
-- Dockable panel loads in Navisworks 2026
-- Clash test selector with per-test rule hierarchies
-- Rule editor with model property dropdowns (Scan Model button)
+### Working (pending re-verification in 2027 after the June 2026 stabilisation rewrite)
+- Dockable panel, clash test selector with per-test rule hierarchies
+- Rule editor with model property dropdowns (Scan Model button, lazy value loading)
+- Clash inspector dialog (side-by-side Item A/B properties)
 - Drag-and-drop + arrow buttons for rule reordering
 - Save/load rules to .clashre file
-- Run rules against selected test or all tests
+- Run rules against selected test or all tests — rewritten June 2026 to the
+  copy/edit/swap pattern (see quirk #0): applies Description/Status/AssignedTo and
+  auto-groups clashes (shared element + 1m proximity, union-find) in ONE atomic
+  write per test
+- Session export (`SessionExportService` + footer button): all clash dispositions +
+  both items' property bags → `.session.json` — the foundation for AI rule inference
 - Light theme UI
 
 ### Next to build
-1. **Clash inspector** — click a clash in the rule engine panel, see properties of both items (Item A and Item B) side-by-side. "Create rule from this" button that pre-fills the editor.
-2. **Core property filtering** — filter out noise from property dropdowns, show only useful properties (Dimensions, Item, Identity Data, Mechanical, etc.)
-3. **Better results view** — visual breakdown of how clashes were distributed across rules, which didn't match, clickable to navigate in Navisworks.
-4. **Claude AI integration** — "Smart Assign" button that sends clash data to the Claude API for intelligent grouping suggestions. API key stored in ProjectConfig.
+1. **AI rules-by-example loop** — feed a `.session.json` (manual coordination pass) to
+   Claude, get proposed rules back, REPLAY them deterministically against the session
+   ("matches 37/40 of your Hydraulics assignments") before the user accepts. Incremental
+   teaching flow: user handles ~20 clashes → AI proposes → engine applies to the rest.
+2. **Priority scoring** — deterministic clash triage from data we already read:
+   penetration depth, hard/soft element pairing, system criticality, cluster size.
+3. **Better results view** — visual breakdown of how clashes were distributed across rules, clickable to navigate in Navisworks.
+4. **Claude AI integration** — "Smart Assign" button sending `.session.json` payloads to the Claude API. API key stored in ProjectConfig.
 5. **System hierarchy editor** — UI to view/edit the discipline precedence order.
 6. **Clash matrix view** — overview showing all test pairs and their rule/assignment status.
 

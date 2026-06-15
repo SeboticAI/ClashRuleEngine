@@ -1,28 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bundle manifest. Deployed layout (see tools\deploy.ps1 / the Inno installer):
+    C:\ProgramData\Autodesk\ApplicationPlugins\ClashRuleEngine.bundle\
+      PackageContents.xml
+      Contents\2027\ClashRuleEngine.Plugin.dll
+      Contents\2026\ClashRuleEngine.Plugin.dll   (add when built against 2026 refs)
+
+  TOKENS (verified against roamer.exe 2027 string table - do not "fix" these):
+    Platform   = "NAVMAN" (Navisworks Manage; NAVSIM = Simulate)
+    Series     = "Nw<apiMajor>", NOT Revit-style "R20xx".
+                 Mapping: 2024=Nw21, 2025=Nw22, 2026=Nw23, 2027=Nw24
+  One Components block per Navisworks version, each DLL compiled against
+  that version's API.
+-->
 <ApplicationPackage
   SchemaVersion="1.0"
+  AutodeskProduct="Navisworks"
   ProductType="Application"
   Name="ClashRuleEngine"
   Description="Rule-based clash grouping and assignment engine for Navisworks"
   Author="ACME"
-  AppVersion="1.0.0"
-  FriendlyVersion="1.0.0">
+  AppVersion="1.1.0"
+  FriendlyVersion="1.1.0"
+  ProductCode="{B7C1D2E3-4455-6677-8899-AABBCCDDEE01}"
+  UpgradeCode="{B7C1D2E3-4455-6677-8899-AABBCCDDEE02}">
 
   <CompanyDetails Name="ACME"
                   Url="https://example.com"
                   Email="support@example.com"/>
 
   <RuntimeRequirements OS="Win64"
-                       Platform="Navisworks"
-                       SeriesMin="R2020"
-                       SeriesMax="R2026"/>
+                       Platform="NAVMAN"
+                       SeriesMin="Nw21"
+                       SeriesMax="Nw24"/>
 
-  <Components Description="Main plugin components">
-    <RuntimeRequirements OS="Win64" Platform="Navisworks"/>
+  <Components Description="Navisworks 2027 build">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN" SeriesMin="Nw24" SeriesMax="Nw24"/>
     <ComponentEntry AppName="ClashRuleEngine"
-                    Version="1.0.0"
-                    ModuleName="./ClashRuleEngine.dll"
+                    Version="1.1.0"
+                    ModuleName="./Contents/2027/ClashRuleEngine.Plugin.dll"
                     AppDescription="Clash Rule Engine - Rule-based clash management"
                     LoadOnNavisworksStartup="True"/>
   </Components>
+
+  <!-- Uncomment when a 2026 build exists (drop API DLLs in Refs\2026, build with /p:NavisworksVersion=2026)
+  <Components Description="Navisworks 2026 build">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN" SeriesMin="Nw23" SeriesMax="Nw23"/>
+    <ComponentEntry AppName="ClashRuleEngine"
+                    Version="1.1.0"
+                    ModuleName="./Contents/2026/ClashRuleEngine.Plugin.dll"
+                    AppDescription="Clash Rule Engine - Rule-based clash management"
+                    LoadOnNavisworksStartup="True"/>
+  </Components>
+  -->
 </ApplicationPackage>

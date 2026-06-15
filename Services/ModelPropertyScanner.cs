@@ -10,6 +10,10 @@ namespace ClashRuleEngine.Services
         private static Dictionary<string, List<string>> _cache;
         private static string _cachedDocName;
 
+        // Per-property value cache: "Category\0Property" → sorted unique values
+        private static readonly Dictionary<string, List<string>> _valueCache
+            = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
         public static Dictionary<string, List<string>> GetAvailableProperties(bool forceRefresh = false)
         {
             var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
@@ -62,6 +66,10 @@ namespace ClashRuleEngine.Services
 
         public static List<string> GetPropertyValues(string categoryName, string propertyName, int maxSample = 200)
         {
+            string cacheKey = $"{categoryName}\x00{propertyName}";
+            if (_valueCache.TryGetValue(cacheKey, out var cached))
+                return cached;
+
             var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
             if (doc == null) return new List<string>();
 
@@ -92,7 +100,10 @@ namespace ClashRuleEngine.Services
                 }
             }
             catch { }
-            return values.OrderBy(v => v).ToList();
+
+            var result = values.OrderBy(v => v).ToList();
+            _valueCache[cacheKey] = result;
+            return result;
         }
 
         private static string GetValueAsString(DataProperty prop)
@@ -112,6 +123,6 @@ namespace ClashRuleEngine.Services
             return val.ToString();
         }
 
-        public static void ClearCache() { _cache = null; _cachedDocName = null; }
+        public static void ClearCache() { _cache = null; _cachedDocName = null; _valueCache.Clear(); }
     }
 }

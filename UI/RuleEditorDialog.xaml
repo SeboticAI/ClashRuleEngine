@@ -91,20 +91,41 @@
             <TextBox x:Name="txtDescription" Height="36" TextWrapping="Wrap" AcceptsReturn="True"/>
         </StackPanel>
 
-        <!-- ROW 1: Group + Assignee -->
+        <!-- ROW 1: Group + Assignee (with relative owning/other trade) -->
         <Grid Grid.Row="1" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="12"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <StackPanel>
+            <StackPanel VerticalAlignment="Top">
                 <Label Content="GROUP NAME"/>
                 <ComboBox x:Name="cmbGroup" IsEditable="True"/>
+                <TextBlock FontSize="10" Foreground="#9CA3AF" Margin="2,3,0,0" TextWrapping="Wrap"
+                           Text="Leave blank to group by the responsible trade."/>
             </StackPanel>
             <StackPanel Grid.Column="2">
-                <Label Content="ASSIGNEE"/>
-                <ComboBox x:Name="cmbAssignee" IsEditable="True"/>
+                <Label Content="ASSIGN TO"/>
+                <ComboBox x:Name="cmbAssigneeMode" SelectionChanged="OnAssigneeModeChanged">
+                    <ComboBoxItem Content="Owning trade — the subject's trade"/>
+                    <ComboBoxItem Content="Other trade — what it clashes with"/>
+                    <ComboBoxItem Content="Specific owner…"/>
+                </ComboBox>
+
+                <!-- Relative modes: which item the rule is about -->
+                <StackPanel x:Name="pnlSubject" Margin="0,6,0,0">
+                    <Label Content="THIS RULE IS ABOUT"/>
+                    <ComboBox x:Name="cmbSubject">
+                        <ComboBoxItem Content="Item A"/>
+                        <ComboBoxItem Content="Item B"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Named mode: literal owner -->
+                <StackPanel x:Name="pnlNamedAssignee" Margin="0,6,0,0" Visibility="Collapsed">
+                    <Label Content="OWNER / ASSIGNEE"/>
+                    <ComboBox x:Name="cmbAssignee" IsEditable="True"/>
+                </StackPanel>
             </StackPanel>
         </Grid>
 

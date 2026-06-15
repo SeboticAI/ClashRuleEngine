@@ -1,0 +1,20 @@
+# Build outputs
+bin/
+obj/
+
+# Installer build output (generated setup .exe)
+Installer/Output/
+
+# Compiled dev tools (source kept, binary regenerated)
+tools/*.exe
+
+# IDE state
+.vs/
+*.user
+*.suo
+
+# Local Navisworks API reference DLLs (per-version, machine-local copies)
+Refs/
+
+# Generated API dumps
+tools/navis-api-*.txt

@@ -155,7 +155,13 @@
                                         <TextBlock Text="&#x22EE;&#x22EE;" FontSize="10" Foreground="#9CA3AF" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Margin="4,8,8,8">
-                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="#111827"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <CheckBox IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                                      Click="OnToggleRuleEnabled" Tag="{Binding}"
+                                                      VerticalAlignment="Center" Margin="0,0,6,0"
+                                                      ToolTip="Enable / disable this rule (disabled rules are skipped when running)"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="#111827" VerticalAlignment="Center"/>
+                                        </StackPanel>
                                         <ItemsControl ItemsSource="{Binding Conditions}" Margin="0,3,0,0">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
@@ -173,17 +179,37 @@
                                             </Border>
                                             <Border Background="#FFFBEB" CornerRadius="3" Padding="5,2">
                                                 <TextBlock FontSize="10" Foreground="#92400E">
-                                                    <Run Text="&#x1F464; "/><Run Text="{Binding Assignee}"/>
+                                                    <Run Text="&#x1F464; "/><Run Text="{Binding AssigneeDisplay}"/>
                                                 </TextBlock>
                                             </Border>
                                         </StackPanel>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="3" Orientation="Vertical" VerticalAlignment="Center" Margin="4,4,6,4">
-                                        <Button Content="&#x25B2;" Width="24" Height="22" FontSize="9" Style="{StaticResource Btn}" Click="OnMoveRuleUp" Tag="{Binding}" Margin="0,0,0,2"/>
-                                        <Button Content="&#x270E;" Width="24" Height="22" FontSize="11" Style="{StaticResource Btn}" Click="OnEditRule" Tag="{Binding}" Margin="0,0,0,2"/>
-                                        <Button Content="&#x25BC;" Width="24" Height="22" FontSize="9" Style="{StaticResource Btn}" Click="OnMoveRuleDown" Tag="{Binding}" Margin="0,0,0,2"/>
-                                        <Button Content="&#x2715;" Width="24" Height="22" FontSize="10" Style="{StaticResource BtnDanger}" Click="OnDeleteRule" Tag="{Binding}" Padding="0"/>
-                                    </StackPanel>
+                                    <Grid Grid.Column="3" VerticalAlignment="Center" Margin="4,4,8,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="5"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <!-- Reorder arrows — bolder, larger -->
+                                        <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                                            <Button Content="&#x25B2;" Width="28" Height="26" FontSize="13" FontWeight="Bold"
+                                                    Foreground="#374151" Style="{StaticResource Btn}"
+                                                    Click="OnMoveRuleUp" Tag="{Binding}" Margin="0,0,0,3" ToolTip="Move up"/>
+                                            <Button Content="&#x25BC;" Width="28" Height="26" FontSize="13" FontWeight="Bold"
+                                                    Foreground="#374151" Style="{StaticResource Btn}"
+                                                    Click="OnMoveRuleDown" Tag="{Binding}" ToolTip="Move down"/>
+                                        </StackPanel>
+                                        <!-- Edit + Delete -->
+                                        <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Center">
+                                            <Button Content="&#x270F;" Width="28" Height="26" FontSize="13"
+                                                    Background="#EFF6FF" Foreground="#2563EB" BorderBrush="#BFDBFE"
+                                                    Style="{StaticResource Btn}" Click="OnEditRule" Tag="{Binding}"
+                                                    Margin="0,0,0,3" ToolTip="Edit rule"/>
+                                            <Button Content="&#x2715;" Width="28" Height="26" FontSize="11"
+                                                    Style="{StaticResource BtnDanger}" Click="OnDeleteRule" Tag="{Binding}"
+                                                    Padding="0" ToolTip="Delete rule"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </Grid>
                             </Border>
                         </DataTemplate>
@@ -211,20 +237,30 @@
                 <Border Grid.Row="0" Background="#FFFFFF" Padding="8,6"
                         BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock x:Name="txtClashCount" VerticalAlignment="Center"
-                                   FontSize="11" Foreground="#6B7280" Margin="4,0,0,0"/>
-                        <Button Grid.Column="1" Content="&#x1F504; Refresh" Style="{StaticResource Btn}"
-                                Click="OnRefreshClashes" FontSize="11"/>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="txtClashCount" VerticalAlignment="Center"
+                                       FontSize="11" Foreground="#6B7280" Margin="4,0,0,0"
+                                       TextWrapping="Wrap"/>
+                            <Button Grid.Column="1" Content="&#x1F504; Refresh" Style="{StaticResource Btn}"
+                                    Click="OnRefreshClashes" FontSize="11" VerticalAlignment="Top"/>
+                        </Grid>
+                        <!-- Status filter chips (built in code so counts stay live) -->
+                        <WrapPanel Grid.Row="1" x:Name="pnlClashFilters" Margin="2,6,0,0"/>
                     </Grid>
                 </Border>
 
                 <!-- Clash results list -->
                 <ListBox Grid.Row="1" x:Name="lstClashes" Background="Transparent"
                          BorderThickness="0" Padding="8"
+                         SelectionChanged="OnClashSelectionChanged"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
@@ -233,7 +269,17 @@
                             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                             <Setter Property="Template">
                                 <Setter.Value>
-                                    <ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="selBd" CornerRadius="6"
+                                                BorderThickness="2" BorderBrush="Transparent">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="selBd" Property="BorderBrush" Value="#2563EB"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
                                 </Setter.Value>
                             </Setter>
                         </Style>
@@ -301,25 +347,94 @@
         </Grid>
 
         <!-- RESULTS PANEL (after running rules) -->
-        <Border Grid.Row="3" x:Name="pnlResults" Background="#FFFFFF" Padding="10"
+        <Border Grid.Row="3" x:Name="pnlResults" Background="#FFFFFF"
                 BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Visibility="Collapsed">
-            <TextBlock x:Name="txtResults" FontSize="10.5" Foreground="#374151"
-                       TextWrapping="Wrap" FontFamily="Consolas"/>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>  <!-- Header + stat chips -->
+                    <RowDefinition Height="Auto"/>  <!-- Per-rule breakdown / warnings -->
+                </Grid.RowDefinitions>
+
+                <!-- Header row -->
+                <Grid Grid.Row="0" Background="#F9FAFB" >
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="12,8,0,8">
+                        <TextBlock x:Name="txtResultsTitle" Text="Run results" FontSize="12"
+                                   FontWeight="Bold" Foreground="#111827"/>
+                        <!-- Stat chips -->
+                        <StackPanel x:Name="pnlResultStats" Orientation="Horizontal" Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="&#x2715;" Style="{StaticResource Btn}"
+                            Click="OnDismissResults" Width="28" Height="26" Margin="8,8,12,8"
+                            ToolTip="Dismiss results"/>
+                </Grid>
+
+                <!-- Breakdown -->
+                <ScrollViewer Grid.Row="1" MaxHeight="200" VerticalScrollBarVisibility="Auto"
+                              Padding="12,8,12,10">
+                    <StackPanel>
+                        <!-- Per-rule assignment rows -->
+                        <ItemsControl x:Name="lstResultRules">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#F9FAFB" CornerRadius="4" Padding="8,5"
+                                            Margin="0,0,0,4" BorderBrush="#E5E7EB" BorderThickness="1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="4"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" CornerRadius="2"
+                                                    Background="{Binding Color, Converter={StaticResource HexToBrush}}"/>
+                                            <Border Grid.Column="1" Background="#2563EB" CornerRadius="9"
+                                                    MinWidth="26" Height="18" Margin="8,0,8,0">
+                                                <TextBlock Text="{Binding Count}" Foreground="White" FontSize="11"
+                                                           FontWeight="Bold" HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" Margin="6,0"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding RuleName}" FontSize="11.5"
+                                                           FontWeight="SemiBold" Foreground="#111827"/>
+                                                <TextBlock FontSize="10" Foreground="#6B7280">
+                                                    <Run Text="&#x2192; "/><Run Text="{Binding GroupName}"/>
+                                                    <Run Text="  &#x2022;  "/><Run Text="{Binding Assignee}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Warnings -->
+                        <Expander x:Name="expResultWarnings" Margin="0,4,0,0" Visibility="Collapsed">
+                            <Expander.Header>
+                                <TextBlock x:Name="txtResultWarningsHeader" FontSize="11"
+                                           FontWeight="SemiBold" Foreground="#B45309"/>
+                            </Expander.Header>
+                            <TextBlock x:Name="txtResultWarnings" FontSize="10.5" Foreground="#92400E"
+                                       TextWrapping="Wrap" Margin="4,4,0,0"/>
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
         </Border>
 
-        <!-- FOOTER -->
-        <Border Grid.Row="4" Background="#FFFFFF" Padding="10,8" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Button Content="&#x1F4BE; Save" Style="{StaticResource Btn}" Click="OnSaveRules" HorizontalAlignment="Left"/>
-                <Button Grid.Column="1" Content="Run This Test" Style="{StaticResource BtnPrimary}" Click="OnRunSelectedTest" Margin="0,0,4,0"/>
-                <Button Grid.Column="2" Content="Run All Tests" Style="{StaticResource Btn}" Click="OnRunAllTests"/>
-            </Grid>
+        <!-- FOOTER — WrapPanel so the buttons reflow instead of clipping in a narrow dock.
+             Most-used action (Run This Test) first so it's always visible. -->
+        <Border Grid.Row="4" Background="#FFFFFF" Padding="8,8" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0">
+            <WrapPanel>
+                <Button Content="&#x25B6; Run This Test" Style="{StaticResource BtnPrimary}" Click="OnRunSelectedTest" Margin="0,0,4,4"/>
+                <Button Content="Run All Tests" Style="{StaticResource Btn}" Click="OnRunAllTests" Margin="0,0,4,4"/>
+                <Button Content="&#x1F4BE; Save" Style="{StaticResource Btn}" Click="OnSaveRules" Margin="0,0,4,4"/>
+                <Button Content="&#x2B06; Export Session" Style="{StaticResource Btn}" Click="OnExportSession" Margin="0,0,0,4"
+                        ToolTip="Export all clash dispositions + item properties to JSON (for AI rule generation)"/>
+            </WrapPanel>
         </Border>
     </Grid>
 </UserControl>

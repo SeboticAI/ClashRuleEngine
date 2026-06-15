@@ -1,8 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" 
+
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props"
           Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+
+  <!--
+    ================================================================
+    NAVISWORKS VERSION TARGETING
+    One build per Navisworks version. Pick the version with:
+        msbuild /p:NavisworksVersion=2026
+    Default: newest installed version (2028 → 2024 probe order).
+    API reference DLLs resolve from, in order:
+      1. Refs\<version>\   (checked-in copies for versions not installed here)
+      2. C:\Program Files\Autodesk\Navisworks Manage <version>\
+    ================================================================
+  -->
+  <PropertyGroup>
+    <NavisworksVersion Condition="'$(NavisworksVersion)' == '' AND Exists('C:\Program Files\Autodesk\Navisworks Manage 2028')">2028</NavisworksVersion>
+    <NavisworksVersion Condition="'$(NavisworksVersion)' == '' AND Exists('C:\Program Files\Autodesk\Navisworks Manage 2027')">2027</NavisworksVersion>
+    <NavisworksVersion Condition="'$(NavisworksVersion)' == '' AND Exists('C:\Program Files\Autodesk\Navisworks Manage 2026')">2026</NavisworksVersion>
+    <NavisworksVersion Condition="'$(NavisworksVersion)' == '' AND Exists('C:\Program Files\Autodesk\Navisworks Manage 2025')">2025</NavisworksVersion>
+    <NavisworksVersion Condition="'$(NavisworksVersion)' == '' AND Exists('C:\Program Files\Autodesk\Navisworks Manage 2024')">2024</NavisworksVersion>
+    <NavisworksVersion Condition="'$(NavisworksVersion)' == ''">2027</NavisworksVersion>
+
+    <NavisworksPath Condition="'$(NavisworksPath)' == '' AND Exists('$(MSBuildProjectDirectory)\Refs\$(NavisworksVersion)\Autodesk.Navisworks.Api.dll')">$(MSBuildProjectDirectory)\Refs\$(NavisworksVersion)</NavisworksPath>
+    <NavisworksPath Condition="'$(NavisworksPath)' == ''">C:\Program Files\Autodesk\Navisworks Manage $(NavisworksVersion)</NavisworksPath>
+  </PropertyGroup>
 
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -15,6 +38,10 @@
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>latest</LangVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <!-- e.g. NW2027 — for version-specific conditional compilation -->
+    <NavisDefine>NW$(NavisworksVersion)</NavisDefine>
+    <!-- 2027 moved the tests collection into a folder tree (see Services\ClashApiCompat.cs) -->
+    <NavisDefine Condition="'$(NavisworksVersion)' &gt;= '2027'">$(NavisDefine);NW_TESTS_TREE</NavisDefine>
   </PropertyGroup>
 
   <!-- Debug config -->
@@ -22,8 +49,8 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\x64\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <OutputPath>bin\x64\Debug\$(NavisworksVersion)\</OutputPath>
+    <DefineConstants>DEBUG;TRACE;$(NavisDefine)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -32,19 +59,10 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\x64\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <OutputPath>bin\x64\Release\$(NavisworksVersion)\</OutputPath>
+    <DefineConstants>TRACE;$(NavisDefine)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-
-  <!--
-    ================================================================
-    NAVISWORKS PATH — UPDATE THIS TO YOUR INSTALLATION
-    ================================================================
-  -->
-  <PropertyGroup>
-    <NavisworksPath>C:\Program Files\Autodesk\Navisworks Manage 2026</NavisworksPath>
   </PropertyGroup>
 
   <!-- Standard .NET Framework references -->
@@ -88,11 +106,16 @@
     <Compile Include="Models\RuleCondition.cs" />
     <Compile Include="Models\TestRuleSet.cs" />
     <Compile Include="Plugin\ClashRuleEnginePlugin.cs" />
+    <Compile Include="Services\ClashApiCompat.cs" />
+    <Compile Include="Services\ClashNavigationService.cs" />
     <Compile Include="Services\ClashProcessingService.cs" />
+    <Compile Include="Services\DisciplineClassifier.cs" />
     <Compile Include="Services\ClashTestScanner.cs" />
     <Compile Include="Services\RulePersistenceService.cs" />
     <Compile Include="Services\ModelPropertyScanner.cs" />
+    <Compile Include="Services\SessionExportService.cs" />
     <Compile Include="UI\Converters.cs" />
+    <Compile Include="UI\ExportProgressWindow.cs" />
     <Compile Include="UI\ClashInspectorDialog.xaml.cs">
       <DependentUpon>ClashInspectorDialog.xaml</DependentUpon>
     </Compile>
@@ -101,6 +124,9 @@
     </Compile>
     <Compile Include="UI\RuleEnginePanel.xaml.cs">
       <DependentUpon>RuleEnginePanel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\SettingsDialog.xaml.cs">
+      <DependentUpon>SettingsDialog.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
 
@@ -118,6 +144,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="UI\SettingsDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 
   <!-- Other files -->
@@ -132,14 +162,14 @@
     <EmbeddedResource Include="Plugin\ClashRuleEngineRibbon.xaml" />
   </ItemGroup>
 
-  <!-- Post-build: Copy to Navisworks plugin folder for testing (Debug only) -->
+  <!-- Post-build: best-effort copy to the user Plugins folder for quick testing (Debug only).
+       Release deployment is handled by tools\deploy.ps1 -->
   <Target Name="CopyToNavisworksPlugins" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
     <PropertyGroup>
-      <PluginFolder>$(LocalAppData)\Autodesk\Navisworks Manage 2026\Plugins\ClashRuleEngine</PluginFolder>
+      <PluginFolder>$(AppData)\Autodesk Navisworks Manage $(NavisworksVersion)\Plugins</PluginFolder>
     </PropertyGroup>
-    <MakeDir Directories="$(PluginFolder)" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginFolder)" />
-    <Copy SourceFiles="$(ProjectDir)PackageContents.xml" DestinationFolder="$(PluginFolder)" />
+    <MakeDir Directories="$(PluginFolder)" ContinueOnError="true" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginFolder)" ContinueOnError="true" />
   </Target>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

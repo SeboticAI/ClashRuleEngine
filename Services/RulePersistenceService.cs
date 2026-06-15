@@ -50,10 +50,18 @@ namespace ClashRuleEngine.Services
             {
                 string path = GetConfigFilePath();
                 if (string.IsNullOrEmpty(path) || !File.Exists(path))
-                    return new ProjectConfig();
-                return ProjectConfig.FromXml(File.ReadAllText(path));
+                    return NewSeeded();
+                return ProjectConfig.FromXml(File.ReadAllText(path));   // FromXml seeds
             }
-            catch { return new ProjectConfig(); }
+            catch { return NewSeeded(); }
+        }
+
+        /// <summary>A fresh config with the default discipline hierarchy populated.</summary>
+        public static ProjectConfig NewSeeded()
+        {
+            var cfg = new ProjectConfig();
+            cfg.Hierarchy.EnsureSeeded();
+            return cfg;
         }
     }
 }

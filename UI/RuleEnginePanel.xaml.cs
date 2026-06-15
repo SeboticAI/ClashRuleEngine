@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Autodesk.Navisworks.Api.Clash;
 using ClashRuleEngine.Models;
 using ClashRuleEngine.Services;
 
@@ -16,6 +18,8 @@ namespace ClashRuleEngine.UI
         private TestRuleSet _currentTestRuleSet;
         private ObservableCollection<ClashRule> _rules;
         private ObservableCollection<ClashResultInfo> _clashResults;
+        private readonly List<ClashResultInfo> _allClashResults = new List<ClashResultInfo>();
+        private ClashResultStatus? _clashFilter;   // null = show all statuses
         private ClashProcessingService _processor;
         private Point _dragStartPoint;
 
@@ -43,7 +47,8 @@ namespace ClashRuleEngine.UI
         private void LoadConfig()
         {
             try { _config = RulePersistenceService.Load(); }
-            catch { _config = new ProjectConfig(); }
+            catch { _config = RulePersistenceService.NewSeeded(); }
+            _config.Hierarchy?.EnsureSeeded();
         }
 
         private void RefreshClashTests()
@@ -101,6 +106,12 @@ namespace ClashRuleEngine.UI
             foreach (var r in _currentTestRuleSet.Rules)
                 _rules.Add(r);
 
+            // Clash data belongs to the previous test — drop it so the Clashes tab
+            // reloads fresh (now, or when next opened).
+            _allClashResults.Clear();
+            _clashResults.Clear();
+            pnlClashFilters.Children.Clear();
+
             // If the Clashes tab is active, refresh the clash list automatically
             if (!_rulesTabActive)
                 LoadClashesForTest(testName);
@@ -157,7 +168,7 @@ namespace ClashRuleEngine.UI
         {
             SetActiveTab(false);
             string testName = GetSelectedTestName();
-            if (!string.IsNullOrEmpty(testName) && _clashResults.Count == 0)
+            if (!string.IsNullOrEmpty(testName) && _allClashResults.Count == 0)
                 LoadClashesForTest(testName);
         }
 
@@ -183,24 +194,94 @@ namespace ClashRuleEngine.UI
 
         private void LoadClashesForTest(string testName)
         {
-            _clashResults.Clear();
+            _allClashResults.Clear();
             try
             {
-                var results = ClashTestScanner.GetClashResults(testName);
-                foreach (var cr in results)
-                    _clashResults.Add(cr);
-
-                int total = results.Count;
-                int active = results.Count(r => r.Status == Autodesk.Navisworks.Api.Clash.ClashResultStatus.Active);
-                txtClashCount.Text = $"{total} clash{(total != 1 ? "es" : "")} ({active} active)";
+                _allClashResults.AddRange(ClashTestScanner.GetClashResults(testName));
             }
             catch (Exception ex)
             {
+                _allClashResults.Clear();
+                _clashResults.Clear();
+                pnlClashFilters.Children.Clear();
                 txtClashCount.Text = $"Error loading clashes: {ex.Message}";
+                pnlClashEmptyState.Visibility = Visibility.Visible;
+                return;
             }
 
-            bool hasClashes = _clashResults.Count > 0;
-            pnlClashEmptyState.Visibility = hasClashes ? Visibility.Collapsed : Visibility.Visible;
+            BuildClashFilterChips();
+            ApplyClashFilter();
+        }
+
+        /// <summary>Re-fills the visible list from the full set per the active status filter.</summary>
+        private void ApplyClashFilter()
+        {
+            _clashResults.Clear();
+            IEnumerable<ClashResultInfo> view = _allClashResults;
+            if (_clashFilter.HasValue)
+                view = view.Where(r => r.Status == _clashFilter.Value);
+            foreach (var r in view)
+                _clashResults.Add(r);
+
+            int total = _allClashResults.Count;
+            int shown = _clashResults.Count;
+            string scope = _clashFilter.HasValue ? _clashFilter.Value.ToString().ToLowerInvariant() : "all";
+            txtClashCount.Text = total > 0
+                ? $"showing {shown} of {total} ({scope})  ·  click a clash to zoom to it"
+                : "No clashes in this test";
+            pnlClashEmptyState.Visibility = shown > 0 ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        /// <summary>Builds the status filter chips with live per-status counts.</summary>
+        private void BuildClashFilterChips()
+        {
+            // If the active filter no longer has any results, fall back to "All".
+            if (_clashFilter.HasValue && !_allClashResults.Any(r => r.Status == _clashFilter.Value))
+                _clashFilter = null;
+
+            pnlClashFilters.Children.Clear();
+            if (_allClashResults.Count == 0) return;
+
+            pnlClashFilters.Children.Add(MakeFilterChip("All", null, _allClashResults.Count));
+            foreach (var st in new[] { ClashResultStatus.Active, ClashResultStatus.Reviewed,
+                                       ClashResultStatus.Approved, ClashResultStatus.Resolved })
+            {
+                int c = _allClashResults.Count(r => r.Status == st);
+                if (c > 0)
+                    pnlClashFilters.Children.Add(MakeFilterChip(st.ToString(), st, c));
+            }
+        }
+
+        private Border MakeFilterChip(string label, ClashResultStatus? status, int count)
+        {
+            bool active = Equals(_clashFilter, status);
+            var border = new Border
+            {
+                Background = active ? Brush("#2563EB") : Brush("#F3F4F6"),
+                BorderBrush = active ? Brush("#2563EB") : Brush("#E5E7EB"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(10, 3, 10, 3),
+                Margin = new Thickness(0, 0, 5, 5),
+                Cursor = Cursors.Hand,
+                Tag = status
+            };
+            border.Child = new TextBlock
+            {
+                Text = $"{label} · {count}",
+                FontSize = 11,
+                FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal,
+                Foreground = active ? Brushes.White : Brush("#374151")
+            };
+            border.MouseLeftButtonDown += OnClashFilterChipClick;
+            return border;
+        }
+
+        private void OnClashFilterChipClick(object sender, MouseButtonEventArgs e)
+        {
+            _clashFilter = (sender as Border)?.Tag as ClashResultStatus?;
+            BuildClashFilterChips();   // refresh highlight
+            ApplyClashFilter();
         }
 
         private void OnRefreshClashes(object sender, RoutedEventArgs e)
@@ -208,6 +289,19 @@ namespace ClashRuleEngine.UI
             string testName = GetSelectedTestName();
             if (!string.IsNullOrEmpty(testName))
                 LoadClashesForTest(testName);
+        }
+
+        /// <summary>
+        /// Clicking a clash in the list selects (highlights) its elements in the
+        /// model and frames the clash in the active 3D view, using the clash's own
+        /// saved viewpoint. The primary "find this clash" interaction.
+        /// </summary>
+        private void OnClashSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var info = lstClashes.SelectedItem as ClashResultInfo;
+            if (info?.SourceResult == null) return;
+            try { ClashNavigationService.NavigateTo(info.SourceResult); }
+            catch { /* navigation is best-effort; never disrupt the UI */ }
         }
 
         private void OnInspectClash(object sender, RoutedEventArgs e)
@@ -313,6 +407,16 @@ namespace ClashRuleEngine.UI
             }
         }
 
+        private void OnToggleRuleEnabled(object sender, RoutedEventArgs e)
+        {
+            var rule = (sender as CheckBox)?.Tag as ClashRule;
+            if (rule == null) return;
+            rule.IsEnabled = (sender as CheckBox).IsChecked ?? true;
+            // Rebuild the list so the row opacity reflects the new state
+            // (ClashRule isn't INotifyPropertyChanged).
+            SyncRulesToTestSet();
+        }
+
         private void OnMoveRuleUp(object sender, RoutedEventArgs e)
         {
             var rule = (sender as Button)?.Tag as ClashRule;
@@ -347,6 +451,69 @@ namespace ClashRuleEngine.UI
             }
         }
 
+        private void OnExportSession(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
+                if (doc == null || string.IsNullOrEmpty(doc.FileName))
+                {
+                    MessageBox.Show("Open a document first.", "No Document", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // Scope: selected test only (fast) or the whole document (can be
+                // hundreds of MB on a real federated model).
+                string onlyTest = null;
+                string selected = GetSelectedTestName();
+                if (selected != null)
+                {
+                    var choice = MessageBox.Show(
+                        $"Export only the selected test '{selected}'?\n\n" +
+                        "Yes — just this test (fast)\n" +
+                        "No — ALL tests (can take several minutes on a large model)",
+                        "Export Scope", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                    if (choice == MessageBoxResult.Cancel) return;
+                    if (choice == MessageBoxResult.Yes) onlyTest = selected;
+                }
+
+                string baseName = System.IO.Path.GetFileNameWithoutExtension(doc.FileName);
+                if (onlyTest != null)
+                {
+                    foreach (char c in System.IO.Path.GetInvalidFileNameChars())
+                        selected = selected.Replace(c, '_');
+                    baseName += "." + selected;
+                }
+
+                var dlg = new Microsoft.Win32.SaveFileDialog
+                {
+                    Title = "Export coordination session",
+                    Filter = "Session JSON (*.session.json)|*.session.json|All files (*.*)|*.*",
+                    InitialDirectory = System.IO.Path.GetDirectoryName(doc.FileName),
+                    FileName = baseName + ".session.json"
+                };
+                if (dlg.ShowDialog() != true) return;
+
+                var progress = new ExportProgressWindow();
+                progress.Show();
+                string summary;
+                try
+                {
+                    summary = SessionExportService.ExportTests(
+                        dlg.FileName, onlyTest, progress.Report, () => progress.Cancelled);
+                }
+                finally
+                {
+                    progress.Close();
+                }
+                MessageBox.Show(summary, "Session Export", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void OnRunSelectedTest(object sender, RoutedEventArgs e)
         {
             string testName = GetSelectedTestName();
@@ -358,13 +525,12 @@ namespace ClashRuleEngine.UI
             try
             {
                 SyncRulesToTestSet();
-                var result = _processor.ProcessSingleTest(testName, _currentTestRuleSet);
-                txtResults.Text = result.GetSummary();
-                pnlResults.Visibility = Visibility.Visible;
-                MessageBox.Show(result.GetSummary(), "Results", MessageBoxButton.OK, MessageBoxImage.Information);
+                var result = _processor.ProcessSingleTest(testName, _currentTestRuleSet,
+                    _config.Hierarchy, _config.UseHierarchyFallback);
+                ShowResults(result);
 
                 // Refresh the clash list if it's loaded, to reflect updated statuses
-                if (_clashResults.Count > 0)
+                if (_allClashResults.Count > 0)
                     LoadClashesForTest(testName);
             }
             catch (Exception ex)
@@ -379,9 +545,7 @@ namespace ClashRuleEngine.UI
             {
                 SyncRulesToTestSet();
                 var result = _processor.ProcessAllTests(_config);
-                txtResults.Text = result.GetSummary();
-                pnlResults.Visibility = Visibility.Visible;
-                MessageBox.Show(result.GetSummary(), "Results", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowResults(result);
             }
             catch (Exception ex)
             {
@@ -389,15 +553,89 @@ namespace ClashRuleEngine.UI
             }
         }
 
+        // ──────────────────────────────────────────────────────
+        // Run results view (replaces the old blocking MessageBox dump)
+        // ──────────────────────────────────────────────────────
+
+        private void ShowResults(ProcessingResult result)
+        {
+            txtResultsTitle.Text = $"Run results — {result.TestName}";
+
+            // Stat chips: evaluated / assigned / unmatched / skipped / groups
+            pnlResultStats.Children.Clear();
+            pnlResultStats.Children.Add(MakeStatChip("evaluated", result.ClashesProcessed, "#EFF6FF", "#1E40AF"));
+            pnlResultStats.Children.Add(MakeStatChip("by rules", result.Assigned, "#F0FDF4", "#166534"));
+            if (result.HierarchyAssigned > 0)
+                pnlResultStats.Children.Add(MakeStatChip("by hierarchy", result.HierarchyAssigned, "#F5F3FF", "#5B21B6"));
+            pnlResultStats.Children.Add(MakeStatChip("unmatched", result.Unmatched, "#FFFBEB", "#92400E"));
+            pnlResultStats.Children.Add(MakeStatChip("groups", result.GroupsCreated, "#F5F3FF", "#5B21B6"));
+            if (result.Skipped > 0)
+                pnlResultStats.Children.Add(MakeStatChip("skipped", result.Skipped, "#F3F4F6", "#6B7280"));
+
+            // Per-rule breakdown — largest first
+            lstResultRules.ItemsSource = result.AssignmentsByRule.Values
+                .OrderByDescending(a => a.Count).ToList();
+
+            // Warnings (collapsible)
+            if (result.Errors.Count > 0)
+            {
+                txtResultWarningsHeader.Text = $"⚠ {result.Errors.Count} warning{(result.Errors.Count != 1 ? "s" : "")}";
+                txtResultWarnings.Text = string.Join(Environment.NewLine,
+                    result.Errors.Take(20).Select(e => "• " + e));
+                expResultWarnings.Visibility = Visibility.Visible;
+                expResultWarnings.IsExpanded = false;
+            }
+            else
+            {
+                expResultWarnings.Visibility = Visibility.Collapsed;
+            }
+
+            pnlResults.Visibility = Visibility.Visible;
+        }
+
+        private void OnDismissResults(object sender, RoutedEventArgs e)
+        {
+            pnlResults.Visibility = Visibility.Collapsed;
+        }
+
+        private Border MakeStatChip(string label, int value, string bgHex, string fgHex)
+        {
+            var fg = Brush(fgHex);
+            var panel = new StackPanel { Orientation = Orientation.Horizontal };
+            panel.Children.Add(new TextBlock
+            {
+                Text = value.ToString(),
+                FontWeight = FontWeights.Bold,
+                FontSize = 12,
+                Foreground = fg
+            });
+            panel.Children.Add(new TextBlock
+            {
+                Text = " " + label,
+                FontSize = 11,
+                Foreground = fg,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            return new Border
+            {
+                Background = Brush(bgHex),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(8, 3, 8, 3),
+                Margin = new Thickness(0, 0, 6, 0),
+                Child = panel
+            };
+        }
+
         private void OnSettings(object sender, RoutedEventArgs e)
         {
-            var hierarchy = string.Join(" > ", _config.Hierarchy.Systems);
-            MessageBox.Show(
-                $"System hierarchy:\n{hierarchy}\n\n" +
-                $"Assignees: {string.Join(", ", _config.GetAllAssignees())}\n\n" +
-                $"Groups: {string.Join(", ", _config.GetAllGroupNames())}\n\n" +
-                $"Test rule sets: {_config.TestRuleSets.Count}",
-                "Settings", MessageBoxButton.OK, MessageBoxImage.Information);
+            _config.Hierarchy?.EnsureSeeded();
+            var dialog = new SettingsDialog(_config);
+            dialog.Owner = Window.GetWindow(this);
+            if (dialog.ShowDialog() == true)
+            {
+                RulePersistenceService.Save(_config);
+                UpdateUI();
+            }
         }
 
         // ──────────────────────────────────────────────────────

@@ -76,6 +76,16 @@ namespace ClashRuleEngine.UI
             cmbAssignee.ItemsSource = assignees;
             cmbAssignee.Text = Rule.Assignee;
 
+            // Assignee mode + subject anchor
+            switch (Rule.AssigneeMode)
+            {
+                case AssigneeMode.OwningTrade: cmbAssigneeMode.SelectedIndex = 0; break;
+                case AssigneeMode.OtherTrade:  cmbAssigneeMode.SelectedIndex = 1; break;
+                default:                       cmbAssigneeMode.SelectedIndex = 2; break;  // Named
+            }
+            cmbSubject.SelectedIndex = Rule.SubjectItem == ClashItemTarget.Item2 ? 1 : 0;
+            UpdateAssigneeModeVisibility();
+
             cmbLogic.SelectedIndex = Rule.ConditionLogic == LogicOperator.And ? 0 : 1;
 
             switch (Rule.ClashStatus.ToLowerInvariant())
@@ -97,6 +107,20 @@ namespace ClashRuleEngine.UI
         private void UpdateNoPropsWarning()
         {
             pnlNoPropsWarning.Visibility = (_modelProps.Count == 0) ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void OnAssigneeModeChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateAssigneeModeVisibility();
+        }
+
+        /// <summary>Show the subject picker for relative modes, the named owner for "Specific owner".</summary>
+        private void UpdateAssigneeModeVisibility()
+        {
+            if (pnlSubject == null || pnlNamedAssignee == null) return;   // not built yet
+            bool named = cmbAssigneeMode.SelectedIndex == 2;
+            pnlSubject.Visibility = named ? Visibility.Collapsed : Visibility.Visible;
+            pnlNamedAssignee.Visibility = named ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // ──────────────────────────────────────────────────────
@@ -276,28 +300,27 @@ namespace ClashRuleEngine.UI
                 ToolTip = "Value to match (type or pick a sampled value)"
             };
             cmbVal.Text = cond.Value;
-            if (!string.IsNullOrEmpty(cond.PropertyCategory) && !string.IsNullOrEmpty(cond.PropertyName))
-            {
-                try
-                {
-                    foreach (var v in ModelPropertyScanner.GetPropertyValues(
-                        cond.PropertyCategory, cond.PropertyName).Take(50))
-                        cmbVal.Items.Add(v);
-                }
-                catch { }
-            }
 
-            // Refresh value suggestions when property changes
-            cmbProp.SelectionChanged += (s, e) =>
+            // Lazy-load: populate values only when the dropdown is first opened.
+            // The value cache in ModelPropertyScanner makes repeated opens instant.
+            bool valuesLoaded = false;
+            cmbVal.DropDownOpened += (s, e) =>
             {
+                if (valuesLoaded) return;
+                valuesLoaded = true;
                 try
                 {
-                    cmbVal.Items.Clear();
-                    string propName = (s as ComboBox)?.SelectedItem?.ToString() ?? "";
-                    var vals = ModelPropertyScanner.GetPropertyValues(cmbCat.Text, propName);
+                    var vals = ModelPropertyScanner.GetPropertyValues(cmbCat.Text, cmbProp.Text);
                     foreach (var v in vals.Take(50)) cmbVal.Items.Add(v);
                 }
                 catch { }
+            };
+
+            // When property changes, reset so the next dropdown-open reloads
+            cmbProp.SelectionChanged += (s, e) =>
+            {
+                cmbVal.Items.Clear();
+                valuesLoaded = false;
             };
             cmbVal.LostFocus += (s, e) =>
                 { cond.Value = (s as ComboBox).Text; };
@@ -410,16 +433,27 @@ namespace ClashRuleEngine.UI
             Rule.Name = txtName.Text.Trim();
             Rule.Description = txtDescription.Text?.Trim() ?? "";
             Rule.IsEnabled = chkEnabled.IsChecked ?? true;
-            Rule.GroupName = cmbGroup.Text?.Trim() ?? "Unassigned";
-            Rule.Assignee = cmbAssignee.Text?.Trim() ?? "Unassigned";
+            Rule.GroupName = cmbGroup.Text?.Trim() ?? "";
+            Rule.Assignee = cmbAssignee.Text?.Trim() ?? "";
             Rule.ConditionLogic = cmbLogic.SelectedIndex == 0 ? LogicOperator.And : LogicOperator.Or;
             Rule.ClashStatus = (cmbStatus.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Active";
             Rule.Conditions = _conditions.ToList();
             Rule.Color = (cmbColor.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "#2563EB";
 
-            if (!_config.Assignees.Contains(Rule.Assignee, StringComparer.OrdinalIgnoreCase))
+            switch (cmbAssigneeMode.SelectedIndex)
+            {
+                case 0:  Rule.AssigneeMode = AssigneeMode.OwningTrade; break;
+                case 1:  Rule.AssigneeMode = AssigneeMode.OtherTrade; break;
+                default: Rule.AssigneeMode = AssigneeMode.Named; break;
+            }
+            Rule.SubjectItem = cmbSubject.SelectedIndex == 1 ? ClashItemTarget.Item2 : ClashItemTarget.Item1;
+
+            // Remember literal owners/groups for the dropdowns (skip blanks and relative modes).
+            if (Rule.AssigneeMode == AssigneeMode.Named && !string.IsNullOrWhiteSpace(Rule.Assignee)
+                && !_config.Assignees.Contains(Rule.Assignee, StringComparer.OrdinalIgnoreCase))
                 _config.Assignees.Add(Rule.Assignee);
-            if (!_config.GroupNames.Contains(Rule.GroupName, StringComparer.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(Rule.GroupName)
+                && !_config.GroupNames.Contains(Rule.GroupName, StringComparer.OrdinalIgnoreCase))
                 _config.GroupNames.Add(Rule.GroupName);
 
             DialogResult = true;

@@ -385,13 +385,28 @@ namespace ClashRuleEngine.UI
             Close();
         }
 
+        /// <summary>
+        /// Selects the clash's elements and frames them in the 3D view, using the
+        /// clash's own saved viewpoint. Same behaviour as clicking the clash in the
+        /// panel list — exposed here so it's reachable while inspecting properties.
+        /// </summary>
+        private void OnZoomToClash(object sender, RoutedEventArgs e)
+        {
+            try { Services.ClashNavigationService.NavigateTo(_clashResult); }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not navigate to the clash: {ex.Message}",
+                    "Navigation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         // ──────────────────────────────────────────────────────
         // Helpers
         // ──────────────────────────────────────────────────────
 
         private static SolidColorBrush Hex(string hex)
         {
-            try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); }
+            try { return new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString(hex)); }
             catch { return Brushes.Gray; }
         }
     }
