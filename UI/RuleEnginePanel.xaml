@@ -431,6 +431,9 @@
             <WrapPanel>
                 <Button Content="&#x25B6; Run This Test" Style="{StaticResource BtnPrimary}" Click="OnRunSelectedTest" Margin="0,0,4,4"/>
                 <Button Content="Run All Tests" Style="{StaticResource Btn}" Click="OnRunAllTests" Margin="0,0,4,4"/>
+                <Button Content="&#x2728; AI Rules" Style="{StaticResource Btn}" Click="OnAiRules" Margin="0,0,4,4"
+                        Foreground="#7C3AED" BorderBrush="#C4B5FD"
+                        ToolTip="Describe your coordination rules in plain English and let Claude write them"/>
                 <Button Content="&#x1F4BE; Save" Style="{StaticResource Btn}" Click="OnSaveRules" Margin="0,0,4,4"/>
                 <Button Content="&#x2B06; Export Session" Style="{StaticResource Btn}" Click="OnExportSession" Margin="0,0,0,4"
                         ToolTip="Export all clash dispositions + item properties to JSON (for AI rule generation)"/>

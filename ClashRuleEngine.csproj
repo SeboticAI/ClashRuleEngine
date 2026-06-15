@@ -69,6 +69,8 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data" />
@@ -106,9 +108,11 @@
     <Compile Include="Models\RuleCondition.cs" />
     <Compile Include="Models\TestRuleSet.cs" />
     <Compile Include="Plugin\ClashRuleEnginePlugin.cs" />
+    <Compile Include="Services\AiRuleGenerator.cs" />
     <Compile Include="Services\ClashApiCompat.cs" />
     <Compile Include="Services\ClashNavigationService.cs" />
     <Compile Include="Services\ClashProcessingService.cs" />
+    <Compile Include="Services\ClaudeApiService.cs" />
     <Compile Include="Services\DisciplineClassifier.cs" />
     <Compile Include="Services\ClashTestScanner.cs" />
     <Compile Include="Services\RulePersistenceService.cs" />
@@ -116,6 +120,9 @@
     <Compile Include="Services\SessionExportService.cs" />
     <Compile Include="UI\Converters.cs" />
     <Compile Include="UI\ExportProgressWindow.cs" />
+    <Compile Include="UI\AiAssistDialog.xaml.cs">
+      <DependentUpon>AiAssistDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UI\ClashInspectorDialog.xaml.cs">
       <DependentUpon>ClashInspectorDialog.xaml</DependentUpon>
     </Compile>
@@ -132,6 +139,10 @@
 
   <!-- XAML pages -->
   <ItemGroup>
+    <Page Include="UI\AiAssistDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="UI\ClashInspectorDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

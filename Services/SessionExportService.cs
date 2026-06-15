@@ -29,15 +29,28 @@ namespace ClashRuleEngine.Services
     public static class SessionExportService
     {
         /// <summary>
-        /// Property categories worth exporting. Everything else (Geometry,
-        /// Transform, internal viewer state...) is noise for rule inference.
+        /// The handful of property NAMES worth exporting — the "main values" a
+        /// coordinator (or the AI) reasons about. Matched by DisplayName across all
+        /// categories; the first non-empty hit per name wins. Everything else
+        /// (geometry, transforms, dozens of Revit fields) is dropped — that bloat
+        /// is what produced the unusable 22 MB export.
         /// </summary>
-        private static readonly string[] CoreCategories =
+        private static readonly string[] KeyProperties =
         {
-            "Item", "Element", "Identity Data", "Dimensions", "Mechanical",
-            "Mechanical - Flow", "Constraints", "Insulation", "Phasing",
-            "Other", "Revit Type", "Base Level", "Reference Level"
+            // identity / family / type
+            "Category", "Family", "Family Name", "Family and Type", "Type Name", "Type", "Type Mark",
+            // organisation
+            "Workset", "Layer", "Level", "Reference Level", "Base Level",
+            // size — the values rules actually test (metres in the API)
+            "Outside Diameter", "Inside Diameter", "Diameter", "Size", "Width", "Height", "Length",
+            // system / material
+            "System Name", "System Type", "System Classification", "Material",
+            // ids
+            "Id", "GUID",
         };
+
+        private static readonly HashSet<string> KeyPropertySet =
+            new HashSet<string>(KeyProperties, StringComparer.OrdinalIgnoreCase);
 
         // Pump the UI roughly this often (clash count between progress reports).
         private const int ProgressEvery = 25;
@@ -80,7 +93,7 @@ namespace ClashRuleEngine.Services
                 using (var w = new StreamWriter(stream, new UTF8Encoding(false)))
                 {
                     w.Write('{');
-                    WriteField(w, "schema", "clashre-session/1"); w.Write(',');
+                    WriteField(w, "schema", "clashre-session/2-lean"); w.Write(',');
                     WriteField(w, "exportedAt", DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm:ss")); w.Write(',');
                     WriteField(w, "document", doc.Title ?? ""); w.Write(',');
                     w.Write("\"tests\":[");
@@ -189,26 +202,16 @@ namespace ClashRuleEngine.Services
             AppendField(sb, "name", cr.DisplayName); sb.Append(',');
             AppendField(sb, "status", cr.Status.ToString()); sb.Append(',');
             AppendField(sb, "group", groupName); sb.Append(',');
-            AppendField(sb, "description", SafeString(() => cr.Description)); sb.Append(',');
 
-            // AssignedTo / ApprovedBy types vary across API versions — reflect + ToString
-            AppendField(sb, "assignedTo", SafeString(() => ReflectString(cr, "AssignedTo"))); sb.Append(',');
-            AppendField(sb, "approvedBy", SafeString(() => ReflectString(cr, "ApprovedBy"))); sb.Append(',');
-
-            var center = SafeGet(() => cr.Center);
-            if (center != null)
-            {
-                sb.Append("\"center\":[")
-                  .Append(Num(center.X)).Append(',')
-                  .Append(Num(center.Y)).Append(',')
-                  .Append(Num(center.Z)).Append("],");
-            }
+            // The user's disposition (who's responsible) — the learning signal.
+            // AssignedTo's type varies across API versions, so reflect + ToString.
+            AppendField(sb, "assignedTo", SafeString(() => ReflectString(cr, "AssignedTo")));
 
             string distance = SafeString(() => ReflectString(cr, "Distance"));
-            if (!string.IsNullOrEmpty(distance)) { AppendField(sb, "distance", distance); sb.Append(','); }
+            if (!string.IsNullOrEmpty(distance)) { sb.Append(','); AppendField(sb, "distance", distance); }
 
-            sb.Append("\"item1\":"); AppendItem(sb, SafeGet(() => cr.Item1)); sb.Append(',');
-            sb.Append("\"item2\":"); AppendItem(sb, SafeGet(() => cr.Item2));
+            sb.Append(",\"a\":"); AppendItem(sb, SafeGet(() => cr.Item1));
+            sb.Append(",\"b\":"); AppendItem(sb, SafeGet(() => cr.Item2));
             sb.Append('}');
         }
 
@@ -217,54 +220,44 @@ namespace ClashRuleEngine.Services
             if (item == null) { sb.Append("null"); return; }
 
             sb.Append('{');
-            AppendField(sb, "displayName", SafeString(() => item.DisplayName)); sb.Append(',');
-            AppendField(sb, "path", SafeString(() => BuildPath(item))); sb.Append(',');
-            sb.Append("\"properties\":{");
+            AppendField(sb, "name", SafeString(() => item.DisplayName)); sb.Append(',');
+            // "which model it comes from" — the root ancestor is the linked file.
+            AppendField(sb, "model", SafeString(() => RootName(item)));
 
-            bool firstCat = true;
+            string guid = SafeString(() =>
+                item.InstanceGuid != Guid.Empty ? item.InstanceGuid.ToString() : null);
+            if (!string.IsNullOrEmpty(guid)) { sb.Append(','); AppendField(sb, "guid", guid); }
+
+            // Flat key/value of just the whitelisted properties (first non-empty per name).
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             try
             {
                 foreach (PropertyCategory cat in item.PropertyCategories)
                 {
-                    if (!CoreCategories.Contains(cat.DisplayName, StringComparer.OrdinalIgnoreCase))
-                        continue;
-
-                    if (!firstCat) sb.Append(',');
-                    firstCat = false;
-                    AppendString(sb, cat.DisplayName);
-                    sb.Append(":{");
-
-                    bool firstProp = true;
                     foreach (DataProperty prop in cat.Properties)
                     {
+                        string name = prop.DisplayName;
+                        if (name == null || !KeyPropertySet.Contains(name) || seen.Contains(name)) continue;
                         string val = SafeString(() => ValueToString(prop));
                         if (string.IsNullOrEmpty(val)) continue;
-                        if (!firstProp) sb.Append(',');
-                        firstProp = false;
-                        AppendString(sb, prop.DisplayName);
-                        sb.Append(':');
-                        AppendString(sb, val);
+                        seen.Add(name);
+                        sb.Append(',');
+                        AppendField(sb, name, val);
                     }
-                    sb.Append('}');
                 }
             }
-            catch { /* partial property bag is better than none */ }
+            catch { /* partial bag is better than none */ }
 
-            sb.Append("}}");
+            sb.Append('}');
         }
 
-        private static string BuildPath(ModelItem item)
+        private static string RootName(ModelItem item)
         {
-            var parts = new List<string>();
             var cur = item;
+            ModelItem root = item;
             int depth = 0;
-            while (cur != null && depth < 8)
-            {
-                if (!string.IsNullOrWhiteSpace(cur.DisplayName)) parts.Insert(0, cur.DisplayName);
-                cur = cur.Parent;
-                depth++;
-            }
-            return string.Join(" / ", parts);
+            while (cur != null && depth < 12) { root = cur; cur = cur.Parent; depth++; }
+            return root != null ? root.DisplayName : null;
         }
 
         private static string ValueToString(DataProperty prop)

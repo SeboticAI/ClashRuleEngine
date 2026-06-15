@@ -33,12 +33,26 @@ namespace ClashRuleEngine.Services
         /// </summary>
         public static void NavigateTo(ClashResult clash)
         {
-            if (clash == null) return;
+            if (!IsUsable(clash)) return;
             var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
             if (doc == null) return;
 
             SelectItems(doc, clash);
             FrameClash(doc, clash);
+        }
+
+        /// <summary>
+        /// True only if the result is a live, non-disposed object. After rules run,
+        /// TestsEditTestFromCopy swaps the test and disposes the old ClashResult
+        /// objects; touching their geometry/viewpoint then is an AccessViolation
+        /// that crashes Navisworks (uncatchable by managed try/catch), so we must
+        /// check BEFORE any member access.
+        /// </summary>
+        public static bool IsUsable(ClashResult clash)
+        {
+            if (clash == null) return false;
+            try { return !clash.IsDisposed; }
+            catch { return false; }
         }
 
         private static void SelectItems(Document doc, ClashResult clash)

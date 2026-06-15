@@ -1,0 +1,125 @@
+<Window x:Class="ClashRuleEngine.UI.AiAssistDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ClashRuleEngine.UI"
+        Title="Generate Rules with AI" Width="720" Height="640"
+        WindowStartupLocation="CenterOwner"
+        Background="#F8F9FA" Foreground="#1A1A2E"
+        ResizeMode="CanResizeWithGrip">
+
+    <Window.Resources>
+        <local:HexToBrushConverter x:Key="HexToBrush"/>
+        <Style x:Key="Btn" TargetType="Button">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#374151"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#F3F4F6"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource Btn}">
+            <Setter Property="Background" Value="#7C3AED"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#7C3AED"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- header -->
+            <RowDefinition Height="Auto"/>  <!-- instructions -->
+            <RowDefinition Height="Auto"/>  <!-- generate row -->
+            <RowDefinition Height="*"/>     <!-- proposed rules -->
+            <RowDefinition Height="Auto"/>  <!-- footer -->
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="✨ Generate Rules with AI" FontSize="16" FontWeight="Bold" Foreground="#111827"/>
+            <TextBlock x:Name="txtSubtitle" FontSize="11" Foreground="#6B7280" Margin="0,2,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+            <TextBlock Text="DESCRIBE YOUR COORDINATION RULES (plain English)" FontSize="9" FontWeight="SemiBold" Foreground="#9CA3AF" Margin="0,0,0,3"/>
+            <TextBox x:Name="txtInstructions" Height="110" TextWrapping="Wrap" AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto" BorderBrush="#D1D5DB" Padding="6,4" FontSize="12"/>
+            <TextBlock FontSize="10.5" Foreground="#9CA3AF" Margin="2,4,0,0" TextWrapping="Wrap"
+                       Text="e.g. 'Hydraulic pipes yield to mechanical ducts, so assign pipe-vs-duct clashes to Hydraulic — except where the duct is a flex duct, then assign to Mechanical.' Claude also learns from clashes you've already assigned in this test."/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="btnGenerate" Content="Generate Rules" Style="{StaticResource BtnPrimary}" Click="OnGenerate"/>
+            <TextBlock x:Name="txtStatus" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11.5" Foreground="#6B7280"/>
+        </StackPanel>
+
+        <Border Grid.Row="3" Background="#FFFFFF" CornerRadius="6" BorderBrush="#E5E7EB" BorderThickness="1">
+            <Grid>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8">
+                    <ItemsControl x:Name="lstProposed">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#FAFAFA" CornerRadius="5" BorderBrush="#E5E7EB" BorderThickness="1"
+                                        Padding="10,8" Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="#111827"/>
+                                        <TextBlock Text="{Binding Description}" FontSize="10.5" Foreground="#6B7280"
+                                                   TextWrapping="Wrap" Margin="0,1,0,0"/>
+                                        <ItemsControl ItemsSource="{Binding Conditions}" Margin="0,4,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontSize="10.5" Foreground="#374151">
+                                                        <Run Text="  • "/><Run Text="{Binding Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Border Background="#F5F3FF" CornerRadius="3" Padding="5,2" Margin="0,5,0,0" HorizontalAlignment="Left">
+                                            <TextBlock FontSize="10" Foreground="#5B21B6">
+                                                <Run Text="👤 "/><Run Text="{Binding AssigneeDisplay}"/>
+                                            </TextBlock>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <TextBlock x:Name="txtEmpty" Text="Proposed rules will appear here after you click Generate."
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="#9CA3AF" FontSize="12"/>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="4" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="10.5" Foreground="#9CA3AF" TextWrapping="Wrap"
+                       Text="Review the proposed rules, then Add them to this test. Nothing is applied to clashes until you run the test."/>
+            <Button Grid.Column="1" Content="Cancel" Style="{StaticResource Btn}" Click="OnCancel" Width="80" Margin="0,0,8,0"/>
+            <Button Grid.Column="2" x:Name="btnAccept" Content="Add Rules" Style="{StaticResource BtnPrimary}"
+                    Click="OnAccept" Width="120" IsEnabled="False"/>
+        </Grid>
+    </Grid>
+</Window>

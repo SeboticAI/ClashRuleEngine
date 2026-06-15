@@ -279,9 +279,13 @@ namespace ClashRuleEngine.UI
 
         private void OnClashFilterChipClick(object sender, MouseButtonEventArgs e)
         {
-            _clashFilter = (sender as Border)?.Tag as ClashResultStatus?;
-            BuildClashFilterChips();   // refresh highlight
-            ApplyClashFilter();
+            try
+            {
+                _clashFilter = (sender as Border)?.Tag as ClashResultStatus?;
+                BuildClashFilterChips();   // refresh highlight
+                ApplyClashFilter();
+            }
+            catch { /* filtering is non-critical; never crash the host */ }
         }
 
         private void OnRefreshClashes(object sender, RoutedEventArgs e)
@@ -307,9 +311,9 @@ namespace ClashRuleEngine.UI
         private void OnInspectClash(object sender, RoutedEventArgs e)
         {
             var info = (sender as Button)?.Tag as ClashResultInfo;
-            if (info?.SourceResult == null)
+            if (info?.SourceResult == null || !ClashNavigationService.IsUsable(info.SourceResult))
             {
-                MessageBox.Show("Clash data is no longer available. Try refreshing the clash list.",
+                MessageBox.Show("Clash data is no longer available (the test was re-run). Click Refresh to reload the clash list.",
                     "Data Unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -409,12 +413,16 @@ namespace ClashRuleEngine.UI
 
         private void OnToggleRuleEnabled(object sender, RoutedEventArgs e)
         {
-            var rule = (sender as CheckBox)?.Tag as ClashRule;
-            if (rule == null) return;
-            rule.IsEnabled = (sender as CheckBox).IsChecked ?? true;
-            // Rebuild the list so the row opacity reflects the new state
-            // (ClashRule isn't INotifyPropertyChanged).
-            SyncRulesToTestSet();
+            try
+            {
+                var rule = (sender as CheckBox)?.Tag as ClashRule;
+                if (rule == null) return;
+                rule.IsEnabled = (sender as CheckBox).IsChecked ?? true;
+                // Rebuild the list so the row opacity reflects the new state
+                // (ClashRule isn't INotifyPropertyChanged).
+                SyncRulesToTestSet();
+            }
+            catch { /* never let a UI toggle crash the host */ }
         }
 
         private void OnMoveRuleUp(object sender, RoutedEventArgs e)
@@ -546,6 +554,12 @@ namespace ClashRuleEngine.UI
                 SyncRulesToTestSet();
                 var result = _processor.ProcessAllTests(_config);
                 ShowResults(result);
+
+                // Running rules swaps each test and disposes the old ClashResult
+                // objects our list holds. Reload so we never navigate stale refs.
+                string testName = GetSelectedTestName();
+                if (_allClashResults.Count > 0 && !string.IsNullOrEmpty(testName))
+                    LoadClashesForTest(testName);
             }
             catch (Exception ex)
             {
@@ -624,6 +638,42 @@ namespace ClashRuleEngine.UI
                 Margin = new Thickness(0, 0, 6, 0),
                 Child = panel
             };
+        }
+
+        private void OnAiRules(object sender, RoutedEventArgs e)
+        {
+            string testName = GetSelectedTestName();
+            if (testName == null || _currentTestRuleSet == null)
+            {
+                MessageBox.Show("Select a clash test first.", "No Test", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Gather example clashes (with any existing assignments) to teach the model.
+            List<ClashResultInfo> examples = _allClashResults.Count > 0
+                ? _allClashResults
+                : SafeGetClashes(testName);
+
+            var dlg = new AiAssistDialog(_config, testName, examples) { Owner = Window.GetWindow(this) };
+            if (dlg.ShowDialog() == true && dlg.GeneratedRules.Count > 0)
+            {
+                foreach (var r in dlg.GeneratedRules)
+                {
+                    r.Priority = _rules.Count;
+                    _rules.Add(r);
+                }
+                SyncRulesToTestSet();
+                UpdateUI();
+                MessageBox.Show(
+                    $"Added {dlg.GeneratedRules.Count} rule(s) to {testName}.\n\nReview them, reorder if needed, then Save and Run.",
+                    "AI Rules Added", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private static List<ClashResultInfo> SafeGetClashes(string testName)
+        {
+            try { return ClashTestScanner.GetClashResults(testName); }
+            catch { return new List<ClashResultInfo>(); }
         }
 
         private void OnSettings(object sender, RoutedEventArgs e)
