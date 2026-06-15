@@ -173,10 +173,10 @@
                     Background="#F3F4F6" BorderBrush="#D1D5DB" BorderThickness="1"
                     MouseLeftButtonDown="OnToggleCommonFilter"
                     ToolTip="Show only commonly-used property categories (Item, Dimensions, Identity Data, Mechanical, etc.)">
-                <TextBlock x:Name="txtFilterToggle" Text="&#x1F4CC; Common only"
+                <TextBlock x:Name="txtFilterToggle" Text="Common only"
                            FontSize="11" Foreground="#374151" VerticalAlignment="Center"/>
             </Border>
-            <Button Grid.Column="2" Content="&#x1F504; Scan Model" Style="{StaticResource SmBtn}"
+            <Button Grid.Column="2" Content="Scan Model" Style="{StaticResource SmBtn}"
                     Click="OnScanModel" Margin="0,0,6,0"
                     Background="#EFF6FF" Foreground="#2563EB" BorderBrush="#93C5FD"/>
             <Button Grid.Column="3" Content="+ Add Condition" Style="{StaticResource SmBtn}"
@@ -188,7 +188,7 @@
                 BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="4"
                 Padding="10,6" Margin="0,0,0,4" Visibility="Collapsed">
             <TextBlock FontSize="11" Foreground="#92400E" TextWrapping="Wrap">
-                <Run Text="&#x26A0; No model properties loaded. Click"/>
+                <Run Text="No model properties loaded. Click"/>
                 <Run Text="Scan Model" FontWeight="SemiBold"/>
                 <Run Text="to enable property autocomplete in conditions."/>
             </TextBlock>

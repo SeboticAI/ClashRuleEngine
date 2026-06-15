@@ -26,9 +26,9 @@ namespace ClashRuleEngine.UI
             _clashes = (clashes ?? Enumerable.Empty<ClashResultInfo>()).ToList();
 
             int assigned = _clashes.Count(c => c?.SourceResult != null);
-            txtSubtitle.Text = $"Test: {testName}  ·  {_clashes.Count} example clash(es) available  ·  "
+            txtSubtitle.Text = $"Test: {testName}  -  {_clashes.Count} example clash(es) available  -  "
                 + (string.IsNullOrWhiteSpace(_config?.ApiKey)
-                    ? "⚠ No API key — add one in Settings → General"
+                    ? "No API key - add one in Settings > General"
                     : "API key set");
         }
 

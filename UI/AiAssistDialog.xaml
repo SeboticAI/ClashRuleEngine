@@ -54,7 +54,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,10">
-            <TextBlock Text="✨ Generate Rules with AI" FontSize="16" FontWeight="Bold" Foreground="#111827"/>
+            <TextBlock Text="Generate Rules with AI" FontSize="16" FontWeight="Bold" Foreground="#111827"/>
             <TextBlock x:Name="txtSubtitle" FontSize="11" Foreground="#6B7280" Margin="0,2,0,0" TextWrapping="Wrap"/>
         </StackPanel>
 
@@ -94,7 +94,7 @@
                                         </ItemsControl>
                                         <Border Background="#F5F3FF" CornerRadius="3" Padding="5,2" Margin="0,5,0,0" HorizontalAlignment="Left">
                                             <TextBlock FontSize="10" Foreground="#5B21B6">
-                                                <Run Text="👤 "/><Run Text="{Binding AssigneeDisplay}"/>
+                                                <Run Text="Assign: "/><Run Text="{Binding AssigneeDisplay}"/>
                                             </TextBlock>
                                         </Border>
                                     </StackPanel>

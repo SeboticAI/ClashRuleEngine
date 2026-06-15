@@ -68,7 +68,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="+ New Rule" Style="{StaticResource BtnPrimary}" Click="OnAddRule" Margin="0,0,4,0"/>
-                    <Button Content="&#x2699;" Style="{StaticResource Btn}" Click="OnSettings" Width="30" ToolTip="Settings"/>
+                    <Button Content="Settings" Style="{StaticResource Btn}" Click="OnSettings" Width="64" ToolTip="Project settings, disciplines &amp; API key"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -83,7 +83,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Clash test:" VerticalAlignment="Center" Foreground="#1E40AF" FontSize="12" FontWeight="SemiBold" Margin="0,0,8,0"/>
                 <ComboBox x:Name="cmbClashTest" Grid.Column="1" FontSize="12" SelectionChanged="OnClashTestChanged"/>
-                <Button Grid.Column="2" Content="&#x1F504; Refresh" Style="{StaticResource Btn}" Click="OnRefreshTests" Margin="6,0,0,0" FontSize="11"/>
+                <Button Grid.Column="2" Content="Refresh" Style="{StaticResource Btn}" Click="OnRefreshTests" Margin="6,0,0,0" FontSize="11"/>
             </Grid>
         </Border>
 
@@ -174,12 +174,12 @@
                                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                                             <Border Background="#F0FDF4" CornerRadius="3" Padding="5,2" Margin="0,0,4,0">
                                                 <TextBlock FontSize="10" Foreground="#166534">
-                                                    <Run Text="&#x1F4C1; "/><Run Text="{Binding GroupName}"/>
+                                                    <Run Text="Group: "/><Run Text="{Binding GroupName}"/>
                                                 </TextBlock>
                                             </Border>
                                             <Border Background="#FFFBEB" CornerRadius="3" Padding="5,2">
                                                 <TextBlock FontSize="10" Foreground="#92400E">
-                                                    <Run Text="&#x1F464; "/><Run Text="{Binding AssigneeDisplay}"/>
+                                                    <Run Text="Assign: "/><Run Text="{Binding AssigneeDisplay}"/>
                                                 </TextBlock>
                                             </Border>
                                         </StackPanel>
@@ -249,7 +249,7 @@
                             <TextBlock x:Name="txtClashCount" VerticalAlignment="Center"
                                        FontSize="11" Foreground="#6B7280" Margin="4,0,0,0"
                                        TextWrapping="Wrap"/>
-                            <Button Grid.Column="1" Content="&#x1F504; Refresh" Style="{StaticResource Btn}"
+                            <Button Grid.Column="1" Content="Refresh" Style="{StaticResource Btn}"
                                     Click="OnRefreshClashes" FontSize="11" VerticalAlignment="Top"/>
                         </Grid>
                         <!-- Status filter chips (built in code so counts stay live) -->
@@ -429,13 +429,13 @@
              Most-used action (Run This Test) first so it's always visible. -->
         <Border Grid.Row="4" Background="#FFFFFF" Padding="8,8" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0">
             <WrapPanel>
-                <Button Content="&#x25B6; Run This Test" Style="{StaticResource BtnPrimary}" Click="OnRunSelectedTest" Margin="0,0,4,4"/>
+                <Button Content="Run This Test" Style="{StaticResource BtnPrimary}" Click="OnRunSelectedTest" Margin="0,0,4,4"/>
                 <Button Content="Run All Tests" Style="{StaticResource Btn}" Click="OnRunAllTests" Margin="0,0,4,4"/>
-                <Button Content="&#x2728; AI Rules" Style="{StaticResource Btn}" Click="OnAiRules" Margin="0,0,4,4"
+                <Button Content="AI Rules" Style="{StaticResource Btn}" Click="OnAiRules" Margin="0,0,4,4"
                         Foreground="#7C3AED" BorderBrush="#C4B5FD"
                         ToolTip="Describe your coordination rules in plain English and let Claude write them"/>
-                <Button Content="&#x1F4BE; Save" Style="{StaticResource Btn}" Click="OnSaveRules" Margin="0,0,4,4"/>
-                <Button Content="&#x2B06; Export Session" Style="{StaticResource Btn}" Click="OnExportSession" Margin="0,0,0,4"
+                <Button Content="Save" Style="{StaticResource Btn}" Click="OnSaveRules" Margin="0,0,4,4"/>
+                <Button Content="Export Session" Style="{StaticResource Btn}" Click="OnExportSession" Margin="0,0,0,4"
                         ToolTip="Export all clash dispositions + item properties to JSON (for AI rule generation)"/>
             </WrapPanel>
         </Border>

@@ -151,7 +151,7 @@
             <TextBlock x:Name="txtSelectionHint" VerticalAlignment="Center" FontSize="11"
                        Foreground="#6B7280"
                        Text="Select properties above to pre-fill the rule editor, or click Create Rule for an empty rule"/>
-            <Button Grid.Column="1" Content="&#x1F50D; Zoom to in View" Style="{StaticResource SmBtn}"
+            <Button Grid.Column="1" Content="Zoom to in View" Style="{StaticResource SmBtn}"
                     Click="OnZoomToClash" Margin="0,0,6,0"
                     ToolTip="Select these elements and frame the clash in the 3D view"/>
             <Button Grid.Column="2" Content="Clear Selection" Style="{StaticResource SmBtn}"

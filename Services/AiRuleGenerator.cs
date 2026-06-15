@@ -73,6 +73,13 @@ namespace ClashRuleEngine.Services
             sb.AppendLine();
             sb.AppendLine("Valid operators: Equals, NotEquals, Contains, DoesNotContain, StartsWith,");
             sb.AppendLine("GreaterThan, LessThan, GreaterThanOrEqual, LessThanOrEqual.");
+            sb.AppendLine();
+            sb.AppendLine("ELEMENT TYPE lives in the tree path (Category / Family / Type), shown as 'path'");
+            sb.AppendLine("on each example item — NOT in a property. To match it, use a Tree Path condition:");
+            sb.AppendLine(@"  { ""target"":""ItemB"", ""category"":""Tree"", ""property"":""Path"", ""operator"":""Contains"", ""value"":""Conduit"" }");
+            sb.AppendLine("e.g. value \"Cable Tray\" for cable trays, \"Clearance Zone\" for clearance zones,");
+            sb.AppendLine("\"Pipe\" for pipework. PREFER Tree Path for element-type rules; use Material/");
+            sb.AppendLine("properties only for finishes or sizes.");
             sb.AppendLine("Dimension values are in METRES (50mm = 0.05). Use 'Outside Diameter' for pipe sizes, not 'Size'.");
             sb.AppendLine("Prefer few robust rules. Order specific-before-general. Use the example clashes to ground property names/values.");
             return sb.ToString();

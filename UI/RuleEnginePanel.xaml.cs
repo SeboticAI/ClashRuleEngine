@@ -593,7 +593,7 @@ namespace ClashRuleEngine.UI
             // Warnings (collapsible)
             if (result.Errors.Count > 0)
             {
-                txtResultWarningsHeader.Text = $"⚠ {result.Errors.Count} warning{(result.Errors.Count != 1 ? "s" : "")}";
+                txtResultWarningsHeader.Text = $"{result.Errors.Count} warning{(result.Errors.Count != 1 ? "s" : "")}";
                 txtResultWarnings.Text = string.Join(Environment.NewLine,
                     result.Errors.Take(20).Select(e => "• " + e));
                 expResultWarnings.Visibility = Visibility.Visible;

@@ -618,17 +618,42 @@ namespace ClashRuleEngine.Services
                 ModelItem item = target == ClashItemTarget.Item1 ? clash.Item1 :
                                  target == ClashItemTarget.Item2 ? clash.Item2 : null;
                 if (item == null) return null;
+                if (RuleCondition.IsTreePathRef(category, property))
+                    return BuildTreePath(item);
                 return GetPropertyValue(item, category, property);
             };
             return rule.Evaluate(getProp);
         }
 
+        /// <summary>
+        /// The element's full ancestor path (leaf → root display names) as one
+        /// string. Element TYPE (Conduit, Cable Tray, Clearance Zone, Hanger Rod…)
+        /// lives here in coordination NWCs, not in the solid's properties, so this
+        /// is what Tree-Path rule conditions match against.
+        /// </summary>
+        private string BuildTreePath(ModelItem item)
+        {
+            var parts = new List<string>();
+            var cur = item;
+            int depth = 0;
+            while (cur != null && depth < 16)
+            {
+                if (!string.IsNullOrWhiteSpace(cur.DisplayName)) parts.Add(cur.DisplayName);
+                cur = cur.Parent;
+                depth++;
+            }
+            return parts.Count > 0 ? string.Join(" / ", parts) : null;
+        }
+
         private string GetPropertyValue(ModelItem item, string categoryName, string propertyName)
         {
             if (item == null) return null;
+            // Empty category = match the property in ANY category. Lets imported/AI
+            // rules key on a property (e.g. "Material") without knowing its tab.
+            bool anyCategory = string.IsNullOrWhiteSpace(categoryName);
             foreach (PropertyCategory cat in item.PropertyCategories)
             {
-                if (string.Equals(cat.DisplayName, categoryName, StringComparison.OrdinalIgnoreCase))
+                if (anyCategory || string.Equals(cat.DisplayName, categoryName, StringComparison.OrdinalIgnoreCase))
                 {
                     foreach (DataProperty prop in cat.Properties)
                     {

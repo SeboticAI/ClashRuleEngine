@@ -224,6 +224,13 @@ namespace ClashRuleEngine.Services
             // "which model it comes from" — the root ancestor is the linked file.
             AppendField(sb, "model", SafeString(() => RootName(item)));
 
+            // Tree path (Category / Family / Type ...) — in coordination NWCs the
+            // element TYPE lives in the hierarchy, not in properties. This is what
+            // distinguishes cable tray / pipe / duct / hanger-rod, especially when
+            // the leaf has no material/name of its own.
+            string path = SafeString(() => AncestorPath(item));
+            if (!string.IsNullOrEmpty(path)) { sb.Append(','); AppendField(sb, "path", path); }
+
             string guid = SafeString(() =>
                 item.InstanceGuid != Guid.Empty ? item.InstanceGuid.ToString() : null);
             if (!string.IsNullOrEmpty(guid)) { sb.Append(','); AppendField(sb, "guid", guid); }
@@ -258,6 +265,29 @@ namespace ClashRuleEngine.Services
             int depth = 0;
             while (cur != null && depth < 12) { root = cur; cur = cur.Parent; depth++; }
             return root != null ? root.DisplayName : null;
+        }
+
+        /// <summary>
+        /// The element's ancestor names BETWEEN the leaf and the root file —
+        /// typically Category / Family / Type in a Revit-exported NWC. Captures the
+        /// element type (cable tray, pipe, duct, hanger, rod...) that isn't in any
+        /// property. Top-down, leaf and root excluded, capped for size.
+        /// </summary>
+        private static string AncestorPath(ModelItem item)
+        {
+            var names = new List<string>();
+            var cur = item;
+            int depth = 0;
+            while (cur != null && depth < 12)
+            {
+                if (!string.IsNullOrWhiteSpace(cur.DisplayName)) names.Add(cur.DisplayName);
+                cur = cur.Parent;
+                depth++;
+            }
+            if (names.Count <= 2) return null;             // only leaf + root → nothing in between
+            var middle = names.GetRange(1, names.Count - 2); // drop leaf (have it as name) + root (have it as model)
+            middle.Reverse();                                // top-down: Category / Family / Type
+            return string.Join(" / ", middle);
         }
 
         private static string ValueToString(DataProperty prop)

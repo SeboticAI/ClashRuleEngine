@@ -5,11 +5,27 @@ namespace ClashRuleEngine.Models
     [Serializable]
     public class RuleCondition
     {
+        /// <summary>
+        /// Pseudo-category meaning "match against the element's tree hierarchy
+        /// path" (Category / Family / Type ...) instead of a real property.
+        /// Coordination NWCs carry element type in the tree, not in properties,
+        /// so this lets rules say e.g. path Contains "Conduit".
+        /// </summary>
+        public const string TreeCategory = "Tree";
+
         public string PropertyCategory { get; set; } = string.Empty;
         public string PropertyName { get; set; } = string.Empty;
         public ConditionOperator Operator { get; set; } = ConditionOperator.Equals;
         public string Value { get; set; } = string.Empty;
         public ClashItemTarget Target { get; set; } = ClashItemTarget.Either;
+
+        /// <summary>True when this condition matches the tree path, not a property.</summary>
+        public static bool IsTreePathRef(string category, string property)
+        {
+            return string.Equals(category, TreeCategory, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(property, "Path", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(property, "TreePath", StringComparison.OrdinalIgnoreCase);
+        }
 
         public bool Evaluate(string actualValue)
         {
@@ -53,7 +69,10 @@ namespace ClashRuleEngine.Models
         {
             string t = Target == ClashItemTarget.Item1 ? "[A] " :
                        Target == ClashItemTarget.Item2 ? "[B] " : "";
-            return $"{t}{PropertyCategory}.{PropertyName} {GetOp()} \"{Value}\"";
+            string field = IsTreePathRef(PropertyCategory, PropertyName)
+                ? "Tree Path"
+                : $"{PropertyCategory}.{PropertyName}";
+            return $"{t}{field} {GetOp()} \"{Value}\"";
         }
 
         private string GetOp()
