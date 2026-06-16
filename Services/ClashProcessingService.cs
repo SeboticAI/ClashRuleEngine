@@ -576,6 +576,59 @@ namespace ClashRuleEngine.Services
             try { return cr.AssignedTo?.DisplayName; } catch { return null; }
         }
 
+        // Ancestor names that aren't a meaningful element "service" (geometry leaf,
+        // generic containers, model/file nodes). The first ancestor token that ISN'T
+        // one of these is the element's service signature.
+        private static readonly HashSet<string> ServiceNoise =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "Solid", "Standard", "Default", "Internal", "<Not Shared>", "Default Site" };
+
+        /// <summary>
+        /// A clash's "service" signature = the specific element-type token of each
+        /// side (nearest-leaf meaningful ancestor name), sorted + joined. Two clashes
+        /// only proximity-group if these match, so like bundles with like (sprinkler
+        /// with sprinkler, not sprinkler with extinguisher).
+        /// </summary>
+        private static string ServiceKey(ClashResult cr)
+        {
+            ModelItem i1 = null, i2 = null;
+            try { i1 = cr.Item1; } catch { }
+            try { i2 = cr.Item2; } catch { }
+            string a = ServiceToken(i1);
+            string b = ServiceToken(i2);
+            return string.Compare(a, b, StringComparison.OrdinalIgnoreCase) <= 0 ? a + "||" + b : b + "||" + a;
+        }
+
+        private static string ServiceToken(ModelItem item)
+        {
+            if (item == null) return "?";
+            var cur = item;
+            int depth = 0;
+            while (cur != null && depth < 14)
+            {
+                string n = null;
+                try { n = cur.DisplayName; } catch { }
+                try { cur = cur.Parent; } catch { cur = null; }
+                depth++;
+
+                if (string.IsNullOrWhiteSpace(n)) continue;
+                string s = n.Trim();
+                if (s.IndexOf(".rvt", StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                if (s.IndexOf(".ifc", StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                if (s.IndexOf(" : ", StringComparison.Ordinal) >= 0) continue;
+                // strip a trailing "[123]" / " 12345" instance id
+                int br = s.IndexOf('[');
+                if (br > 0) s = s.Substring(0, br).Trim();
+                int e = s.Length;
+                while (e > 0 && (char.IsDigit(s[e - 1]) || s[e - 1] == ' ')) e--;
+                if (e >= 2 && e < s.Length) s = s.Substring(0, e).Trim();
+                if (s.Length < 2) continue;
+                if (ServiceNoise.Contains(s)) continue;
+                return s;
+            }
+            return "?";
+        }
+
         private static string GridKey(ClashResult cr)
         {
             try
@@ -646,10 +699,14 @@ namespace ClashRuleEngine.Services
             // Bucket centres into cells of edge = threshold; a clash can only be
             // within threshold of clashes in its own + 26 neighbouring cells. This
             // turns the old O(n²) sweep into ~O(n) for large tests (e.g. 12k clashes).
+            // Proximity only links clashes of the SAME SERVICE (element-type signature)
+            // so a sprinkler run and an extinguisher 1 m apart don't chain into one
+            // mega-group — they stay separate bundles.
             if (linkProximity)
             {
                 var centers = new Point3D[n];
-                for (int i = 0; i < n; i++) centers[i] = SafeGetCenter(active[i]);
+                var svc = new string[n];
+                for (int i = 0; i < n; i++) { centers[i] = SafeGetCenter(active[i]); svc[i] = ServiceKey(active[i]); }
 
                 double threshold = ProximityThreshold > 0 ? ProximityThreshold : 1.0;
                 double thresholdSq = threshold * threshold;
@@ -694,6 +751,7 @@ namespace ClashRuleEngine.Services
                                     var cj = centers[j];
                                     if (cj == null) continue;
                                     if (find(i) == find(j)) continue;
+                                    if (svc[i] != svc[j]) continue;   // same service only
                                     double dx = ci.X - cj.X, dy = ci.Y - cj.Y, dz = ci.Z - cj.Z;
                                     if (dx * dx + dy * dy + dz * dz <= thresholdSq) union(i, j);
                                 }

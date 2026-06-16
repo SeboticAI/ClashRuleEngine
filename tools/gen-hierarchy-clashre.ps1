@@ -43,14 +43,19 @@ $cfg.ProjectName = "00_Z_05 - data-derived discipline hierarchy"
 $cfg.UseHierarchyFallback = $true
 
 # Highest precedence (never moves) -> lowest (always moves).
+# Keywords are MODEL-FILE tokens ONLY (the federation is strictly by-discipline
+# model: 00_Z_05_CON_<disc>.nwc + ...RVT-<disc>-0001.rvt). Bare words like "MECH"
+# are deliberately AVOIDED - they false-match property values (e.g. ICT/Security
+# cable-tray brackets are in the "Mechanical Equipment" category, which "MECH"
+# would wrongly grab). The .nwc/.rvt tokens never appear in element properties.
 $cfg.Hierarchy.Disciplines.Clear()
-$cfg.Hierarchy.Disciplines.Add((New-Disc "Structure"     "#6B7280" "STR"  "STR"  "STRUCTUR, Structural Steel, RVT-ST-, IFC-SS-, -ST-0001, STRUCTURE"))
-$cfg.Hierarchy.Disciplines.Add((New-Disc "Security"      "#0EA5E9" "SEC"  "SEC"  "SECURITY, RVT-SEC-"))
-$cfg.Hierarchy.Disciplines.Add((New-Disc "Mechanical"    "#2563EB" "MECH" "MECH" "RVT-MECH-, MECH"))
-$cfg.Hierarchy.Disciplines.Add((New-Disc "Electrical"    "#CA8A04" "ELEC" "ELEC" "RVT-ELEC-, ELECTRICAL, ELEC"))
-$cfg.Hierarchy.Disciplines.Add((New-Disc "ICT"           "#7C3AED" "ICT"  "ICT"  "RVT-COMMS-, ICT, COMMS"))
-$cfg.Hierarchy.Disciplines.Add((New-Disc "Hydraulic"     "#0891B2" "HYD"  "HYD"  "RVT-HYD-, HYDRAULIC, HYD"))
-$cfg.Hierarchy.Disciplines.Add((New-Disc "Fire"          "#DC2626" "FIRE" "FIRE" "RVT-FIRE-, FIRE"))
+$cfg.Hierarchy.Disciplines.Add((New-Disc "Structure"     "#6B7280" "STR"  "STR"  "CON_STR, RVT-ST-, IFC-SS-, Structural Steel model"))
+$cfg.Hierarchy.Disciplines.Add((New-Disc "Security"      "#0EA5E9" "SEC"  "SEC"  "CON_SEC, RVT-SEC-"))
+$cfg.Hierarchy.Disciplines.Add((New-Disc "Mechanical"    "#2563EB" "MECH" "MECH" "CON_MECH, RVT-MECH-"))
+$cfg.Hierarchy.Disciplines.Add((New-Disc "Electrical"    "#CA8A04" "ELEC" "ELEC" "CON_ELEC, RVT-ELEC-"))
+$cfg.Hierarchy.Disciplines.Add((New-Disc "ICT"           "#7C3AED" "ICT"  "ICT"  "CON_ICT, RVT-COMMS-"))
+$cfg.Hierarchy.Disciplines.Add((New-Disc "Hydraulic"     "#0891B2" "HYD"  "HYD"  "CON_HYD, RVT-HYD-"))
+$cfg.Hierarchy.Disciplines.Add((New-Disc "Fire"          "#DC2626" "FIRE" "FIRE" "CON_FIRE, RVT-FIRE-"))
 
 # Make the assignee/group dropdowns aware of the manual sub-buckets too (spatial,
 # not auto-assignable - kept here so they're one click away when refining by hand).
