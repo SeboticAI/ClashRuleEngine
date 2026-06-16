@@ -678,7 +678,14 @@ namespace ClashRuleEngine.Services
                 if (ra != rb) parent[ra] = rb;
             };
 
-            // ── Pass 1: link clashes sharing a model element ────────
+            // Service signature per clash — groups only ever contain ONE service, so a
+            // bundle never mixes (e.g.) cold-water and waste-drain clashes that happen
+            // to touch the same pipe. That keeps assignment correct even with
+            // group-then-assign on.
+            var svc = new string[n];
+            for (int i = 0; i < n; i++) svc[i] = ServiceKey(active[i]);
+
+            // ── Pass 1: link clashes sharing a model element (same service only) ────
             var elementToIndices = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
             var elementLabels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var indexElements = new List<string>[n];
@@ -692,8 +699,15 @@ namespace ClashRuleEngine.Services
 
             if (linkShared)
                 foreach (var list in elementToIndices.Values)
-                    for (int k = 1; k < list.Count; k++)
-                        union(list[0], list[k]);
+                {
+                    // Union members that share this element AND have the same service.
+                    var firstBySvc = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                    foreach (int idx in list)
+                    {
+                        if (firstBySvc.TryGetValue(svc[idx], out int first)) union(first, idx);
+                        else firstBySvc[svc[idx]] = idx;
+                    }
+                }
 
             // ── Pass 2: spatial proximity via a uniform grid hash ──────────
             // Bucket centres into cells of edge = threshold; a clash can only be
@@ -705,8 +719,7 @@ namespace ClashRuleEngine.Services
             if (linkProximity)
             {
                 var centers = new Point3D[n];
-                var svc = new string[n];
-                for (int i = 0; i < n; i++) { centers[i] = SafeGetCenter(active[i]); svc[i] = ServiceKey(active[i]); }
+                for (int i = 0; i < n; i++) centers[i] = SafeGetCenter(active[i]);
 
                 double threshold = ProximityThreshold > 0 ? ProximityThreshold : 1.0;
                 double thresholdSq = threshold * threshold;
