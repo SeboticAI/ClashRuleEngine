@@ -40,13 +40,88 @@ namespace ClashRuleEngine.Services
         /// <summary>Group first, then give each group one assignee (majority of members).</summary>
         public bool AssignByGroup { get; set; } = false;
 
-        /// <summary>Copies grouping settings off a ProjectConfig before processing.</summary>
+        /// <summary>Global element-kind rules (ordered, first-match-wins).</summary>
+        public List<KindRule> KindRules { get; set; }
+        public bool UseKindRules { get; set; } = true;
+
+        /// <summary>Copies grouping + kind-rule settings off a ProjectConfig before processing.</summary>
         public void ApplyGroupingSettings(ProjectConfig config)
         {
             if (config == null) return;
             GroupingMode = config.GroupingMode;
             ProximityThreshold = config.ProximityThreshold > 0 ? config.ProximityThreshold : 1.0;
             AssignByGroup = config.AssignByGroup;
+            KindRules = config.KindRules;
+            UseKindRules = config.UseKindRules;
+        }
+
+        // Per-run element-kind cache (keyed by model-item identity).
+        private Dictionary<string, ElementKindInfo> _kindCache;
+
+        private ElementKindInfo KindCached(ModelItem item)
+        {
+            if (item == null) return null;
+            string key = GetModelItemKey(item);
+            if (key == null || _kindCache == null) return ElementKind.Compute(item);
+            if (_kindCache.TryGetValue(key, out var cached)) return cached;
+            var info = ElementKind.Compute(item);
+            _kindCache[key] = info;
+            return info;
+        }
+
+        /// <summary>
+        /// Element-kind assignment: the first KindRule whose detection matches a side
+        /// wins; the clash is assigned to that rule's owner / other / named trade.
+        /// Owner/Other resolve the trade via the discipline classifier. Edits the
+        /// detached copy only.
+        /// </summary>
+        private bool TryAssignByKind(ClashResult clash, HierarchyFallback fallback, ProcessingResult result)
+        {
+            if (!UseKindRules || KindRules == null || KindRules.Count == 0) return false;
+
+            ElementKindInfo a = null, b = null;
+            try { a = KindCached(clash.Item1); } catch { }
+            try { b = KindCached(clash.Item2); } catch { }
+            if (a == null && b == null) return false;
+
+            foreach (var kr in KindRules)
+            {
+                if (kr == null || !kr.IsEnabled) continue;
+
+                ModelItem matched = null, other = null;
+                if ((kr.Side == KindMatchSide.Either || kr.Side == KindMatchSide.ItemA) && a != null && kr.MatchesItem(a))
+                { matched = clash.Item1; other = clash.Item2; }
+                else if ((kr.Side == KindMatchSide.Either || kr.Side == KindMatchSide.ItemB) && b != null && kr.MatchesItem(b))
+                { matched = clash.Item2; other = clash.Item1; }
+
+                if (matched == null) continue;
+
+                string assignee;
+                switch (kr.Assign)
+                {
+                    case KindAssign.Owner: assignee = TradeOf(matched, fallback?.Hierarchy) ?? kr.Assignee; break;
+                    case KindAssign.Other: assignee = TradeOf(other, fallback?.Hierarchy) ?? kr.Assignee; break;
+                    default: assignee = kr.Assignee; break;
+                }
+                if (string.IsNullOrWhiteSpace(assignee)) continue;   // can't resolve — let a later rule try
+
+                string grp = string.IsNullOrWhiteSpace(kr.GroupName) ? assignee : kr.GroupName;
+                clash.Description = $"[Group: {grp}] [Assignee: {assignee}] Kind: {kr.Name}";
+                TrySetAssignedTo(clash, assignee, result);
+                result.Assigned++;
+                result.RecordAssignment("◆ " + (string.IsNullOrWhiteSpace(kr.Name) ? "kind rule" : kr.Name), grp, assignee, "#0EA5E9");
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Trade (assignee/name) of an element via the discipline classifier.</summary>
+        private string TradeOf(ModelItem item, SystemHierarchy hierarchy)
+        {
+            if (item == null || hierarchy == null) return null;
+            var d = ClassifyCached(item, hierarchy);
+            if (d == null) return null;
+            return string.IsNullOrWhiteSpace(d.Assignee) ? d.Name : d.Assignee;
         }
 
         // ── Progress / cancel (UI-thread; the panel pumps the progress window) ──
@@ -72,6 +147,7 @@ namespace ClashRuleEngine.Services
             _assignedToUnavailableReported = false;
             _progress = progress; _cancelled = cancelled;
             _classifyCache = new Dictionary<string, DisciplineDefinition>(StringComparer.OrdinalIgnoreCase);
+            _kindCache = new Dictionary<string, ElementKindInfo>(StringComparer.OrdinalIgnoreCase);
             var result = new ProcessingResult { TestName = testName };
             var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
             if (doc == null) { result.Errors.Add("No active document."); return result; }
@@ -109,6 +185,7 @@ namespace ClashRuleEngine.Services
             _assignedToUnavailableReported = false;
             _progress = progress; _cancelled = cancelled;
             _classifyCache = new Dictionary<string, DisciplineDefinition>(StringComparer.OrdinalIgnoreCase);
+            _kindCache = new Dictionary<string, ElementKindInfo>(StringComparer.OrdinalIgnoreCase);
             var result = new ProcessingResult { TestName = "All Tests" };
             var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
             if (doc == null) { result.Errors.Add("No active document."); return result; }
@@ -221,6 +298,10 @@ namespace ClashRuleEngine.Services
                     ResolveRuleAssignment(clash, matched, fallback, out rAssignee, out rGroup);
                     EditClashCopy(clash, matched, rAssignee, rGroup, result);
                     result.RecordAssignment(matched.Name, rGroup, rAssignee, matched.Color);
+                    anyEdits = true;
+                }
+                else if (TryAssignByKind(clash, fallback, result))
+                {
                     anyEdits = true;
                 }
                 else if (TryAssignByHierarchy(clash, fallback, result))

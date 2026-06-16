@@ -1177,13 +1177,36 @@ namespace ClashRuleEngine.UI
             {
                 var dlg = new Microsoft.Win32.OpenFileDialog
                 {
-                    Title = "Import Clash Rule Engine config",
-                    Filter = "Clash Rule config (*.clashre)|*.clashre|All files (*.*)|*.*",
+                    Title = "Import config (.clashre) or kind-rules (.json)",
+                    Filter = "Config or kind rules (*.clashre;*.json)|*.clashre;*.json|All files (*.*)|*.*",
                     CheckFileExists = true
                 };
                 if (dlg.ShowDialog() != true) return;
 
-                var imported = ProjectConfig.FromXml(System.IO.File.ReadAllText(dlg.FileName));
+                string text = System.IO.File.ReadAllText(dlg.FileName);
+
+                // Kind-rule list (the summary response derived from the batch JSONL):
+                // merge into the CURRENT config — keeps your rules/grouping, adds the
+                // element-kind hierarchy + trade taxonomy.
+                if (KindRuleImport.LooksLikeKindRules(text))
+                {
+                    var parsed = KindRuleImport.Parse(text);
+                    _config.KindRules = parsed.Rules;
+                    _config.UseKindRules = true;
+                    if (parsed.Trades != null && parsed.Trades.Count > 0)
+                        _config.Hierarchy.Disciplines = parsed.Trades;   // for owner/other resolution
+                    RulePersistenceService.Save(_config);
+                    LoadSettingsTabs();
+                    UpdateUI();
+                    MessageBox.Show(
+                        $"Imported {parsed.Rules.Count} element-kind rule(s)" +
+                        (parsed.Trades.Count > 0 ? $" and {parsed.Trades.Count} trade(s)" : "") +
+                        ".\n\nThese now drive assignment (after any per-test rules, before the trade fallback).",
+                        "Kind rules imported", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var imported = ProjectConfig.FromXml(text);
                 if (imported == null)
                 {
                     MessageBox.Show("That file could not be read as a .clashre config.",

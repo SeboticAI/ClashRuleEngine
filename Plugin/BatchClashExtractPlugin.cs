@@ -109,10 +109,11 @@ namespace ClashRuleEngine.Plugin
                     try { i1 = cr.Item1; } catch { }
                     try { i2 = cr.Item2; } catch { }
 
-                    string aCat = Prop(i1, CategoryProps), aSys = Prop(i1, SystemProps);
-                    string aKind = KindOf(i1, aSys), aDia = DiaBand(i1);
-                    string bCat = Prop(i2, CategoryProps), bSys = Prop(i2, SystemProps);
-                    string bKind = KindOf(i2, bSys), bDia = DiaBand(i2);
+                    // Same extractor the live engine uses -> learned rules match at run time.
+                    var ka = ClashRuleEngine.Services.ElementKind.Compute(i1);
+                    var kb = ClashRuleEngine.Services.ElementKind.Compute(i2);
+                    string aCat = ka.Category, aSys = ka.System, aKind = ka.Label, aDia = Band(ka.DiameterMm);
+                    string bCat = kb.Category, bSys = kb.System, bKind = kb.Label, bDia = Band(kb.DiameterMm);
 
                     string assignee = SafeStr(() => cr.AssignedTo?.DisplayName);
                     if (string.IsNullOrWhiteSpace(assignee)) assignee = "(unassigned)";

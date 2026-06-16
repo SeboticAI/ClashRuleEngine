@@ -247,6 +247,17 @@ namespace ClashRuleEngine.Models
         /// </summary>
         public bool AssignByGroup { get; set; } = false;
 
+        /// <summary>
+        /// Global element-KIND rules (Fire Flex, Hyd Drainage >75mm, Mech Clearance…),
+        /// derived from the coordinated NWDs. Ordered, first-match-wins, applied to
+        /// EVERY test after per-test rules and before the trade hierarchy. This is the
+        /// element-kind assignment layer.
+        /// </summary>
+        public List<KindRule> KindRules { get; set; } = new List<KindRule>();
+
+        /// <summary>When true, the global KindRules are evaluated during a run.</summary>
+        public bool UseKindRules { get; set; } = true;
+
         /// <summary>Per-test rule sets — one entry per clash test</summary>
         public List<TestRuleSet> TestRuleSets { get; set; } = new List<TestRuleSet>();
 
