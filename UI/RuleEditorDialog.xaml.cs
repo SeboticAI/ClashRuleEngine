@@ -37,6 +37,7 @@ namespace ClashRuleEngine.UI
                 Id = rule.Id, Name = rule.Name, Description = rule.Description,
                 Priority = rule.Priority, IsEnabled = rule.IsEnabled,
                 GroupName = rule.GroupName, Assignee = rule.Assignee,
+                AssigneeMode = rule.AssigneeMode, SubjectItem = rule.SubjectItem,
                 ClashStatus = rule.ClashStatus, ConditionLogic = rule.ConditionLogic,
                 Color = rule.Color,
                 Conditions = rule.Conditions.Select(c => new RuleCondition
@@ -88,7 +89,7 @@ namespace ClashRuleEngine.UI
 
             cmbLogic.SelectedIndex = Rule.ConditionLogic == LogicOperator.And ? 0 : 1;
 
-            switch (Rule.ClashStatus.ToLowerInvariant())
+            switch ((Rule.ClashStatus ?? "active").ToLowerInvariant())
             {
                 case "reviewed": cmbStatus.SelectedIndex = 1; break;
                 case "approved": cmbStatus.SelectedIndex = 2; break;

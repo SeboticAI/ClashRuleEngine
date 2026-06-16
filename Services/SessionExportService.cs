@@ -141,6 +141,423 @@ namespace ClashRuleEngine.Services
             return $"Exported {clashCount} clashes across {testCount} test(s) to:\n{filePath}{note}";
         }
 
+        // ───────────────────────────────────────────────────────────────────
+        //  Lean SUMMARY export — every test, how clashes were assigned, the
+        //  element-type patterns behind each assignee. Aggregates only (counts),
+        //  so the whole document collapses to a few KB that fits in a prompt.
+        // ───────────────────────────────────────────────────────────────────
+
+        private const int MaxPatternsPerAssignee = 20;
+        private const int MaxGroupsPerTest = 8;
+
+        /// <summary>
+        /// Exports a compact per-test assignment summary across ALL tests (or one).
+        /// For each test: totals, status breakdown, and — per assignee — how many
+        /// clashes and the dominant "type A ↔ type B" element pairings. This is the
+        /// nimble payload for AI rule inference: it shows HOW you assign without the
+        /// per-clash bulk that bloats the full session export.
+        /// </summary>
+        public static string ExportSummary(string filePath, string onlyTestName = null,
+            Action<string> progress = null, Func<bool> cancelled = null)
+        {
+            var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
+            if (doc == null) throw new InvalidOperationException("No active document.");
+
+            var clash = doc.GetClash();
+            if (clash == null) throw new InvalidOperationException("Clash plugin not available.");
+
+            var tests = ClashApiCompat.GetAllTests(clash.TestsData)
+                .Where(t => t.Children.Count > 0)
+                .Where(t => onlyTestName == null
+                         || string.Equals(t.DisplayName, onlyTestName, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (tests.Count == 0)
+                throw new InvalidOperationException(onlyTestName == null
+                    ? "No clash tests with results found."
+                    : $"Test '{onlyTestName}' not found or has no results.");
+
+            var sb = new StringBuilder(64 * 1024);
+            sb.Append('{');
+            AppendField(sb, "schema", "clashre-summary/1"); sb.Append(',');
+            AppendField(sb, "exportedAt", DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm:ss")); sb.Append(',');
+            AppendField(sb, "document", doc.Title ?? ""); sb.Append(',');
+            sb.Append("\"tests\":[");
+
+            int testCount = 0, clashCount = 0;
+            bool wasCancelled = false;
+
+            for (int ti = 0; ti < tests.Count; ti++)
+            {
+                var test = tests[ti];
+                if (cancelled != null && cancelled()) { wasCancelled = true; break; }
+
+                int testTotal = CountResults(test.Children);
+                progress?.Invoke($"Summarising {ti + 1}/{tests.Count}: {test.DisplayName}  ({testTotal} clashes)");
+
+                var agg = new TestSummary();
+                SummariseResults(test.Children, null, agg, progress, cancelled, ref wasCancelled,
+                    test.DisplayName, ti + 1, tests.Count, testTotal);
+                if (wasCancelled) break;
+
+                if (testCount > 0) sb.Append(',');
+                AppendTestSummary(sb, test.DisplayName, agg);
+                testCount++;
+                clashCount += agg.Total;
+            }
+
+            sb.Append("]}");
+
+            if (wasCancelled) return "Summary cancelled — no file written.";
+
+            try { File.WriteAllText(filePath, sb.ToString(), new UTF8Encoding(false)); }
+            catch (Exception ex) { throw new InvalidOperationException("Could not write summary: " + ex.Message); }
+
+            return $"Summarised {clashCount} clashes across {testCount} test(s) to:\n{filePath}\n\n" +
+                   "This file is small enough to paste into a prompt.";
+        }
+
+        private sealed class TestSummary
+        {
+            public int Total;
+            public readonly Dictionary<string, int> Status = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            public readonly Dictionary<string, int> Groups = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            // assignee -> clash count
+            public readonly Dictionary<string, int> AssigneeCount = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            // assignee -> (element-type token -> # of its clashes that contain that token)
+            public readonly Dictionary<string, Dictionary<string, int>> AssigneeTokens =
+                new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
+            // Raw ancestor chain of the first clash's two items — ground-truth sample
+            // of the tree structure (so rules can be written even if tokenising misses).
+            public string SampleA;
+            public string SampleB;
+        }
+
+        private static void SummariseResults(SavedItemCollection children, string groupName,
+            TestSummary agg, Action<string> progress, Func<bool> cancelled, ref bool wasCancelled,
+            string testName, int testIndex, int testTotal, int clashesInTest)
+        {
+            foreach (SavedItem si in children)
+            {
+                if (wasCancelled) return;
+                if (si is ClashResultGroup grp)
+                {
+                    SummariseResults(grp.Children, grp.DisplayName, agg, progress, cancelled, ref wasCancelled,
+                        testName, testIndex, testTotal, clashesInTest);
+                }
+                else if (si is ClashResult cr)
+                {
+                    try
+                    {
+                        agg.Total++;
+
+                        string status = cr.Status.ToString();
+                        Bump(agg.Status, status);
+
+                        if (!string.IsNullOrEmpty(groupName)) Bump(agg.Groups, groupName);
+
+                        string assignee = SafeString(() => ReflectString(cr, "AssignedTo"));
+                        if (string.IsNullOrWhiteSpace(assignee)) assignee = "(unassigned)";
+
+                        Bump(agg.AssigneeCount, assignee);
+
+                        // Harvest the element-type words from BOTH items' ancestor names
+                        // (the clash node itself is a geometry "Solid" with no type —
+                        // the type lives in the tree). Distinct per clash so each token
+                        // counts at most once per clash.
+                        var tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        CollectTypeTokens(SafeGet(() => cr.Item1), tokens);
+                        CollectTypeTokens(SafeGet(() => cr.Item2), tokens);
+
+                        if (!agg.AssigneeTokens.TryGetValue(assignee, out var tokMap))
+                            agg.AssigneeTokens[assignee] = tokMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var t in tokens) Bump(tokMap, t);
+
+                        if (agg.SampleA == null)
+                        {
+                            agg.SampleA = SafeString(() => RawAncestors(cr.Item1)) ?? "";
+                            agg.SampleB = SafeString(() => RawAncestors(cr.Item2)) ?? "";
+                        }
+                    }
+                    catch { /* skip unreadable clash */ }
+
+                    if (agg.Total % ProgressEvery == 0)
+                    {
+                        progress?.Invoke($"Summarising {testIndex}/{testTotal}: {testName}  ({agg.Total}/{clashesInTest})");
+                        if (cancelled != null && cancelled()) { wasCancelled = true; return; }
+                    }
+                }
+            }
+        }
+
+        // Ancestor DisplayNames that carry no element-type meaning (model files,
+        // Revit level/site/grouping nodes, the geometry leaf, IFC noise).
+        private static readonly HashSet<string> NoiseTokens =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Solid", "Internal", "<Not Shared>", "Default Site", "Site", "Project",
+            "Geometry", "Composite", "Element", "Body", "Faces", "Mesh",
+            // discipline codes — not useful WITHIN a trade
+            "ELEC", "MECH", "FIRE", "HYD", "ICT", "COMMS", "SEC", "STR",
+        };
+
+        // Key property names whose VALUES carry within-trade meaning, mapped to a
+        // short prefix so the export shows which property gave the signal (and thus
+        // which rule condition to write). Searched across the item AND its ancestors.
+        private static readonly Dictionary<string, string> SignalProps =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "System Name", "sys" }, { "System Classification", "sys" }, { "System Type", "sys" },
+            { "System Abbreviation", "sys" },
+            { "Workset", "ws" },
+            { "Family", "fam" }, { "Family Name", "fam" }, { "Family and Type", "fam" },
+            { "Type Name", "type" },
+            { "Material", "mat" },
+        };
+
+        private static readonly HashSet<string> DiameterProps =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { "Outside Diameter", "Diameter", "Inside Diameter", "Nominal Diameter", "Size" };
+
+        /// <summary>
+        /// Harvests every within-trade signal token for an item into <paramref name="set"/>:
+        ///   - ancestor DisplayName words ("t:Conduit", "t:Clearance Zone"...)
+        ///   - key property values prefixed by source ("sys:Sanitary", "ws:SANITARY",
+        ///     "fam:Tundish", "type:...", "mat:...")
+        ///   - a diameter band ("dia:&lt;=40mm" ...) — separates small retic from drainage
+        /// The clashing node is a geometry "Solid" with no type/properties of its own,
+        /// so we walk the ancestor chain (where Revit puts category/family/system).
+        /// </summary>
+        private static void CollectTypeTokens(ModelItem item, HashSet<string> set)
+        {
+            if (item == null) return;
+            var cur = item;
+            int depth = 0;
+            double? diaMeters = null;
+
+            while (cur != null && depth < 16)
+            {
+                string dn = null;
+                try { dn = cur.DisplayName; } catch { }
+                string tok = CleanToken(dn);
+                if (tok != null) set.Add("t:" + tok);
+
+                try
+                {
+                    foreach (PropertyCategory cat in cur.PropertyCategories)
+                        foreach (DataProperty p in cat.Properties)
+                        {
+                            string nm = p.DisplayName;
+                            if (nm == null) continue;
+
+                            if (SignalProps.TryGetValue(nm, out string prefix))
+                            {
+                                string v = SafeString(() => ValueToString(p));
+                                v = CleanValue(v);
+                                if (v != null) set.Add(prefix + ":" + v);
+                            }
+                            else if (diaMeters == null && DiameterProps.Contains(nm))
+                            {
+                                double d = SafeDouble(p);
+                                if (d > 0) diaMeters = d;
+                            }
+                        }
+                }
+                catch { /* keep whatever we gathered */ }
+
+                try { cur = cur.Parent; } catch { cur = null; }
+                depth++;
+            }
+
+            if (diaMeters.HasValue) set.Add(DiameterBand(diaMeters.Value));
+        }
+
+        /// <summary>Diameter band in mm (API values are metres). Separates small
+        /// reticulation from large drainage/mains without exposing every size.</summary>
+        private static string DiameterBand(double meters)
+        {
+            double mm = meters * 1000.0;
+            if (mm <= 0) return "dia:?";
+            if (mm <= 40) return "dia:<=40mm";
+            if (mm <= 80) return "dia:40-80mm";
+            if (mm <= 150) return "dia:80-150mm";
+            if (mm <= 300) return "dia:150-300mm";
+            return "dia:>300mm";
+        }
+
+        private static double SafeDouble(DataProperty p)
+        {
+            try
+            {
+                var v = p.Value;
+                if (v == null) return 0;
+                if (v.IsDoubleLength) return v.ToDoubleLength();
+                if (v.IsDouble) return v.ToDouble();
+                if (v.IsInt32) return v.ToInt32();
+            }
+            catch { }
+            return 0;
+        }
+
+        /// <summary>Trim/clip a property value for use as a token; null if empty/noise.</summary>
+        private static string CleanValue(string v)
+        {
+            if (string.IsNullOrWhiteSpace(v)) return null;
+            string s = v.Trim();
+            if (s.Length < 2) return null;
+            if (NoiseTokens.Contains(s)) return null;
+            return Clip(s, 48);
+        }
+
+        /// <summary>Full leaf-to-root ancestor DisplayName chain, raw (capped). A
+        /// ground-truth sample of the tree so rules can be authored by inspection.</summary>
+        private static string RawAncestors(ModelItem item)
+        {
+            if (item == null) return null;
+            var names = new List<string>();
+            var cur = item;
+            int depth = 0;
+            while (cur != null && depth < 16)
+            {
+                string n = null;
+                try { n = cur.DisplayName; } catch { }
+                if (!string.IsNullOrWhiteSpace(n)) names.Add(n.Trim());
+                try { cur = cur.Parent; } catch { cur = null; }
+                depth++;
+            }
+            return Clip(string.Join(" / ", names), 300);
+        }
+
+        /// <summary>
+        /// Normalises one ancestor DisplayName to a comparable type word, or null if
+        /// it is noise. Strips trailing instance ids ("Conduit 12345", "Pipe [9876]")
+        /// so instances collapse onto their type.
+        /// </summary>
+        private static string CleanToken(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+            string s = raw.Trim();
+
+            // Model-file and federated "file : id : location" nodes.
+            if (s.IndexOf(".rvt", StringComparison.OrdinalIgnoreCase) >= 0) return null;
+            if (s.IndexOf(".ifc", StringComparison.OrdinalIgnoreCase) >= 0) return null;
+            if (s.IndexOf(" : ", StringComparison.Ordinal) >= 0) return null;
+            if (s.StartsWith("location ", StringComparison.OrdinalIgnoreCase)) return null;
+            if (s.StartsWith("Level ", StringComparison.OrdinalIgnoreCase)) return null;
+
+            // Strip a trailing "[123]" or " 12345" instance id.
+            int br = s.IndexOf('[');
+            if (br > 0) s = s.Substring(0, br).Trim();
+            s = StripTrailingNumber(s);
+
+            if (s.Length < 2) return null;
+            if (IsAllDigits(s)) return null;
+            if (NoiseTokens.Contains(s)) return null;
+
+            return Clip(s, 48);
+        }
+
+        private static string StripTrailingNumber(string s)
+        {
+            int i = s.Length;
+            while (i > 0 && (char.IsDigit(s[i - 1]) || s[i - 1] == ' ' || s[i - 1] == '-' || s[i - 1] == ':'))
+                i--;
+            // Only strip if it actually removed a number and leaves a real word.
+            string trimmed = s.Substring(0, i).Trim();
+            return (trimmed.Length >= 2 && trimmed.Length < s.Trim().Length) ? trimmed : s.Trim();
+        }
+
+        private static bool IsAllDigits(string s)
+        {
+            foreach (char c in s) if (!char.IsDigit(c)) return false;
+            return s.Length > 0;
+        }
+
+        private static string Clip(string s, int max)
+        {
+            if (string.IsNullOrEmpty(s) || s.Length <= max) return s;
+            return s.Substring(0, max);
+        }
+
+        private static void AppendTestSummary(StringBuilder sb, string testName, TestSummary agg)
+        {
+            sb.Append('{');
+            AppendField(sb, "name", testName); sb.Append(',');
+            sb.Append("\"total\":").Append(agg.Total).Append(',');
+
+            sb.Append("\"status\":{");
+            int i = 0;
+            foreach (var kv in agg.Status.OrderByDescending(k => k.Value))
+            {
+                if (i++ > 0) sb.Append(',');
+                AppendString(sb, kv.Key); sb.Append(':').Append(kv.Value);
+            }
+            sb.Append("},");
+
+            sb.Append("\"assignments\":[");
+            i = 0;
+            foreach (var ass in agg.AssigneeCount.OrderByDescending(k => k.Value))
+            {
+                if (i++ > 0) sb.Append(',');
+                sb.Append('{');
+                AppendField(sb, "assignedTo", ass.Key); sb.Append(',');
+                sb.Append("\"count\":").Append(ass.Value).Append(',');
+
+                // The element-type words seen in this bucket's clashes, with the
+                // number of its clashes containing each — the within-trade signal.
+                sb.Append("\"types\":[");
+                int j = 0;
+                if (agg.AssigneeTokens.TryGetValue(ass.Key, out var tokMap))
+                {
+                    var ordered = tokMap.OrderByDescending(k => k.Value).ToList();
+                    foreach (var tk in ordered.Take(MaxPatternsPerAssignee))
+                    {
+                        if (j++ > 0) sb.Append(',');
+                        sb.Append('{');
+                        AppendField(sb, "type", tk.Key); sb.Append(',');
+                        sb.Append("\"in\":").Append(tk.Value);
+                        sb.Append('}');
+                    }
+                    sb.Append(']');
+                    int more = ordered.Count - MaxPatternsPerAssignee;
+                    if (more > 0) { sb.Append(",\"moreTypes\":").Append(more); }
+                }
+                else sb.Append(']');
+
+                sb.Append('}');
+            }
+            sb.Append(']');
+
+            if (!string.IsNullOrEmpty(agg.SampleA) || !string.IsNullOrEmpty(agg.SampleB))
+            {
+                sb.Append(",\"sampleTreeA\":"); AppendString(sb, agg.SampleA);
+                sb.Append(",\"sampleTreeB\":"); AppendString(sb, agg.SampleB);
+            }
+
+            if (agg.Groups.Count > 0)
+            {
+                sb.Append(",\"topGroups\":[");
+                i = 0;
+                foreach (var grp in agg.Groups.OrderByDescending(k => k.Value).Take(MaxGroupsPerTest))
+                {
+                    if (i++ > 0) sb.Append(',');
+                    sb.Append('{');
+                    AppendField(sb, "group", grp.Key); sb.Append(',');
+                    sb.Append("\"count\":").Append(grp.Value);
+                    sb.Append('}');
+                }
+                sb.Append(']');
+            }
+
+            sb.Append('}');
+        }
+
+        private static void Bump(Dictionary<string, int> map, string key)
+        {
+            map.TryGetValue(key, out int c);
+            map[key] = c + 1;
+        }
+
         /// <summary>
         /// Recursively writes every ClashResult in a children tree, tagging each
         /// with the display name of the group it sits in (null at top level).

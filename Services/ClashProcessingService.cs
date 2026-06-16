@@ -9,25 +9,45 @@ namespace ClashRuleEngine.Services
 {
     /// <summary>
     /// Evaluates rules against clash results and writes the outcome back to
-    /// Clash Detective using the documented copy/edit/swap pattern:
+    /// Clash Detective using the SDK-supported transaction pattern proven by
+    /// Autodesk's own ClashGrouper sample (api\...\ClashDetective\ClashGrouper):
     ///
-    ///   1. test.CreateCopy()                — detached, fully editable copy
-    ///   2. edit + regroup children on copy  — plain property sets, no API writes
-    ///   3. TestsEditTestFromCopy            — single atomic write-back per test
-    ///      (named TestsEditTestFromCustom before NW 2027; see WriteBack)
+    ///   1. Flatten the LIVE test into detached ClashResult copies, each with
+    ///      Guid = Guid.Empty (re-inserting a result with its original GUID is
+    ///      what corrupted Clash Detective and crashed Navisworks).
+    ///   2. Evaluate rules on the copies and set Status/AssignedTo/Description
+    ///      (plain property sets on detached copies — touches nothing live).
+    ///   3. Cluster into ClashResultGroups in memory.
+    ///   4. ONE Transaction per test: CreateCopyWithoutChildren →
+    ///      TestsReplaceWithCopy(parent, i, newTest) → TestsAddCopy each group /
+    ///      result into the live test (TestsAddCopy deep-copies a group with its
+    ///      children) → Commit. An uncommitted transaction rolls back on dispose,
+    ///      so any failure leaves the document untouched.
     ///
-    /// This is the same mechanism the open-source GroupClashes plugin has used
-    /// across Navisworks 2015–2027. It never duplicates result GUIDs (the cause
-    /// of the earlier TestsAddCopy crash) and never mutates attached items.
+    /// TestsEditTestFromCopy is SETTINGS-ONLY (rename/selections) and CANNOT be
+    /// used to swap in regrouped children — that was the root cause of the
+    /// earlier crashes. See memory: navisworks-sdk-clash-api.
     /// </summary>
     public class ClashProcessingService
     {
         public ProcessingResult LastResult { get; private set; }
 
-        // Proximity threshold in model units (Navisworks API is metres).
-        // Active clashes whose centres fall within this distance are clustered
-        // into the same Clash Detective group.
-        private const double ProximityThresholdMeters = 1.0;
+        // ── Grouping settings (set from ProjectConfig before a run) ─────────────
+        /// <summary>How active clashes are clustered. Default = Hybrid (original).</summary>
+        public ClashGroupingMode GroupingMode { get; set; } = ClashGroupingMode.Hybrid;
+        /// <summary>Proximity threshold (metres) for Proximity/Hybrid grouping.</summary>
+        public double ProximityThreshold { get; set; } = 1.0;
+        /// <summary>Group first, then give each group one assignee (majority of members).</summary>
+        public bool AssignByGroup { get; set; } = false;
+
+        /// <summary>Copies grouping settings off a ProjectConfig before processing.</summary>
+        public void ApplyGroupingSettings(ProjectConfig config)
+        {
+            if (config == null) return;
+            GroupingMode = config.GroupingMode;
+            ProximityThreshold = config.ProximityThreshold > 0 ? config.ProximityThreshold : 1.0;
+            AssignByGroup = config.AssignByGroup;
+        }
 
         /// <summary>
         /// Process a specific clash test using its associated rule set
@@ -123,16 +143,14 @@ namespace ClashRuleEngine.Services
         {
             if (test.Children.Count == 0) return;
 
-            // ── 1. Detached editable copy of the whole test ────────────────
-            var workingCopy = (ClashTest)test.CreateCopy();
-
-            // Flatten the copy: explode existing groups (ours or manual) so a
-            // re-run regroups from scratch instead of nesting groups in groups.
-            // Each result is re-copied so it survives Children.Clear() below.
-            int originalCount = CountResults(workingCopy.Children);
+            // ── 1. Flatten the LIVE test into detached, re-insertable copies ──
+            // Explode existing groups (ours or manual) so a re-run regroups from
+            // scratch instead of nesting groups in groups. Each copy gets a fresh
+            // empty GUID so re-inserting it can't duplicate a result GUID.
+            int originalCount = CountResults(test.Children);
             var active = new List<ClashResult>();
             var passThrough = new List<ClashResult>();   // resolved — untouched by rules/grouping
-            FlattenResults(workingCopy.Children, active, passThrough);
+            FlattenResults(test.Children, active, passThrough);
 
             if (active.Count == 0) { result.Skipped += passThrough.Count; return; }
 
@@ -196,45 +214,57 @@ namespace ClashRuleEngine.Services
             List<ClashResult> ungrouped;
             BuildGroups(active, out groups, out ungrouped);
 
+            // Group-then-assign: give each bundle a single trade (majority of members).
+            if (AssignByGroup && groups.Count > 0)
+                UnifyGroupAssignees(groups, result);
+
             if (!anyEdits && groups.Count == 0) return;   // nothing to write
 
-            // ── 4. Rebuild children on the copy ────────────────────────────
-            workingCopy.Children.Clear();
-            foreach (var g in groups) workingCopy.Children.Add(g);
-            foreach (var c in ungrouped) workingCopy.Children.Add(c);
-            foreach (var c in passThrough) workingCopy.Children.Add(c);
-
             // Guard: never write back fewer results than we started with.
-            int rebuiltCount = CountResults(workingCopy.Children);
+            int rebuiltCount = groups.Sum(g => g.Children.Count) + ungrouped.Count + passThrough.Count;
             if (rebuiltCount != originalCount)
             {
                 result.Errors.Add($"'{test.DisplayName}': rebuilt {rebuiltCount} of {originalCount} results — aborted, nothing written.");
                 return;
             }
 
-            // ── 5. Single atomic write-back ─────────────────────────────────
-            WriteBack(testsData, test, workingCopy);
+            // ── 4. Single atomic write-back (transaction) ──────────────────
+            WriteBack(doc, testsData, test, groups, ungrouped, passThrough);
             result.GroupsCreated += groups.Count;
             result.TestsWritten++;
         }
 
         /// <summary>
-        /// Atomically replaces a test's results with the edited copy's.
-        /// Navisworks 2027 renamed TestsEditTestFromCustom → TestsEditTestFromCopy
-        /// (same (test, copy) shape — verified via tools\Dump-NavisApi.ps1), so we
-        /// resolve whichever this version exposes. This is the LAST step of
-        /// processing: if it throws, nothing has been written to the document.
+        /// Atomically replaces a test's results with the regrouped/edited copies,
+        /// using the SDK-supported transaction pattern (ClashGrouper sample):
+        /// replace the live test with a childless copy, then TestsAddCopy each
+        /// group/result into it. TestsAddCopy deep-copies a group together with
+        /// its children, so one call per top-level item is enough. The live
+        /// parent is re-fetched by index on every call (the collection mutates
+        /// as we add). If anything throws, the transaction is never committed and
+        /// dispose rolls the whole thing back — the document is left untouched.
         /// </summary>
-        private static void WriteBack(DocumentClashTests testsData, ClashTest test, ClashTest copy)
+        private static void WriteBack(Document doc, DocumentClashTests testsData, ClashTest test,
+            List<ClashResultGroup> groups, List<ClashResult> ungrouped, List<ClashResult> passThrough)
         {
-            var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance;
-            var methods = testsData.GetType().GetMethods(flags);
-            var swap = methods.FirstOrDefault(m => m.Name == "TestsEditTestFromCopy" && m.GetParameters().Length == 2)
-                    ?? methods.FirstOrDefault(m => m.Name == "TestsEditTestFromCustom" && m.GetParameters().Length == 2);
-            if (swap == null)
-                throw new MissingMethodException(
-                    "Neither TestsEditTestFromCopy nor TestsEditTestFromCustom exists on DocumentClashTests — cannot write results.");
-            swap.Invoke(testsData, new object[] { test, copy });
+            using (var t = doc.BeginTransaction("Clash Rule Engine — assign & group"))
+            {
+                var newTest = (ClashTest)test.CreateCopyWithoutChildren();
+                var parent = test.Parent;
+                int i = parent.Children.IndexOf(test);
+
+                // Replacing disposes the original `test`; do not touch it afterwards.
+                testsData.TestsReplaceWithCopy(parent, i, newTest);
+
+                foreach (var g in groups)
+                    testsData.TestsAddCopy((GroupItem)parent.Children[i], g);
+                foreach (var c in ungrouped)
+                    testsData.TestsAddCopy((GroupItem)parent.Children[i], c);
+                foreach (var c in passThrough)
+                    testsData.TestsAddCopy((GroupItem)parent.Children[i], c);
+
+                t.Commit();
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -242,10 +272,12 @@ namespace ClashRuleEngine.Services
         // ─────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Recursively pulls every ClashResult out of a (copied) children tree,
-        /// re-copying each one so it stays valid after the parent collection is
-        /// cleared. Active results go to <paramref name="active"/>, resolved
-        /// ones to <paramref name="passThrough"/>.
+        /// Recursively pulls every ClashResult out of the live test's children
+        /// tree, re-copying each one as a detached, re-insertable result. Every
+        /// copy gets Guid = Guid.Empty: re-adding a result that keeps its original
+        /// GUID duplicates it and corrupts Clash Detective (the old crash). Active
+        /// results go to <paramref name="active"/>, resolved ones (left untouched
+        /// by rules/grouping) to <paramref name="passThrough"/>.
         /// </summary>
         private static void FlattenResults(SavedItemCollection children,
             List<ClashResult> active, List<ClashResult> passThrough)
@@ -259,6 +291,7 @@ namespace ClashRuleEngine.Services
                 else if (si is ClashResult cr)
                 {
                     var copy = (ClashResult)cr.CreateCopy();
+                    copy.Guid = Guid.Empty;
                     if (copy.Status == ClashResultStatus.Resolved) passThrough.Add(copy);
                     else active.Add(copy);
                 }
@@ -356,17 +389,25 @@ namespace ClashRuleEngine.Services
             var responsible = fallback.Hierarchy.GetResponsible(dA, dB);
             if (responsible == null) return false;
 
-            // The party who resolves is the responsible TRADE — always one of the two
-            // trades in the clash (dA or dB). A configured Assignee (person/company)
-            // is optional; fall back to the trade name so the clash is still assigned.
-            string assignee = string.IsNullOrWhiteSpace(responsible.Assignee) ? responsible.Name : responsible.Assignee;
-            string grp = string.IsNullOrWhiteSpace(responsible.GroupName) ? responsible.Name : responsible.GroupName;
+            // The responsible (lower-precedence) trade normally takes the clash. But a
+            // discipline can be set to route to the OTHER trade in any test (e.g. a
+            // "Hydraulic Drainage" sub-discipline → the other service). OwningTrade /
+            // Named both resolve to the responsible discipline's own owner.
+            var other = responsible == dA ? dB : dA;
+            var target = responsible.AssigneeMode == AssigneeMode.OtherTrade ? other : responsible;
+
+            string assignee = string.IsNullOrWhiteSpace(target.Assignee) ? target.Name : target.Assignee;
+            string grp = string.IsNullOrWhiteSpace(target.GroupName) ? target.Name : target.GroupName;
+
+            string how = responsible.AssigneeMode == AssigneeMode.OtherTrade
+                ? $"{responsible.Name} → other trade {target.Name}"
+                : $"{responsible.Name} responsible";
             clash.Description =
-                $"[Group: {grp}] [Assignee: {assignee}] Hierarchy: {responsible.Name} responsible ({dA.Name} vs {dB.Name})";
+                $"[Group: {grp}] [Assignee: {assignee}] Hierarchy: {how} ({dA.Name} vs {dB.Name})";
             TrySetAssignedTo(clash, assignee, result);
 
             result.HierarchyAssigned++;
-            result.RecordAssignment($"⇣ {responsible.Name} (hierarchy)", grp, assignee, responsible.Color);
+            result.RecordAssignment($"⇣ {target.Name} (hierarchy)", grp, assignee, target.Color);
             return true;
         }
 
@@ -386,31 +427,17 @@ namespace ClashRuleEngine.Services
         private bool _assignedToUnavailableReported;
 
         /// <summary>
-        /// Sets the AssignedTo field on a detached copy via reflection, because the
-        /// property's type differs across Navisworks versions (string in some, an
-        /// Assignee wrapper in others). Failure is non-fatal: the assignee always
-        /// also lands in Description, so no information is lost.
+        /// Sets the AssignedTo field on a detached copy using the first-class
+        /// Assignee type (verified RW on ClashResult in NW 2027 via the API dump).
+        /// Failure is non-fatal: the assignee always also lands in Description, so
+        /// no information is lost.
         /// </summary>
         private void TrySetAssignedTo(ClashResult clash, string assignee, ProcessingResult result)
         {
+            if (string.IsNullOrWhiteSpace(assignee)) return;
             try
             {
-                var prop = clash.GetType().GetProperty("AssignedTo");
-                if (prop != null && prop.CanWrite)
-                {
-                    if (prop.PropertyType == typeof(string))
-                    {
-                        prop.SetValue(clash, assignee);
-                        return;
-                    }
-                    var ctor = prop.PropertyType.GetConstructor(new[] { typeof(string) });
-                    if (ctor != null)
-                    {
-                        prop.SetValue(clash, ctor.Invoke(new object[] { assignee }));
-                        return;
-                    }
-                }
-                ReportAssignedToUnavailable(result);
+                clash.AssignedTo = new Assignee(assignee);
             }
             catch
             {
@@ -430,14 +457,99 @@ namespace ClashRuleEngine.Services
         // ─────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Clusters clashes by connected components where two clashes are linked if:
-        ///   (a) they share a model element (Item1 or Item2), OR
-        ///   (b) their centres are within ProximityThresholdMeters of each other.
-        /// Handles the "1 steel beam vs 4 pipes" case (shared beam) AND congested
-        /// zones with no shared element. Components with ≥2 members become groups;
-        /// the rest are returned ungrouped.
+        /// Clusters active clashes into groups per the selected <see cref="GroupingMode"/>.
+        /// Components with ≥2 members become Clash Detective groups; the rest are ungrouped.
         /// </summary>
-        private static void BuildGroups(List<ClashResult> active,
+        private void BuildGroups(List<ClashResult> active,
+            out List<ClashResultGroup> groups, out List<ClashResult> ungrouped)
+        {
+            switch (GroupingMode)
+            {
+                case ClashGroupingMode.None:
+                    groups = new List<ClashResultGroup>();
+                    ungrouped = new List<ClashResult>(active);
+                    return;
+                case ClashGroupingMode.ByAssignee:
+                    GroupByKey(active, SafeAssignee, "Unassigned", out groups, out ungrouped);
+                    return;
+                case ClashGroupingMode.Grid:
+                    GroupByKey(active, GridKey, "Off-grid", out groups, out ungrouped);
+                    return;
+                case ClashGroupingMode.Level:
+                    GroupByKey(active, LevelKey, "No level", out groups, out ungrouped);
+                    return;
+                case ClashGroupingMode.SharedElement:
+                    UnionFindGroups(active, linkShared: true, linkProximity: false, out groups, out ungrouped);
+                    return;
+                case ClashGroupingMode.Proximity:
+                    UnionFindGroups(active, linkShared: false, linkProximity: true, out groups, out ungrouped);
+                    return;
+                default: // Hybrid
+                    UnionFindGroups(active, linkShared: true, linkProximity: true, out groups, out ungrouped);
+                    return;
+            }
+        }
+
+        /// <summary>
+        /// Buckets clashes by a string key (assignee / grid cell / level). Buckets of
+        /// ≥2 become groups named by the key; singletons are returned ungrouped.
+        /// </summary>
+        private void GroupByKey(List<ClashResult> active, Func<ClashResult, string> keyFn,
+            string nullLabel, out List<ClashResultGroup> groups, out List<ClashResult> ungrouped)
+        {
+            groups = new List<ClashResultGroup>();
+            ungrouped = new List<ClashResult>();
+
+            var buckets = new Dictionary<string, List<ClashResult>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in active)
+            {
+                string key = null;
+                try { key = keyFn(c); } catch { }
+                if (string.IsNullOrWhiteSpace(key)) key = nullLabel;
+                if (!buckets.TryGetValue(key, out var list)) buckets[key] = list = new List<ClashResult>();
+                list.Add(c);
+            }
+
+            foreach (var kv in buckets.OrderByDescending(b => b.Value.Count))
+            {
+                if (kv.Value.Count < 2) { ungrouped.Add(kv.Value[0]); continue; }
+                var grp = new ClashResultGroup { DisplayName = $"{kv.Key} ({kv.Value.Count})" };
+                foreach (var c in kv.Value) grp.Children.Add(c);
+                groups.Add(grp);
+            }
+        }
+
+        private static string SafeAssignee(ClashResult cr)
+        {
+            try { return cr.AssignedTo?.DisplayName; } catch { return null; }
+        }
+
+        private static string GridKey(ClashResult cr)
+        {
+            try
+            {
+                var sys = Autodesk.Navisworks.Api.Application.MainDocument?.Grids?.ActiveSystem;
+                return sys?.ClosestIntersection(cr.Center)?.DisplayName;
+            }
+            catch { return null; }
+        }
+
+        private static string LevelKey(ClashResult cr)
+        {
+            try
+            {
+                var sys = Autodesk.Navisworks.Api.Application.MainDocument?.Grids?.ActiveSystem;
+                return sys?.ClosestIntersection(cr.Center)?.Level?.DisplayName;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// Connected-components clustering. Two clashes are linked if (when enabled)
+        /// they share a model element, OR their centres are within
+        /// <see cref="ProximityThreshold"/>. Components with ≥2 members become groups.
+        /// </summary>
+        private void UnionFindGroups(List<ClashResult> active, bool linkShared, bool linkProximity,
             out List<ClashResultGroup> groups, out List<ClashResult> ungrouped)
         {
             groups = new List<ClashResultGroup>();
@@ -473,29 +585,34 @@ namespace ClashRuleEngine.Services
                 IndexElement(active[i].Item2, i, elementToIndices, elementLabels, indexElements[i]);
             }
 
-            foreach (var list in elementToIndices.Values)
-                for (int k = 1; k < list.Count; k++)
-                    union(list[0], list[k]);
+            if (linkShared)
+                foreach (var list in elementToIndices.Values)
+                    for (int k = 1; k < list.Count; k++)
+                        union(list[0], list[k]);
 
             // ── Pass 2: spatial proximity (O(n²), n is per-test so small) ──
-            var centers = new Point3D[n];
-            for (int i = 0; i < n; i++) centers[i] = SafeGetCenter(active[i]);
-
-            double thresholdSq = ProximityThresholdMeters * ProximityThresholdMeters;
-            for (int i = 0; i < n; i++)
+            if (linkProximity)
             {
-                var ci = centers[i];
-                if (ci == null) continue;
-                for (int j = i + 1; j < n; j++)
+                var centers = new Point3D[n];
+                for (int i = 0; i < n; i++) centers[i] = SafeGetCenter(active[i]);
+
+                double threshold = ProximityThreshold > 0 ? ProximityThreshold : 1.0;
+                double thresholdSq = threshold * threshold;
+                for (int i = 0; i < n; i++)
                 {
-                    var cj = centers[j];
-                    if (cj == null) continue;
-                    if (find(i) == find(j)) continue;
-                    double dx = ci.X - cj.X;
-                    double dy = ci.Y - cj.Y;
-                    double dz = ci.Z - cj.Z;
-                    if (dx * dx + dy * dy + dz * dz <= thresholdSq)
-                        union(i, j);
+                    var ci = centers[i];
+                    if (ci == null) continue;
+                    for (int j = i + 1; j < n; j++)
+                    {
+                        var cj = centers[j];
+                        if (cj == null) continue;
+                        if (find(i) == find(j)) continue;
+                        double dx = ci.X - cj.X;
+                        double dy = ci.Y - cj.Y;
+                        double dz = ci.Z - cj.Z;
+                        if (dx * dx + dy * dy + dz * dz <= thresholdSq)
+                            union(i, j);
+                    }
                 }
             }
 
@@ -523,6 +640,34 @@ namespace ClashRuleEngine.Services
                 foreach (var idx in members)
                     grp.Children.Add(active[idx]);
                 groups.Add(grp);
+            }
+        }
+
+        /// <summary>
+        /// Gives every member of a group the SAME assignee — the one most members
+        /// already resolved to (rules/hierarchy). Ties fall to the first seen. This
+        /// is the "group first, then assign" behaviour: one bundle → one trade.
+        /// </summary>
+        private void UnifyGroupAssignees(List<ClashResultGroup> groups, ProcessingResult result)
+        {
+            foreach (var g in groups)
+            {
+                var tally = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                foreach (SavedItem si in g.Children)
+                    if (si is ClashResult cr)
+                    {
+                        string a = SafeAssignee(cr);
+                        if (!string.IsNullOrWhiteSpace(a)) { tally.TryGetValue(a, out int c); tally[a] = c + 1; }
+                    }
+                if (tally.Count == 0) continue;
+
+                string winner = tally.OrderByDescending(kv => kv.Value).First().Key;
+                foreach (SavedItem si in g.Children)
+                    if (si is ClashResult cr)
+                    {
+                        TrySetAssignedTo(cr, winner, result);
+                        cr.Description = $"[Group: {g.DisplayName}] [Assignee: {winner}] (group-assigned)";
+                    }
             }
         }
 

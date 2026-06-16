@@ -27,9 +27,46 @@ namespace ClashRuleEngine.Services
     public static class ClashNavigationService
     {
         /// <summary>
+        /// Resolves a FRESH, live ClashResult from the document by its GUID. This is
+        /// the stale-ref-safe replacement for holding a ClashResult across edits:
+        /// after any re-run/regroup the old objects are disposed, and touching one is
+        /// an AccessViolation that crashes Navisworks (uncatchable by managed
+        /// try/catch). Always resolve immediately before use; returns null if the
+        /// result no longer exists (caller should prompt a Refresh).
+        /// </summary>
+        public static ClashResult ResolveLive(Guid guid)
+        {
+            if (guid == Guid.Empty) return null;
+            try
+            {
+                var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
+                var clashPlugin = doc?.GetClash();
+                if (clashPlugin == null) return null;
+                var item = clashPlugin.TestsData.ResolveGuid(guid);
+                var cr = item as ClashResult;
+                if (cr == null) return null;
+                return IsUsable(cr) ? cr : null;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// Resolves the clash by GUID and frames/selects it. The primary
+        /// "find this clash" entry point from the panel's clash list.
+        /// </summary>
+        public static bool NavigateTo(Guid guid)
+        {
+            var clash = ResolveLive(guid);
+            if (clash == null) return false;
+            NavigateTo(clash);
+            return true;
+        }
+
+        /// <summary>
         /// Selects both clashing items and frames the clash in the active 3D view.
         /// All steps are best-effort and non-fatal — a failure to frame never
-        /// prevents the selection from happening, and vice versa.
+        /// prevents the selection from happening, and vice versa. Prefer the
+        /// GUID overload; this assumes <paramref name="clash"/> is freshly resolved.
         /// </summary>
         public static void NavigateTo(ClashResult clash)
         {
@@ -42,11 +79,7 @@ namespace ClashRuleEngine.Services
         }
 
         /// <summary>
-        /// True only if the result is a live, non-disposed object. After rules run,
-        /// TestsEditTestFromCopy swaps the test and disposes the old ClashResult
-        /// objects; touching their geometry/viewpoint then is an AccessViolation
-        /// that crashes Navisworks (uncatchable by managed try/catch), so we must
-        /// check BEFORE any member access.
+        /// True only if the result is a live, non-disposed object.
         /// </summary>
         public static bool IsUsable(ClashResult clash)
         {

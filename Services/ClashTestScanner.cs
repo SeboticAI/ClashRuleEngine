@@ -92,10 +92,22 @@ namespace ClashRuleEngine.Services
                         Description = cr.Description ?? string.Empty,
                         Item1Name = cr.Item1?.DisplayName ?? "Unknown",
                         Item2Name = cr.Item2?.DisplayName ?? "Unknown",
+                        ResultGuid = SafeGuid(cr),
+                        Center = SafeCenter(cr),
                         SourceResult = cr
                     });
                 }
             }
+        }
+
+        private static Guid SafeGuid(ClashResult cr)
+        {
+            try { return cr.Guid; } catch { return Guid.Empty; }
+        }
+
+        private static Point3D SafeCenter(ClashResult cr)
+        {
+            try { return cr.Center; } catch { return null; }
         }
 
         private static void CountResults(SavedItemCollection children,
@@ -134,7 +146,6 @@ namespace ClashRuleEngine.Services
 
     /// <summary>
     /// Summary data for a single clash result, used in the Clash Inspector tab.
-    /// SourceResult is a live reference to the Navisworks object.
     /// </summary>
     public class ClashResultInfo
     {
@@ -144,7 +155,20 @@ namespace ClashRuleEngine.Services
         public string Item1Name { get; set; }
         public string Item2Name { get; set; }
 
-        // Live reference — only valid while the document/test is unchanged
+        // Stable identity. The live ClashResult object is DISPOSED whenever a test
+        // is re-run or regrouped (ours or Clash Detective's), and touching a disposed
+        // result is an AccessViolation that crashes Navisworks. So we never hold the
+        // object — we cache its GUID and re-resolve a fresh live result on demand via
+        // ClashNavigationService.ResolveLive. Guid.Empty means "unresolvable".
+        public Guid ResultGuid { get; set; }
+
+        // Clash centre snapshot (model coords, metres), used to draw 3D markers
+        // without re-resolving the live result every render frame. Null if unknown.
+        public Point3D Center { get; set; }
+
+        // Live reference captured at scan time — convenience for same-frame reads
+        // only (DisplayName/Status already copied out). NEVER navigate/inspect off
+        // this after any write; resolve by ResultGuid instead.
         internal ClashResult SourceResult { get; set; }
 
         public string StatusColor

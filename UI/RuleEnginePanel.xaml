@@ -9,24 +9,46 @@
         <local:HexToBrushConverter x:Key="HexToBrush"/>
         <local:EnabledToOpacityConverter x:Key="EnabledToOpacity"/>
         <local:PriorityToDisplayConverter x:Key="PriorityToDisplay"/>
+        <local:AssigneeModeIndexConverter x:Key="ModeIdx"/>
+
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#9CA3AF"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="5,3"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
 
         <Style x:Key="Btn" TargetType="Button">
             <Setter Property="Background" Value="#FFFFFF"/>
             <Setter Property="Foreground" Value="#374151"/>
             <Setter Property="BorderBrush" Value="#D1D5DB"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Padding" Value="12,6"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FontSize" Value="12"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="#F3F4F6"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#9CA3AF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#E5E7EB"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -38,6 +60,28 @@
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="BorderBrush" Value="#2563EB"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#1D4ED8"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#1D4ED8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#1E40AF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource Btn}">
             <Setter Property="Foreground" Value="#DC2626"/>
@@ -67,8 +111,9 @@
                     <TextBlock x:Name="txtStatus" Text="Select a clash test" FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="+ New Rule" Style="{StaticResource BtnPrimary}" Click="OnAddRule" Margin="0,0,4,0"/>
-                    <Button Content="Settings" Style="{StaticResource Btn}" Click="OnSettings" Width="64" ToolTip="Project settings, disciplines &amp; API key"/>
+                    <Button Content="+ New Rule" Style="{StaticResource BtnPrimary}" Click="OnAddRule" Margin="0,0,6,0"/>
+                    <Button Content="Import" Style="{StaticResource Btn}" Click="OnImportConfig"
+                            ToolTip="Import a .clashre config (rules, hierarchy, assignees) from anywhere"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -80,10 +125,12 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Clash test:" VerticalAlignment="Center" Foreground="#1E40AF" FontSize="12" FontWeight="SemiBold" Margin="0,0,8,0"/>
                 <ComboBox x:Name="cmbClashTest" Grid.Column="1" FontSize="12" SelectionChanged="OnClashTestChanged"/>
-                <Button Grid.Column="2" Content="Refresh" Style="{StaticResource Btn}" Click="OnRefreshTests" Margin="6,0,0,0" FontSize="11"/>
+                <Button Grid.Column="2" Content="Matrix" Style="{StaticResource Btn}" Click="OnShowMatrix" Margin="6,0,0,0" FontSize="11" ToolTip="Clash matrix — all test pairs at a glance"/>
+                <Button Grid.Column="3" Content="Refresh" Style="{StaticResource Btn}" Click="OnRefreshTests" Margin="6,0,0,0" FontSize="11"/>
             </Grid>
         </Border>
 
@@ -96,24 +143,35 @@
 
             <!-- TAB STRIP -->
             <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
-                <StackPanel Orientation="Horizontal" Margin="8,0,0,0">
-                    <!-- Rules tab -->
-                    <Border x:Name="bdTabRules" Padding="14,8" Cursor="Hand"
-                            MouseLeftButtonDown="OnTabRulesClick"
-                            BorderBrush="#2563EB" BorderThickness="0,0,0,2"
-                            Background="Transparent">
-                        <TextBlock x:Name="txtTabRules" Text="Rules" FontSize="12" FontWeight="SemiBold"
-                                   Foreground="#2563EB"/>
-                    </Border>
-                    <!-- Clashes tab -->
-                    <Border x:Name="bdTabClashes" Padding="14,8" Cursor="Hand"
-                            MouseLeftButtonDown="OnTabClashesClick"
-                            BorderBrush="Transparent" BorderThickness="0,0,0,2"
-                            Background="Transparent">
-                        <TextBlock x:Name="txtTabClashes" Text="Clashes" FontSize="12" FontWeight="SemiBold"
-                                   Foreground="#9CA3AF"/>
-                    </Border>
-                </StackPanel>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" Margin="8,0,0,0">
+                        <Border x:Name="bdTabRules" Padding="12,8" Cursor="Hand"
+                                MouseLeftButtonDown="OnTabRulesClick"
+                                BorderBrush="#2563EB" BorderThickness="0,0,0,2" Background="Transparent">
+                            <TextBlock x:Name="txtTabRules" Text="Rules" FontSize="12" FontWeight="SemiBold" Foreground="#2563EB"/>
+                        </Border>
+                        <Border x:Name="bdTabClashes" Padding="12,8" Cursor="Hand"
+                                MouseLeftButtonDown="OnTabClashesClick"
+                                BorderBrush="Transparent" BorderThickness="0,0,0,2" Background="Transparent">
+                            <TextBlock x:Name="txtTabClashes" Text="Clashes" FontSize="12" FontWeight="SemiBold" Foreground="#9CA3AF"/>
+                        </Border>
+                        <Border x:Name="bdTabHierarchy" Padding="12,8" Cursor="Hand"
+                                MouseLeftButtonDown="OnTabHierarchyClick"
+                                BorderBrush="Transparent" BorderThickness="0,0,0,2" Background="Transparent">
+                            <TextBlock x:Name="txtTabHierarchy" Text="Hierarchy" FontSize="12" FontWeight="SemiBold" Foreground="#9CA3AF"/>
+                        </Border>
+                        <Border x:Name="bdTabLists" Padding="12,8" Cursor="Hand"
+                                MouseLeftButtonDown="OnTabListsClick"
+                                BorderBrush="Transparent" BorderThickness="0,0,0,2" Background="Transparent">
+                            <TextBlock x:Name="txtTabLists" Text="Assignees &amp; Groups" FontSize="12" FontWeight="SemiBold" Foreground="#9CA3AF"/>
+                        </Border>
+                        <Border x:Name="bdTabGeneral" Padding="12,8" Cursor="Hand"
+                                MouseLeftButtonDown="OnTabGeneralClick"
+                                BorderBrush="Transparent" BorderThickness="0,0,0,2" Background="Transparent">
+                            <TextBlock x:Name="txtTabGeneral" Text="General" FontSize="12" FontWeight="SemiBold" Foreground="#9CA3AF"/>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
 
             <!-- RULES TAB CONTENT -->
@@ -249,8 +307,14 @@
                             <TextBlock x:Name="txtClashCount" VerticalAlignment="Center"
                                        FontSize="11" Foreground="#6B7280" Margin="4,0,0,0"
                                        TextWrapping="Wrap"/>
-                            <Button Grid.Column="1" Content="Refresh" Style="{StaticResource Btn}"
-                                    Click="OnRefreshClashes" FontSize="11" VerticalAlignment="Top"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                <ToggleButton x:Name="btnMarkers" Content="3D Markers" FontSize="11"
+                                              Margin="0,0,6,0" Padding="8,3" Cursor="Hand"
+                                              ToolTip="Show coloured markers at each clash in the 3D view; click a marker to select it"
+                                              Checked="OnToggleMarkers" Unchecked="OnToggleMarkers"/>
+                                <Button Content="Refresh" Style="{StaticResource Btn}"
+                                        Click="OnRefreshClashes" FontSize="11"/>
+                            </StackPanel>
                         </Grid>
                         <!-- Status filter chips (built in code so counts stay live) -->
                         <WrapPanel Grid.Row="1" x:Name="pnlClashFilters" Margin="2,6,0,0"/>
@@ -344,6 +408,199 @@
                                TextAlignment="Center" MaxWidth="240"/>
                 </StackPanel>
             </Grid>
+
+            <!-- HIERARCHY TAB CONTENT -->
+            <Grid Grid.Row="1" x:Name="pnlTabHierarchy" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <CheckBox Grid.Row="0" x:Name="chkFallback" Margin="10,8,10,6"
+                          FontSize="12.5" FontWeight="SemiBold" Foreground="#111827"
+                          Content="Auto-assign unmatched clashes using the discipline hierarchy"/>
+
+                <TextBlock Grid.Row="1" TextWrapping="Wrap" FontSize="11" Foreground="#6B7280" Margin="10,0,10,8">
+                    Order = precedence: the discipline at the TOP is hardest to move (right-of-way). In any clash the
+                    LOWER discipline is held responsible. "Assign the clash to" sends it to that trade, the other trade,
+                    or a specific owner. Keywords match the element's model file name, tree path and key properties.
+                    Rules always win when they match — the hierarchy fills the gaps.
+                </TextBlock>
+
+                <!-- GROUPING -->
+                <Border Grid.Row="2" Background="#FFFFFF" CornerRadius="6" BorderBrush="#E5E7EB" BorderThickness="1"
+                        Margin="10,0,10,8" Padding="10">
+                    <StackPanel>
+                        <TextBlock Text="GROUPING" Style="{StaticResource FieldLabel}"/>
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="BUNDLE CLASHES BY" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox x:Name="cmbGroupMode" FontSize="12"
+                                          ToolTip="How active clashes are clustered into Clash Detective groups when rules run.">
+                                    <ComboBoxItem Content="None (no grouping)"/>
+                                    <ComboBoxItem Content="Shared element"/>
+                                    <ComboBoxItem Content="Proximity (within distance)"/>
+                                    <ComboBoxItem Content="Grid intersection (e.g. G-21)"/>
+                                    <ComboBoxItem Content="Level"/>
+                                    <ComboBoxItem Content="Assignee / trade"/>
+                                    <ComboBoxItem Content="Hybrid (shared + proximity)"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="PROXIMITY (metres)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox x:Name="txtThreshold" FontSize="12"
+                                         ToolTip="Distance for Proximity / Hybrid grouping (metres)."/>
+                            </StackPanel>
+                        </Grid>
+                        <CheckBox x:Name="chkAssignByGroup" Margin="0,8,0,0" FontSize="12" Foreground="#111827"
+                                  Content="Group first, then assign each group one trade (group-then-assign)"
+                                  ToolTip="After clustering, every clash in a group is given the same assignee — the one most members resolved to."/>
+                    </StackPanel>
+                </Border>
+
+                <ListBox Grid.Row="3" x:Name="lstDisciplines" Background="Transparent" BorderThickness="0" Margin="6,0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="Margin" Value="0,0,0,6"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#FFFFFF" CornerRadius="6" BorderBrush="#E5E7EB" BorderThickness="1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="6"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" CornerRadius="6,0,0,6"
+                                            Background="{Binding Color, Converter={StaticResource HexToBrush}}"/>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0">
+                                        <Button Content="&#x25B2;" Width="26" Height="24" FontSize="11"
+                                                Style="{StaticResource Btn}" Click="OnMoveUp" Tag="{Binding}"
+                                                Margin="0,0,0,3" ToolTip="Higher precedence"/>
+                                        <Button Content="&#x25BC;" Width="26" Height="24" FontSize="11"
+                                                Style="{StaticResource Btn}" Click="OnMoveDown" Tag="{Binding}"
+                                                ToolTip="Lower precedence"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" Margin="8,8,8,8">
+                                        <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}"
+                                                 FontWeight="SemiBold" FontSize="13"/>
+                                        <TextBlock Text="DETECT WITH KEYWORDS (comma-separated)" Style="{StaticResource FieldLabel}" Margin="0,6,0,2"/>
+                                        <TextBox Text="{Binding KeywordsCsv, UpdateSourceTrigger=LostFocus}"
+                                                 TextWrapping="Wrap" FontSize="11.5"/>
+                                        <TextBlock Text="ASSIGN THE CLASH TO" Style="{StaticResource FieldLabel}" Margin="0,6,0,2"/>
+                                        <ComboBox FontSize="12"
+                                                  SelectedIndex="{Binding AssigneeMode, Mode=TwoWay, Converter={StaticResource ModeIdx}, UpdateSourceTrigger=PropertyChanged}"
+                                                  ToolTip="Who resolves a clash this trade is responsible for. 'The other trade' routes it across to the opposing service in every test (e.g. Hydraulic drainage).">
+                                            <ComboBoxItem Content="A specific owner (named below)"/>
+                                            <ComboBoxItem Content="This trade (owning)"/>
+                                            <ComboBoxItem Content="The other trade in the clash"/>
+                                        </ComboBox>
+                                        <Grid Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="OWNER / ASSIGNEE (optional — defaults to trade name)" Style="{StaticResource FieldLabel}"/>
+                                                <ComboBox IsEditable="True" FontSize="12"
+                                                          ItemsSource="{Binding AvailableAssignees, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          Text="{Binding Assignee, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="GROUP (optional)" Style="{StaticResource FieldLabel}"/>
+                                                <TextBox Text="{Binding GroupName, UpdateSourceTrigger=LostFocus}" FontSize="12"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="3" Content="&#x2715;" Width="26" Height="26" FontSize="11"
+                                            VerticalAlignment="Top" Margin="4,8,8,0"
+                                            Foreground="#DC2626" Background="Transparent" BorderBrush="#FCA5A5"
+                                            Style="{StaticResource Btn}" Click="OnDeleteDiscipline" Tag="{Binding}"
+                                            ToolTip="Remove discipline"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="10,8,10,10">
+                    <Button Content="+ Add Discipline" Style="{StaticResource Btn}" Click="OnAddDiscipline"/>
+                    <Button Content="Restore Defaults" Style="{StaticResource Btn}" Click="OnRestoreDefaults" Margin="6,0,0,0"/>
+                    <Button Content="Save" Style="{StaticResource BtnPrimary}" Click="OnSaveSetup" Margin="12,0,0,0" Width="90"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- ASSIGNEES & GROUPS TAB CONTENT -->
+            <Grid Grid.Row="1" x:Name="pnlTabLists" Visibility="Collapsed" Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" TextWrapping="Wrap" FontSize="11" Foreground="#6B7280" Margin="2,2,2,8"
+                           Text="One per line. These pre-populate the dropdowns in the rule editor and the discipline owners. (Assignees used by rules/disciplines also appear automatically.)"/>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <DockPanel Grid.Column="0">
+                        <TextBlock DockPanel.Dock="Top" Text="ASSIGNEES" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                        <TextBox x:Name="txtAssignees" AcceptsReturn="True" TextWrapping="NoWrap"
+                                 VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
+                    </DockPanel>
+                    <DockPanel Grid.Column="2">
+                        <TextBlock DockPanel.Dock="Top" Text="GROUPS" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                        <TextBox x:Name="txtGroups" AcceptsReturn="True" TextWrapping="NoWrap"
+                                 VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
+                    </DockPanel>
+                </Grid>
+                <Button Grid.Row="2" Content="Save" Style="{StaticResource BtnPrimary}" Click="OnSaveSetup"
+                        Width="90" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+            </Grid>
+
+            <!-- GENERAL TAB CONTENT -->
+            <ScrollViewer Grid.Row="1" x:Name="pnlTabGeneral" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="12">
+                    <TextBlock Text="PROJECT NAME" Style="{StaticResource FieldLabel}"/>
+                    <TextBox x:Name="txtProjectName" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="CLAUDE API KEY" Style="{StaticResource FieldLabel}"/>
+                    <TextBox x:Name="txtApiKey" Margin="0,0,0,4"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="10.5" Foreground="#9CA3AF" Margin="0,0,0,12"
+                               Text="Stored locally in the project's .clashre file. Used by the AI rule generation feature."/>
+
+                    <TextBlock x:Name="txtConfigStats" FontSize="11" Foreground="#6B7280" Margin="0,0,0,12"/>
+
+                    <Button Content="Save" Style="{StaticResource BtnPrimary}" Click="OnSaveSetup"
+                            Width="90" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <!-- RESULTS PANEL (after running rules) -->
@@ -435,8 +692,11 @@
                         Foreground="#7C3AED" BorderBrush="#C4B5FD"
                         ToolTip="Describe your coordination rules in plain English and let Claude write them"/>
                 <Button Content="Save" Style="{StaticResource Btn}" Click="OnSaveRules" Margin="0,0,4,4"/>
+                <Button Content="Export Summary" Style="{StaticResource Btn}" Click="OnExportSummary" Margin="0,0,4,4"
+                        Foreground="#0F766E" BorderBrush="#5EEAD4"
+                        ToolTip="Compact per-test assignment summary across ALL tests — small enough to paste into a prompt"/>
                 <Button Content="Export Session" Style="{StaticResource Btn}" Click="OnExportSession" Margin="0,0,0,4"
-                        ToolTip="Export all clash dispositions + item properties to JSON (for AI rule generation)"/>
+                        ToolTip="Full export: every clash disposition + item properties to JSON (large)"/>
             </WrapPanel>
         </Border>
     </Grid>

@@ -55,6 +55,21 @@ namespace ClashRuleEngine.Models
     }
 
     /// <summary>
+    /// How active clashes are bundled into Clash Detective groups when rules run.
+    ///   None          — no grouping; every clash stands alone.
+    ///   SharedElement — link clashes that touch the same model element.
+    ///   Proximity     — link clashes whose centres are within the threshold.
+    ///   Grid          — bucket by nearest grid intersection (e.g. G-21).
+    ///   Level         — bucket by nearest grid level.
+    ///   ByAssignee    — bucket by the assignee each clash resolved to.
+    ///   Hybrid        — shared element OR proximity (the original default).
+    /// </summary>
+    public enum ClashGroupingMode
+    {
+        None, SharedElement, Proximity, Grid, Level, ByAssignee, Hybrid
+    }
+
+    /// <summary>
     /// A single discipline in the system hierarchy. Carries both how to DETECT it
     /// on a model element (Keywords, matched against the element's source file name
     /// and key property values) and who OWNS clashes it is responsible for
@@ -74,6 +89,17 @@ namespace ClashRuleEngine.Models
 
         /// <summary>Who gets clashes this discipline is responsible for resolving.</summary>
         public string Assignee { get; set; } = "";
+
+        /// <summary>
+        /// How the clash is assigned when THIS discipline is the responsible (lower-
+        /// precedence) side of a clash:
+        ///   Named       — assign to <see cref="Assignee"/> (or this trade's name).
+        ///   OwningTrade — assign to this discipline itself (same as Named for a discipline).
+        ///   OtherTrade  — assign to the OPPOSITE clashing trade, in ANY test. This is
+        ///                 how e.g. a "Hydraulic Drainage" sub-discipline can always be
+        ///                 routed to the other service.
+        /// </summary>
+        public AssigneeMode AssigneeMode { get; set; } = AssigneeMode.Named;
 
         /// <summary>Optional Clash Detective group name (defaults to the discipline name).</summary>
         public string GroupName { get; set; } = "";
@@ -206,6 +232,19 @@ namespace ClashRuleEngine.Models
         /// when they match — the hierarchy only fills the gaps.
         /// </summary>
         public bool UseHierarchyFallback { get; set; } = true;
+
+        /// <summary>How active clashes are clustered into Clash Detective groups.</summary>
+        public ClashGroupingMode GroupingMode { get; set; } = ClashGroupingMode.Hybrid;
+
+        /// <summary>Proximity threshold (metres) for proximity/hybrid grouping.</summary>
+        public double ProximityThreshold { get; set; } = 1.0;
+
+        /// <summary>
+        /// When true, after clustering each group is given ONE assignee (the most
+        /// common among its members) so the whole bundle goes to a single trade —
+        /// the "group first, then assign" workflow.
+        /// </summary>
+        public bool AssignByGroup { get; set; } = false;
 
         /// <summary>Per-test rule sets — one entry per clash test</summary>
         public List<TestRuleSet> TestRuleSets { get; set; } = new List<TestRuleSet>();

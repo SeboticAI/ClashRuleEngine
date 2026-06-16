@@ -108,8 +108,10 @@
     <Compile Include="Models\RuleCondition.cs" />
     <Compile Include="Models\TestRuleSet.cs" />
     <Compile Include="Plugin\ClashRuleEnginePlugin.cs" />
+    <Compile Include="Plugin\ClashMarkerPlugins.cs" />
     <Compile Include="Services\AiRuleGenerator.cs" />
     <Compile Include="Services\ClashApiCompat.cs" />
+    <Compile Include="Services\ClashMarkerService.cs" />
     <Compile Include="Services\ClashNavigationService.cs" />
     <Compile Include="Services\ClashProcessingService.cs" />
     <Compile Include="Services\ClaudeApiService.cs" />
@@ -119,6 +121,7 @@
     <Compile Include="Services\ModelPropertyScanner.cs" />
     <Compile Include="Services\SessionExportService.cs" />
     <Compile Include="UI\Converters.cs" />
+    <Compile Include="UI\ClashMatrixDialog.cs" />
     <Compile Include="UI\ExportProgressWindow.cs" />
     <Compile Include="UI\AiAssistDialog.xaml.cs">
       <DependentUpon>AiAssistDialog.xaml</DependentUpon>
