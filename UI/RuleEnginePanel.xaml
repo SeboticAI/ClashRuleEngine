@@ -237,7 +237,7 @@
                                             </Border>
                                             <Border Background="#FFFBEB" CornerRadius="3" Padding="5,2">
                                                 <TextBlock FontSize="10" Foreground="#92400E">
-                                                    <Run Text="Assign: "/><Run Text="{Binding AssigneeDisplay}"/>
+                                                    <Run Text="Assign: "/><Run Text="{Binding AssigneeDisplay, Mode=OneWay}"/>
                                                 </TextBlock>
                                             </Border>
                                         </StackPanel>
@@ -495,12 +495,16 @@
                                             Background="{Binding Color, Converter={StaticResource HexToBrush}}"/>
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0">
-                                        <Button Content="&#x25B2;" Width="26" Height="24" FontSize="11"
-                                                Style="{StaticResource Btn}" Click="OnMoveUp" Tag="{Binding}"
-                                                Margin="0,0,0,3" ToolTip="Higher precedence"/>
-                                        <Button Content="&#x25BC;" Width="26" Height="24" FontSize="11"
-                                                Style="{StaticResource Btn}" Click="OnMoveDown" Tag="{Binding}"
-                                                ToolTip="Lower precedence"/>
+                                        <Button Width="26" Height="24" Style="{StaticResource Btn}" Click="OnMoveUp"
+                                                Tag="{Binding}" Margin="0,0,0,3" ToolTip="Higher precedence">
+                                            <Path Data="M0,6 L5,0 L10,6 Z" Fill="#374151"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Button>
+                                        <Button Width="26" Height="24" Style="{StaticResource Btn}" Click="OnMoveDown"
+                                                Tag="{Binding}" ToolTip="Lower precedence">
+                                            <Path Data="M0,0 L10,0 L5,6 Z" Fill="#374151"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Button>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="2" Margin="8,8,8,8">

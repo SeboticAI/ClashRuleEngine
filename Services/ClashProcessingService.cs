@@ -49,13 +49,29 @@ namespace ClashRuleEngine.Services
             AssignByGroup = config.AssignByGroup;
         }
 
+        // ── Progress / cancel (UI-thread; the panel pumps the progress window) ──
+        private Action<string> _progress;
+        private Func<bool> _cancelled;
+        private void Report(string msg) { try { _progress?.Invoke(msg); } catch { } }
+        private bool IsCancelled { get { try { return _cancelled != null && _cancelled(); } catch { return false; } } }
+
+        // Per-run discipline-classification cache (keyed by model-item identity), so a
+        // model element shared across many clashes is classified once, not repeatedly.
+        private Dictionary<string, DisciplineDefinition> _classifyCache;
+
+        // Reports progress roughly every this many clashes during evaluation.
+        private const int ProgressEvery = 250;
+
         /// <summary>
         /// Process a specific clash test using its associated rule set
         /// </summary>
         public ProcessingResult ProcessSingleTest(string testName, TestRuleSet ruleSet,
-            SystemHierarchy hierarchy = null, bool useHierarchyFallback = false)
+            SystemHierarchy hierarchy = null, bool useHierarchyFallback = false,
+            Action<string> progress = null, Func<bool> cancelled = null)
         {
             _assignedToUnavailableReported = false;
+            _progress = progress; _cancelled = cancelled;
+            _classifyCache = new Dictionary<string, DisciplineDefinition>(StringComparer.OrdinalIgnoreCase);
             var result = new ProcessingResult { TestName = testName };
             var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
             if (doc == null) { result.Errors.Add("No active document."); return result; }
@@ -78,7 +94,7 @@ namespace ClashRuleEngine.Services
 
             result.TestsProcessed = 1;
             var fallback = new HierarchyFallback(hierarchy, useHierarchyFallback);
-            ProcessTest(targetTest, orderedRules, ruleSet, result, doc, clashPlugin.TestsData, fallback);
+            ProcessTest(targetTest, orderedRules, ruleSet, result, doc, clashPlugin.TestsData, fallback, testName);
 
             LastResult = result;
             return result;
@@ -87,9 +103,12 @@ namespace ClashRuleEngine.Services
         /// <summary>
         /// Process all clash tests using the project config
         /// </summary>
-        public ProcessingResult ProcessAllTests(ProjectConfig config)
+        public ProcessingResult ProcessAllTests(ProjectConfig config,
+            Action<string> progress = null, Func<bool> cancelled = null)
         {
             _assignedToUnavailableReported = false;
+            _progress = progress; _cancelled = cancelled;
+            _classifyCache = new Dictionary<string, DisciplineDefinition>(StringComparer.OrdinalIgnoreCase);
             var result = new ProcessingResult { TestName = "All Tests" };
             var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
             if (doc == null) { result.Errors.Add("No active document."); return result; }
@@ -101,8 +120,10 @@ namespace ClashRuleEngine.Services
             var tests = ClashApiCompat.GetAllTests(clashPlugin.TestsData);
             var fallback = new HierarchyFallback(config.Hierarchy, config.UseHierarchyFallback);
 
-            foreach (var ct in tests)
+            for (int ti = 0; ti < tests.Count; ti++)
             {
+                if (IsCancelled) { result.Errors.Add("Cancelled — remaining tests not processed."); break; }
+                var ct = tests[ti];
                 result.TestsProcessed++;
 
                 var testRuleSet = config.GetOrCreateTestRuleSet(ct.DisplayName);
@@ -116,7 +137,8 @@ namespace ClashRuleEngine.Services
                     continue;
                 }
 
-                ProcessTest(ct, orderedRules, testRuleSet, result, doc, clashPlugin.TestsData, fallback);
+                string label = $"Test {ti + 1}/{tests.Count}: {ct.DisplayName}";
+                ProcessTest(ct, orderedRules, testRuleSet, result, doc, clashPlugin.TestsData, fallback, label);
             }
 
             LastResult = result;
@@ -124,11 +146,11 @@ namespace ClashRuleEngine.Services
         }
 
         private void ProcessTest(ClashTest test, List<ClashRule> orderedRules, TestRuleSet ruleSet,
-            ProcessingResult result, Document doc, DocumentClashTests testsData, HierarchyFallback fallback)
+            ProcessingResult result, Document doc, DocumentClashTests testsData, HierarchyFallback fallback, string testLabel)
         {
             try
             {
-                ProcessTestCore(test, orderedRules, ruleSet, result, doc, testsData, fallback);
+                ProcessTestCore(test, orderedRules, ruleSet, result, doc, testsData, fallback, testLabel);
             }
             catch (Exception ex)
             {
@@ -139,9 +161,10 @@ namespace ClashRuleEngine.Services
         }
 
         private void ProcessTestCore(ClashTest test, List<ClashRule> orderedRules, TestRuleSet ruleSet,
-            ProcessingResult result, Document doc, DocumentClashTests testsData, HierarchyFallback fallback)
+            ProcessingResult result, Document doc, DocumentClashTests testsData, HierarchyFallback fallback, string testLabel)
         {
             if (test.Children.Count == 0) return;
+            Report($"{testLabel} — reading clashes…");
 
             // ── 1. Flatten the LIVE test into detached, re-insertable copies ──
             // Explode existing groups (ours or manual) so a re-run regroups from
@@ -166,8 +189,16 @@ namespace ClashRuleEngine.Services
             result.Skipped += passThrough.Count;
             bool anyEdits = false;
 
+            int evaluated = 0, activeTotal = active.Count;
             foreach (var clash in active)
             {
+                if ((evaluated % ProgressEvery) == 0)
+                {
+                    Report($"{testLabel} — assigning {evaluated:N0}/{activeTotal:N0}…");
+                    if (IsCancelled) { result.Errors.Add($"'{test.DisplayName}': cancelled before write — nothing written."); return; }
+                }
+                evaluated++;
+
                 result.ClashesProcessed++;
                 ClashRule matched = null;
 
@@ -210,6 +241,8 @@ namespace ClashRuleEngine.Services
             }
 
             // ── 3. Cluster active clashes into groups (union-find) ─────────
+            Report($"{testLabel} — grouping {active.Count:N0} clashes…");
+            if (IsCancelled) { result.Errors.Add($"'{test.DisplayName}': cancelled before write — nothing written."); return; }
             List<ClashResultGroup> groups;
             List<ClashResult> ungrouped;
             BuildGroups(active, out groups, out ungrouped);
@@ -229,6 +262,7 @@ namespace ClashRuleEngine.Services
             }
 
             // ── 4. Single atomic write-back (transaction) ──────────────────
+            Report($"{testLabel} — writing {groups.Count:N0} group(s)…");
             WriteBack(doc, testsData, test, groups, ungrouped, passThrough);
             result.GroupsCreated += groups.Count;
             result.TestsWritten++;
@@ -337,7 +371,7 @@ namespace ClashRuleEngine.Services
         /// Picks the trade for a relative-assignee rule: classify the subject item
         /// (Owning) or the opposite item (Other). Needs a populated hierarchy.
         /// </summary>
-        private static DisciplineDefinition ResolveRelativeTrade(ClashResult clash, ClashRule rule, HierarchyFallback fallback)
+        private DisciplineDefinition ResolveRelativeTrade(ClashResult clash, ClashRule rule, HierarchyFallback fallback)
         {
             var hierarchy = fallback?.Hierarchy;
             if (hierarchy?.Disciplines == null || hierarchy.Disciplines.Count == 0) return null;
@@ -345,7 +379,25 @@ namespace ClashRuleEngine.Services
             ModelItem subject = rule.SubjectItem == ClashItemTarget.Item2 ? clash.Item2 : clash.Item1;
             ModelItem other   = rule.SubjectItem == ClashItemTarget.Item2 ? clash.Item1 : clash.Item2;
             ModelItem target  = rule.AssigneeMode == AssigneeMode.OtherTrade ? other : subject;
-            return DisciplineClassifier.Classify(target, hierarchy);
+            return ClassifyCached(target, hierarchy);
+        }
+
+        /// <summary>
+        /// Discipline classification with a per-run cache keyed by model-item identity.
+        /// A beam clashing 40 pipes is classified once, not 40×. Falls back to a direct
+        /// classify when the item has no stable key.
+        /// </summary>
+        private DisciplineDefinition ClassifyCached(ModelItem item, SystemHierarchy hierarchy)
+        {
+            if (item == null) return null;
+            string key = GetModelItemKey(item);
+            if (key == null || _classifyCache == null)
+                return DisciplineClassifier.Classify(item, hierarchy);
+
+            if (_classifyCache.TryGetValue(key, out var cached)) return cached;
+            var disc = DisciplineClassifier.Classify(item, hierarchy);
+            _classifyCache[key] = disc;
+            return disc;
         }
 
         /// <summary>
@@ -382,8 +434,8 @@ namespace ClashRuleEngine.Services
         {
             if (fallback == null || !fallback.Enabled) return false;
 
-            var dA = DisciplineClassifier.Classify(clash.Item1, fallback.Hierarchy);
-            var dB = DisciplineClassifier.Classify(clash.Item2, fallback.Hierarchy);
+            var dA = ClassifyCached(clash.Item1, fallback.Hierarchy);
+            var dB = ClassifyCached(clash.Item2, fallback.Hierarchy);
             if (dA == null || dB == null) return false;
 
             var responsible = fallback.Hierarchy.GetResponsible(dA, dB);
@@ -590,7 +642,10 @@ namespace ClashRuleEngine.Services
                     for (int k = 1; k < list.Count; k++)
                         union(list[0], list[k]);
 
-            // ── Pass 2: spatial proximity (O(n²), n is per-test so small) ──
+            // ── Pass 2: spatial proximity via a uniform grid hash ──────────
+            // Bucket centres into cells of edge = threshold; a clash can only be
+            // within threshold of clashes in its own + 26 neighbouring cells. This
+            // turns the old O(n²) sweep into ~O(n) for large tests (e.g. 12k clashes).
             if (linkProximity)
             {
                 var centers = new Point3D[n];
@@ -598,21 +653,51 @@ namespace ClashRuleEngine.Services
 
                 double threshold = ProximityThreshold > 0 ? ProximityThreshold : 1.0;
                 double thresholdSq = threshold * threshold;
+                double inv = 1.0 / threshold;
+
+                var cells = new Dictionary<long, List<int>>();
+                long CellKey(double x, double y, double z)
+                {
+                    // Pack three 21-bit cell coords into one long (enough for any real model extent).
+                    long cx = (long)Math.Floor(x * inv) & 0x1FFFFF;
+                    long cy = (long)Math.Floor(y * inv) & 0x1FFFFF;
+                    long cz = (long)Math.Floor(z * inv) & 0x1FFFFF;
+                    return (cx << 42) | (cy << 21) | cz;
+                }
+
+                for (int i = 0; i < n; i++)
+                {
+                    var c = centers[i];
+                    if (c == null) continue;
+                    long key = CellKey(c.X, c.Y, c.Z);
+                    if (!cells.TryGetValue(key, out var list)) cells[key] = list = new List<int>();
+                    list.Add(i);
+                }
+
                 for (int i = 0; i < n; i++)
                 {
                     var ci = centers[i];
                     if (ci == null) continue;
-                    for (int j = i + 1; j < n; j++)
-                    {
-                        var cj = centers[j];
-                        if (cj == null) continue;
-                        if (find(i) == find(j)) continue;
-                        double dx = ci.X - cj.X;
-                        double dy = ci.Y - cj.Y;
-                        double dz = ci.Z - cj.Z;
-                        if (dx * dx + dy * dy + dz * dz <= thresholdSq)
-                            union(i, j);
-                    }
+                    long bx = (long)Math.Floor(ci.X * inv);
+                    long by = (long)Math.Floor(ci.Y * inv);
+                    long bz = (long)Math.Floor(ci.Z * inv);
+
+                    for (int ox = -1; ox <= 1; ox++)
+                        for (int oy = -1; oy <= 1; oy++)
+                            for (int oz = -1; oz <= 1; oz++)
+                            {
+                                long nk = (((bx + ox) & 0x1FFFFF) << 42) | (((by + oy) & 0x1FFFFF) << 21) | ((bz + oz) & 0x1FFFFF);
+                                if (!cells.TryGetValue(nk, out var bucket)) continue;
+                                foreach (int j in bucket)
+                                {
+                                    if (j <= i) continue;
+                                    var cj = centers[j];
+                                    if (cj == null) continue;
+                                    if (find(i) == find(j)) continue;
+                                    double dx = ci.X - cj.X, dy = ci.Y - cj.Y, dz = ci.Z - cj.Z;
+                                    if (dx * dx + dy * dy + dz * dz <= thresholdSq) union(i, j);
+                                }
+                            }
                 }
             }
 

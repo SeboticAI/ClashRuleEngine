@@ -16,9 +16,9 @@ namespace ClashRuleEngine.UI
         private readonly TextBlock _status;
         public bool Cancelled { get; private set; }
 
-        public ExportProgressWindow()
+        public ExportProgressWindow(string title = "Exporting session")
         {
-            Title = "Exporting session";
+            Title = title;
             Width = 460;
             Height = 150;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;

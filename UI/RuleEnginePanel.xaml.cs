@@ -87,17 +87,22 @@ namespace ClashRuleEngine.UI
             _dispatcherHooked = true;
             try
             {
+                var shown = new HashSet<string>(StringComparer.Ordinal);
                 System.Windows.Threading.Dispatcher.CurrentDispatcher.UnhandledException += (s, ex) =>
                 {
+                    ex.Handled = true;   // keep Navisworks running, always
                     try
                     {
+                        // De-dupe: show each distinct error ONCE so a repeated binding/
+                        // layout error can never flood the screen with dialogs.
+                        string msg = ex.Exception?.Message ?? "Unknown error";
+                        if (!shown.Add(msg)) return;
                         MessageBox.Show(
                             "The Clash Rule Engine hit an unexpected error but Navisworks was kept alive:\n\n"
-                            + ex.Exception.Message,
+                            + msg + "\n\n(Further identical errors are suppressed.)",
                             "Clash Rule Engine", MessageBoxButton.OK, MessageBoxImage.Warning);
                     }
                     catch { }
-                    ex.Handled = true;   // keep Navisworks running
                 };
             }
             catch { _dispatcherHooked = false; }
@@ -998,12 +1003,16 @@ namespace ClashRuleEngine.UI
                 return;
             }
             _suppressClashRefresh = true;
+            var progress = new ExportProgressWindow("Applying rules");
+            progress.Show();
             try
             {
                 SyncRulesToTestSet();
                 _processor.ApplyGroupingSettings(_config);
                 var result = _processor.ProcessSingleTest(testName, _currentTestRuleSet,
-                    _config.Hierarchy, _config.UseHierarchyFallback);
+                    _config.Hierarchy, _config.UseHierarchyFallback,
+                    progress.Report, () => progress.Cancelled);
+                progress.Close();
                 ShowResults(result);
 
                 // Refresh the clash list if it's loaded, to reflect updated statuses
@@ -1012,19 +1021,23 @@ namespace ClashRuleEngine.UI
             }
             catch (Exception ex)
             {
+                progress.Close();
                 MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            finally { _suppressClashRefresh = false; }
+            finally { try { progress.Close(); } catch { } _suppressClashRefresh = false; }
         }
 
         private void OnRunAllTests(object sender, RoutedEventArgs e)
         {
             _suppressClashRefresh = true;
+            var progress = new ExportProgressWindow("Applying rules — all tests");
+            progress.Show();
             try
             {
                 SyncRulesToTestSet();
                 _processor.ApplyGroupingSettings(_config);
-                var result = _processor.ProcessAllTests(_config);
+                var result = _processor.ProcessAllTests(_config, progress.Report, () => progress.Cancelled);
+                progress.Close();
                 ShowResults(result);
 
                 // Running rules swaps each test and disposes the old ClashResult
@@ -1035,9 +1048,10 @@ namespace ClashRuleEngine.UI
             }
             catch (Exception ex)
             {
+                progress.Close();
                 MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            finally { _suppressClashRefresh = false; }
+            finally { try { progress.Close(); } catch { } _suppressClashRefresh = false; }
         }
 
         // ──────────────────────────────────────────────────────
