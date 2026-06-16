@@ -1008,6 +1008,7 @@ namespace ClashRuleEngine.UI
             try
             {
                 SyncRulesToTestSet();
+                CommitSettingsTabs();   // capture the latest grouping/hierarchy UI
                 _processor.ApplyGroupingSettings(_config);
                 var result = _processor.ProcessSingleTest(testName, _currentTestRuleSet,
                     _config.Hierarchy, _config.UseHierarchyFallback,
@@ -1035,6 +1036,7 @@ namespace ClashRuleEngine.UI
             try
             {
                 SyncRulesToTestSet();
+                CommitSettingsTabs();   // capture the latest grouping/hierarchy UI
                 _processor.ApplyGroupingSettings(_config);
                 var result = _processor.ProcessAllTests(_config, progress.Report, () => progress.Cancelled);
                 progress.Close();
@@ -1189,8 +1191,19 @@ namespace ClashRuleEngine.UI
                     return;
                 }
 
+                // Grouping is an ADDIN setting, not dictated by an imported file —
+                // import brings in rules + hierarchy + lists; the grouping you've set
+                // in the panel wins. Capture current settings and re-apply them.
+                try { CommitSettingsTabs(); } catch { }
+                var keepMode = _config?.GroupingMode ?? Models.ClashGroupingMode.None;
+                var keepThreshold = (_config?.ProximityThreshold ?? 1.0) > 0 ? _config.ProximityThreshold : 1.0;
+                var keepAssignByGroup = _config?.AssignByGroup ?? false;
+
                 _config = imported;
                 _config.Hierarchy?.EnsureSeeded();
+                _config.GroupingMode = keepMode;
+                _config.ProximityThreshold = keepThreshold;
+                _config.AssignByGroup = keepAssignByGroup;
 
                 // Persist into THIS document's sidecar so it loads next time too.
                 RulePersistenceService.Save(_config);

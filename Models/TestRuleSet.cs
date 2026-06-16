@@ -233,8 +233,9 @@ namespace ClashRuleEngine.Models
         /// </summary>
         public bool UseHierarchyFallback { get; set; } = true;
 
-        /// <summary>How active clashes are clustered into Clash Detective groups.</summary>
-        public ClashGroupingMode GroupingMode { get; set; } = ClashGroupingMode.Hybrid;
+        /// <summary>How active clashes are clustered into Clash Detective groups.
+        /// Default None — grouping is opt-in, chosen in the addin's Hierarchy tab.</summary>
+        public ClashGroupingMode GroupingMode { get; set; } = ClashGroupingMode.None;
 
         /// <summary>Proximity threshold (metres) for proximity/hybrid grouping.</summary>
         public double ProximityThreshold { get; set; } = 1.0;
