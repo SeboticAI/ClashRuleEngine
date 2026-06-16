@@ -42,6 +42,11 @@ $cfg = New-Object ClashRuleEngine.Models.ProjectConfig
 $cfg.ProjectName = "00_Z_05 - data-derived discipline hierarchy"
 $cfg.UseHierarchyFallback = $true
 
+# Start with NO auto-grouping: clean per-clash assignment, no merged blobs.
+# Turn on a grouping mode in the Hierarchy tab once assignments are trusted.
+$cfg.GroupingMode = [ClashRuleEngine.Models.ClashGroupingMode]::None
+$cfg.AssignByGroup = $false
+
 # Highest precedence (never moves) -> lowest (always moves).
 # Keywords are MODEL-FILE tokens ONLY (the federation is strictly by-discipline
 # model: 00_Z_05_CON_<disc>.nwc + ...RVT-<disc>-0001.rvt). Bare words like "MECH"
