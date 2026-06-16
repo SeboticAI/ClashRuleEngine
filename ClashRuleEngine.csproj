@@ -109,6 +109,7 @@
     <Compile Include="Models\TestRuleSet.cs" />
     <Compile Include="Plugin\ClashRuleEnginePlugin.cs" />
     <Compile Include="Plugin\ClashMarkerPlugins.cs" />
+    <Compile Include="Plugin\BatchClashExtractPlugin.cs" />
     <Compile Include="Services\AiRuleGenerator.cs" />
     <Compile Include="Services\ClashApiCompat.cs" />
     <Compile Include="Services\ClashMarkerService.cs" />
