@@ -193,7 +193,11 @@ namespace ClashRuleEngine.NwdClashLearner
 
             SetBusy(true);
             _log.Clear();
-            var t = new Thread(() => RunBatch(files, output, plugin)) { IsBackground = true };
+            var t = new Thread(() =>
+            {
+                try { RunBatch(files, output, plugin); }
+                catch (Exception ex) { Log("FATAL: " + ex); Done(output, false); }
+            }) { IsBackground = true };
             t.SetApartmentState(ApartmentState.STA);   // Navisworks Automation is STA/COM
             t.Start();
         }
