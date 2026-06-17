@@ -63,7 +63,7 @@ namespace ClashRuleEngine.NwdClashLearner
             var browseOut = new Button { Text = "Browse...", Left = 684, Top = 240, Width = 110, Height = 26 };
             browseOut.Click += (s, e) => BrowseOutput();
 
-            var lblPlugin = new Label { Text = "Extractor plugin (ClashRuleEngine.dll):", Left = 12, Top = 274, AutoSize = true };
+            var lblPlugin = new Label { Text = "Extractor plugin (info only - engine uses the DEPLOYED Navisworks plugin):", Left = 12, Top = 274, AutoSize = true };
             _plugin.Left = 12; _plugin.Top = 294; _plugin.Width = 660;
             _plugin.Text = LocatePlugin();
             var browsePlugin = new Button { Text = "Browse...", Left = 684, Top = 292, Width = 110, Height = 26 };
@@ -178,12 +178,7 @@ namespace ClashRuleEngine.NwdClashLearner
             if (files.Count == 0) { MessageBox.Show(this, "Add at least one NWD."); return; }
             string output = _output.Text.Trim();
             if (string.IsNullOrWhiteSpace(output)) { MessageBox.Show(this, "Choose an output file."); return; }
-            string plugin = _plugin.Text.Trim();
-            if (string.IsNullOrWhiteSpace(plugin) || !File.Exists(plugin))
-            {
-                MessageBox.Show(this, "Couldn't find ClashRuleEngine.dll (the extractor plugin). Browse to it — it's the built plugin DLL.");
-                return;
-            }
+            string plugin = _plugin.Text.Trim();   // informational only; engine uses the INSTALLED plugin
 
             var roamer = Process.GetProcessesByName("Roamer");
             if (roamer.Length > 0 &&
@@ -211,11 +206,11 @@ namespace ClashRuleEngine.NwdClashLearner
                 Log($"Starting Navisworks engine for {files.Count} file(s)...");
 
                 NavisworksApplication app = null;
+                bool notFound = false;
                 try
                 {
                     app = new NavisworksApplication();
                     try { app.DisableProgress(); } catch { }
-                    try { app.AddPluginAssembly(plugin); } catch (Exception ex) { Log("AddPluginAssembly: " + ex.Message); }
 
                     for (int i = 0; i < files.Count; i++)
                     {
@@ -227,10 +222,20 @@ namespace ClashRuleEngine.NwdClashLearner
                             app.ExecuteAddInPlugin(PluginId, new[] { output });
                             ok++;
                         }
-                        catch (Exception ex) { fail++; Log("   ERROR: " + ex.Message); }
+                        catch (Exception ex)
+                        {
+                            fail++;
+                            Log("   ERROR: " + ex.Message);
+                            if (ex.Message.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0) notFound = true;
+                        }
                     }
                 }
                 finally { try { app?.Dispose(); } catch { } }
+
+                if (notFound)
+                    Log("\n>> The extractor plugin is not installed in Navisworks. Deploy the CURRENT build:\n" +
+                        "   run tools\\deploy.ps1 -Version 2027 (elevated), then retry. (Navisworks 2027 only\n" +
+                        "   loads plugins from its install Plugins folder.)");
 
                 long recs = 0;
                 try { if (File.Exists(output)) recs = File.ReadLines(output).Count(); } catch { }
