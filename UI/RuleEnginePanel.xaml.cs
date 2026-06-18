@@ -991,17 +991,29 @@ namespace ClashRuleEngine.UI
             pnlResultStats.Children.Add(MakeStatChip("groups", result.GroupsCreated, "#F5F3FF", "#7C3AED"));
             if (result.Skipped > 0)
                 pnlResultStats.Children.Add(MakeStatChip("skipped", result.Skipped, "#F3F4F6", "#6B7280"));
+            if (result.NoRuleTests.Count > 0)
+                pnlResultStats.Children.Add(MakeStatChip("no-rule tests", result.NoRuleTests.Count, "#F3F4F6", "#6B7280"));
 
             // Per-rule breakdown — largest first
             lstResultRules.ItemsSource = result.AssignmentsByRule.Values
                 .OrderByDescending(a => a.Count).ToList();
 
-            // Warnings (collapsible)
-            if (result.Errors.Count > 0)
+            // Warnings + the (expected) no-rule skips, collapsible. Real warnings drive the
+            // header; tests with no rules (vs-structure etc.) are shown as info, not warnings.
+            int warn = result.Errors.Count;
+            if (warn > 0 || result.NoRuleTests.Count > 0)
             {
-                txtResultWarningsHeader.Text = $"{result.Errors.Count} warning{(result.Errors.Count != 1 ? "s" : "")}";
-                txtResultWarnings.Text = string.Join(Environment.NewLine,
-                    result.Errors.Take(20).Select(e => "• " + e));
+                var lines = new List<string>();
+                if (warn > 0) lines.AddRange(result.Errors.Take(20).Select(e => "⚠  " + e));
+                if (result.NoRuleTests.Count > 0)
+                {
+                    lines.Add($"ℹ  {result.NoRuleTests.Count} test(s) had no matching rules (expected — e.g. vs-structure tests):");
+                    lines.AddRange(result.NoRuleTests.Take(30).Select(t => "      • " + t));
+                }
+                txtResultWarningsHeader.Text = warn > 0
+                    ? $"{warn} warning{(warn != 1 ? "s" : "")}"
+                    : $"{result.NoRuleTests.Count} test(s) skipped — no rules";
+                txtResultWarnings.Text = string.Join(Environment.NewLine, lines);
                 expResultWarnings.Visibility = Visibility.Visible;
                 expResultWarnings.IsExpanded = false;
             }

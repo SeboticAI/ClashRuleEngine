@@ -313,7 +313,8 @@ namespace ClashRuleEngine.Services
                 if (orderedRules.Count == 0 && !hasDefault &&
                     !(UseKindRules && KindRules != null && KindRules.Count > 0))
                 {
-                    result.Errors.Add($"No rules for test '{ct.DisplayName}' — skipped.");
+                    // Expected (e.g. vs-structure tests have no rules by design) — not an error.
+                    result.NoRuleTests.Add(ct.DisplayName);
                     continue;
                 }
                 if (testRuleSet == null) testRuleSet = new TestRuleSet { TestName = ct.DisplayName };
@@ -1221,6 +1222,8 @@ namespace ClashRuleEngine.Services
         public int GroupsCreated { get; set; }
         public int Approved { get; set; }
         public List<string> Errors { get; set; } = new List<string>();
+        /// <summary>Tests that had no matching rules — expected (e.g. vs-structure), not an error.</summary>
+        public List<string> NoRuleTests { get; set; } = new List<string>();
         public List<string> UnmatchedClashes { get; set; } = new List<string>();
         public Dictionary<string, AssignmentSummary> AssignmentsByRule { get; set; } = new Dictionary<string, AssignmentSummary>();
 
