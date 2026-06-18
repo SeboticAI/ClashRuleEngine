@@ -883,7 +883,13 @@ namespace ClashRuleEngine.Services
 
             if (n < 2)
             {
-                ungrouped.AddRange(active);
+                // A lone clash still gets a group so nothing is left loose.
+                if (n == 1)
+                {
+                    var only = new ClashResultGroup { DisplayName = "Single clashes (1)" };
+                    only.Children.Add(active[0]);
+                    groups.Add(only);
+                }
                 return;
             }
 
@@ -1002,12 +1008,18 @@ namespace ClashRuleEngine.Services
                 list.Add(i);
             }
 
-            // Largest groups first (nicer visual ordering in Clash Detective)
+            // Largest groups first (nicer visual ordering in Clash Detective). Singletons
+            // (a clash that links to nothing) are NOT left ungrouped — they're bucketed by
+            // their own element label so nothing is loose and the name is meaningful (lone
+            // clashes on the same element bundle together rather than each being a one-off).
+            var singles = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
             foreach (var members in components.Values.OrderByDescending(c => c.Count))
             {
                 if (members.Count < 2)
                 {
-                    ungrouped.Add(active[members[0]]);
+                    string label = SingletonLabel(members[0], indexElements, elementLabels);
+                    if (!singles.TryGetValue(label, out var bucket)) singles[label] = bucket = new List<int>();
+                    bucket.Add(members[0]);
                     continue;
                 }
 
@@ -1015,6 +1027,14 @@ namespace ClashRuleEngine.Services
                 grp.DisplayName = $"{PickGroupLabel(members, indexElements, elementLabels)} ({members.Count})";
                 foreach (var idx in members)
                     grp.Children.Add(active[idx]);
+                groups.Add(grp);
+            }
+
+            // Emit the singleton buckets as their own named groups (nothing left ungrouped).
+            foreach (var kv in singles.OrderByDescending(s => s.Value.Count))
+            {
+                var grp = new ClashResultGroup { DisplayName = $"{kv.Key} ({kv.Value.Count})" };
+                foreach (var idx in kv.Value) grp.Children.Add(active[idx]);
                 groups.Add(grp);
             }
         }
@@ -1073,6 +1093,18 @@ namespace ClashRuleEngine.Services
         /// members of the component (the "hub" element, e.g. the one beam that
         /// four pipes all hit). Falls back to "Proximity cluster".
         /// </summary>
+        /// <summary>A sensible name for a lone clash that linked to nothing: its own
+        /// element label when known, else a generic "Single clashes" bucket. Lone clashes
+        /// sharing a label bundle together rather than each becoming a one-off group.</summary>
+        private static string SingletonLabel(int i, List<string>[] indexElements,
+            Dictionary<string, string> elementLabels)
+        {
+            foreach (var key in indexElements[i])
+                if (elementLabels.TryGetValue(key, out var l) && !string.IsNullOrWhiteSpace(l))
+                    return l;
+            return "Single clashes";
+        }
+
         private static string PickGroupLabel(List<int> members, List<string>[] indexElements,
             Dictionary<string, string> elementLabels)
         {
