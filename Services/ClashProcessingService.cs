@@ -300,18 +300,23 @@ namespace ClashRuleEngine.Services
                 var ct = tests[ti];
                 result.TestsProcessed++;
 
-                var testRuleSet = config.GetOrCreateTestRuleSet(ct.DisplayName);
-                var orderedRules = testRuleSet.Rules.Where(r => r.IsEnabled).OrderBy(r => r.Priority).ToList();
+                // Fuzzy-match the live test to an imported rule set (handles "_MECH vs _FIRE"
+                // vs "FIRE vs MECH" vs "MC v FC" etc.) — does NOT create empty sets.
+                var testRuleSet = config.FindRuleSet(ct.DisplayName);
+                var orderedRules = testRuleSet?.Rules.Where(r => r.IsEnabled).OrderBy(r => r.Priority).ToList()
+                                   ?? new List<ClashRule>();
 
-                // A test with no rules and no per-test default has nothing to do — skip.
-                bool hasDefault = !string.IsNullOrWhiteSpace(testRuleSet.DefaultAssignee) &&
-                    !string.Equals(testRuleSet.DefaultAssignee, "Unassigned", StringComparison.OrdinalIgnoreCase);
+                // A test with no matching rules and no per-test default has nothing to do — skip.
+                bool hasDefault = testRuleSet != null
+                    && !string.IsNullOrWhiteSpace(testRuleSet.DefaultAssignee)
+                    && !string.Equals(testRuleSet.DefaultAssignee, "Unassigned", StringComparison.OrdinalIgnoreCase);
                 if (orderedRules.Count == 0 && !hasDefault &&
                     !(UseKindRules && KindRules != null && KindRules.Count > 0))
                 {
                     result.Errors.Add($"No rules for test '{ct.DisplayName}' — skipped.");
                     continue;
                 }
+                if (testRuleSet == null) testRuleSet = new TestRuleSet { TestName = ct.DisplayName };
 
                 string label = $"Test {ti + 1}/{tests.Count}: {ct.DisplayName}";
                 ProcessTest(ct, orderedRules, testRuleSet, result, doc, clashPlugin.TestsData, label);

@@ -127,17 +127,57 @@ namespace ClashRuleEngine.Models
         /// <summary>Claude API key (stored locally, never shared)</summary>
         public string ApiKey { get; set; } = string.Empty;
 
-        /// <summary>Get or create the rule set for a specific clash test</summary>
+        /// <summary>Get or create the rule set for a specific clash test (fuzzy-find first
+        /// so imported rules apply even when the live test name differs slightly).</summary>
         public TestRuleSet GetOrCreateTestRuleSet(string testName)
         {
-            var existing = TestRuleSets.FirstOrDefault(
-                t => string.Equals(t.TestName, testName, StringComparison.OrdinalIgnoreCase));
-
+            var existing = FindRuleSet(testName);
             if (existing != null) return existing;
 
             var newSet = new TestRuleSet { TestName = testName };
             TestRuleSets.Add(newSet);
             return newSet;
+        }
+
+        /// <summary>Finds the rule set for a clash test by EXACT name first, then by a
+        /// canonical trade-pair match (order-insensitive, punctuation-insensitive, with
+        /// abbreviation mapping) so "_MECH vs _FIRE", "FIRE vs MECH" and "MC v FC" all
+        /// resolve to the same rules. Returns null if nothing matches (no empty set created).</summary>
+        public TestRuleSet FindRuleSet(string testName)
+        {
+            if (string.IsNullOrWhiteSpace(testName) || TestRuleSets == null) return null;
+            var exact = TestRuleSets.FirstOrDefault(
+                t => string.Equals(t.TestName, testName, StringComparison.OrdinalIgnoreCase));
+            if (exact != null) return exact;
+
+            string key = CanonicalTestKey(testName);
+            if (key == null) return null;
+            return TestRuleSets.FirstOrDefault(t => string.Equals(CanonicalTestKey(t.TestName), key, StringComparison.Ordinal));
+        }
+
+        // Trade synonyms — both the test-model codes (MC/EC/FC/HC/SC…) and full words map
+        // to one canonical trade so different naming conventions still match.
+        private static readonly Dictionary<string, string> TradeSynonyms =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "MC", "MECH" }, { "MECHANICAL", "MECH" }, { "HVAC", "MECH" },
+            { "EC", "ELEC" }, { "ELECTRICAL", "ELEC" },
+            { "FC", "FIRE" }, { "FP", "FIRE" },
+            { "HC", "HYD" }, { "HYDRAULIC", "HYD" }, { "PLUMB", "HYD" }, { "PLUMBING", "HYD" },
+            { "SC", "STR" }, { "STRUCT", "STR" }, { "STRUCTURE", "STR" }, { "STRUCTURAL", "STR" },
+            { "IC", "ICT" }, { "COMMS", "ICT" }, { "COMM", "ICT" }, { "DATA", "ICT" }, { "CD", "ICT" }, { "COMMUNICATIONS", "ICT" },
+            { "SECURITY", "SEC" },
+            { "ARCH", "ARC" }, { "ARCHITECTURAL", "ARC" }, { "ARCHITECTURE", "ARC" },
+        };
+
+        /// <summary>Canonical "trade-A|trade-B" key (sorted) for a clash-test name, or null.</summary>
+        public static string CanonicalTestKey(string name)
+        {
+            ApprovePolicy.ParseTestTrades(name, out string a, out string b);
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return null;
+            a = TradeSynonyms.TryGetValue(a, out var ca) ? ca : a;
+            b = TradeSynonyms.TryGetValue(b, out var cb) ? cb : b;
+            return string.CompareOrdinal(a, b) <= 0 ? a + "|" + b : b + "|" + a;
         }
 
         /// <summary>Get all unique assignees from rules and the shared list</summary>

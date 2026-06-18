@@ -174,6 +174,12 @@ namespace ClashRuleEngine.Models
             int skip = 4;
             if (v < 0)
             {
+                // single-"v" separator (e.g. the test-model "MC v FC")
+                int p = testName.IndexOf(" v ", StringComparison.OrdinalIgnoreCase);
+                if (p >= 0) { v = p; skip = 3; }
+            }
+            if (v < 0)
+            {
                 // Fallback: a standalone "vs" token (non-letter boundaries) so we never
                 // match "vs" buried inside a trade name.
                 for (int i = 0; i + 2 <= testName.Length; i++)
