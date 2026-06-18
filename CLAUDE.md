@@ -223,7 +223,8 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
   `claude-opus-4-8`). Light theme UI.
 
 ### Next to build
-1. **One easy EXE** (the big one — see [[product-roadmap-decisions]]): combine extract→analyze→apply
+1. **One easy EXE** (the big one — FULL PLAN in [docs/combined-exe-plan.md](docs/combined-exe-plan.md)):
+   combine extract→analyze→apply
    into a single desktop app. `tools\NwdClashLearner` already does the extract half; the work is to
    **PORT `tools\analyze_clashes.py` mining logic to C#** (zero Python dependency — the MS-Store stub /
    stale-PATH friction must never reach a customer), then output both a reviewable file AND an "Apply
