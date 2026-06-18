@@ -40,6 +40,7 @@ USAGE
     python tools/analyze_clashes.py [path-to-clash_kinds.jsonl]
 """
 
+import glob
 import json
 import os
 import sys
@@ -355,8 +356,24 @@ def mine_approve(rows):
     return floors, approve_assignees, asg_stat, band_stat, pair
 
 
+def _looks_like_material(tok):
+    """A render/material/paint/colour token - NOT a real element kind, so it must not
+    become an always-approve keyword (it would over-approve anything with that finish)."""
+    t = tok.lower()
+    if "render" in t or "material" in t or "paint" in t or "colour" in t or "color" in t:
+        return True
+    # bare RGB-ish colour code e.g. "0-255-0", "204-204-204"
+    parts = t.replace("(", " ").replace(")", " ").split()
+    for p in parts:
+        bits = p.split("-")
+        if len(bits) >= 3 and all(b.isdigit() for b in bits):
+            return True
+    return False
+
+
 def detect_flex_kinds(rows):
-    """Always-approve element kinds: curated 'flex' + any token strongly tied to approval."""
+    """Always-approve element kinds: curated 'flex' + any token strongly tied to approval
+    (material/colour tokens are excluded - they are finishes, not element kinds)."""
     kinds = [{"name": "Flexible pipe/duct", "keywords": ["flex"]}]
     tok_stat = defaultdict(lambda: {"appr": 0.0, "tot": 0.0})
     for r in rows:
@@ -374,7 +391,7 @@ def detect_flex_kinds(rows):
                 tok_stat[t]["appr"] += w
     extra = []
     for t, d in tok_stat.items():
-        if "flex" in t:
+        if "flex" in t or _looks_like_material(t):
             continue
         if d["tot"] >= 30 and d["appr"] / d["tot"] >= 0.85:
             extra.append((t, d["appr"] / d["tot"], int(d["tot"])))
@@ -518,9 +535,18 @@ def write_report(path, rows, defaults, cat_rules, tree_rules, floors, approve_as
     w("source files              : %d" % len(files))
     w("canonical tests           : %d" % len(tests))
     w("distinct assignees        : %d" % len(assignees))
-    enriched = any((r.get("a") or {}).get("leaf") or (r.get("a") or {}).get("type") for r in rows)
-    w("schema                    : %s" % ("ENRICHED (leaf/type/diaMm present)"
-                                          if enriched else "BASIC (no leaf/type/diaMm)"))
+    has_fine = any(clean((r.get("a") or {}).get("leaf")) or clean((r.get("a") or {}).get("type"))
+                   for r in rows)
+    dia_hit = dia_tot = 0
+    for r in rows:
+        for sd in (r.get("a"), r.get("b")):
+            dia_tot += 1
+            if side_dia(sd) > 0:
+                dia_hit += 1
+    w("family/type/leaf          : %s" % ("present" if has_fine else "MISSING (re-extract for fine rules)"))
+    w("diaMm (for size splits)   : %s" % (
+        ("present on %.0f%% of sides" % pct(dia_hit, dia_tot)) if dia_hit
+        else "MISSING - re-extract with the current DLL to enable diameter splits"))
     w("")
 
     w("-" * 78)
@@ -612,13 +638,28 @@ def write_report(path, rows, defaults, cat_rules, tree_rules, floors, approve_as
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+def find_default_input():
+    """Locate clash_kinds.jsonl without the caller fighting paths: current dir, then any
+    OneDrive-redirected Desktop, then the plain Desktop. Returns the first that exists,
+    else the most-likely intended location (for a helpful 'not found' message)."""
+    home = os.path.expanduser("~")
+    candidates = [os.path.join(os.getcwd(), "clash_kinds.jsonl")]
+    candidates += sorted(glob.glob(os.path.join(home, "OneDrive*", "Desktop", "clash_kinds.jsonl")))
+    candidates.append(os.path.join(home, "Desktop", "clash_kinds.jsonl"))
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    one = sorted(glob.glob(os.path.join(home, "OneDrive*", "Desktop")))
+    base = one[0] if one else os.path.join(home, "Desktop")
+    return os.path.join(base, "clash_kinds.jsonl")
+
+
 def main():
-    default_in = os.path.join(os.path.expanduser("~"), "Desktop", "clash_kinds.jsonl")
-    in_path = sys.argv[1] if len(sys.argv) > 1 else default_in
+    in_path = sys.argv[1] if len(sys.argv) > 1 else find_default_input()
     if not os.path.isfile(in_path):
         print("Input not found: %s" % in_path)
         print("Generate it first:  tools\\run-batch-extract.ps1 -NwdFolder <folder>")
-        print("Or pass a path:     python tools/analyze_clashes.py <clash_kinds.jsonl>")
+        print("Or pass a path:     py tools\\analyze_clashes.py <clash_kinds.jsonl>")
         return 2
 
     rows = load_rows(in_path)
