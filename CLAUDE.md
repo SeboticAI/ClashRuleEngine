@@ -235,7 +235,11 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
    with `diaMm` populated; the analyzer's diameter-split section is wired and waiting on that data).
 3. **Wire the AI handoff** — feed `_aiHandoff` (low-confidence + soft-default tests) to the existing
    AI rule generator so the deterministic miner proposes and the AI refines the residue.
-4. **In-panel rule editing UX** for the per-test pair rules (add/disable/reorder, see confidence).
+4. **Clash close-out tool** (FULL PLAN in [docs/closeout-tool-plan.md](docs/closeout-tool-plan.md)):
+   import a `clashre-closeout/1` file (AI-generated from trade emails) → preview → apply
+   approve/reassign/status/comment per clash via the EXISTING `WriteBack` (match by GUID/name/fuzzy,
+   with an audit stamp). Most plumbing already exists.
+5. **In-panel rule editing UX** for the per-test pair rules (add/disable/reorder, see confidence).
 4. **In-document stamping** (optional) — per-clash outcome onto model items via the COM
    `InwGUIPropertyNode2` bridge (config stays in the global `.clashre` store).
 
