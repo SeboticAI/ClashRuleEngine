@@ -9,24 +9,52 @@
         <local:HexToBrushConverter x:Key="HexToBrush"/>
         <local:EnabledToOpacityConverter x:Key="EnabledToOpacity"/>
         <local:PriorityToDisplayConverter x:Key="PriorityToDisplay"/>
-        <local:AssigneeModeIndexConverter x:Key="ModeIdx"/>
 
         <Style x:Key="FieldLabel" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="FontSize" Value="10"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#9CA3AF"/>
-            <Setter Property="Margin" Value="0,0,0,2"/>
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="Padding" Value="5,3"/>
-            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Setter Property="CaretBrush" Value="#1A1A2E"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <!-- Dropdown items + selection highlight -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#2563EB"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+        </Style>
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
         </Style>
 
         <Style x:Key="Btn" TargetType="Button">
             <Setter Property="Background" Value="#FFFFFF"/>
             <Setter Property="Foreground" Value="#374151"/>
-            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -41,7 +69,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="#F3F4F6"/>
-                                <Setter TargetName="bd" Property="BorderBrush" Value="#9CA3AF"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#D1D5DB"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="#E5E7EB"/>
@@ -85,8 +113,8 @@
         </Style>
         <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource Btn}">
             <Setter Property="Foreground" Value="#DC2626"/>
-            <Setter Property="BorderBrush" Value="#FCA5A5"/>
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#FECACA"/>
+            <Setter Property="Background" Value="#FEF2F2"/>
         </Style>
     </UserControl.Resources>
 
@@ -107,7 +135,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="Clash Rule Engine" FontSize="16" FontWeight="Bold" Foreground="#111827"/>
+                    <TextBlock Text="Clash Rule Engine" FontSize="16" FontWeight="Bold" Foreground="#1A1A2E"/>
                     <TextBlock x:Name="txtStatus" Text="Select a clash test" FontSize="11" Foreground="#6B7280" Margin="0,2,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -118,20 +146,56 @@
             </Grid>
         </Border>
 
-        <!-- CLASH TEST SELECTOR -->
-        <Border Grid.Row="1" Background="#EFF6FF" Padding="12,8" BorderBrush="#BFDBFE" BorderThickness="0,0,0,1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="Clash test:" VerticalAlignment="Center" Foreground="#1E40AF" FontSize="12" FontWeight="SemiBold" Margin="0,0,8,0"/>
-                <ComboBox x:Name="cmbClashTest" Grid.Column="1" FontSize="12" SelectionChanged="OnClashTestChanged"/>
-                <Button Grid.Column="2" Content="Matrix" Style="{StaticResource Btn}" Click="OnShowMatrix" Margin="6,0,0,0" FontSize="11" ToolTip="Clash matrix — all test pairs at a glance"/>
-                <Button Grid.Column="3" Content="Refresh" Style="{StaticResource Btn}" Click="OnRefreshTests" Margin="6,0,0,0" FontSize="11"/>
-            </Grid>
+        <!-- CLASH TEST SELECTOR + GLOBAL GROUPING -->
+        <Border Grid.Row="1" Background="#F9FAFB" Padding="12,8" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Clash test:" VerticalAlignment="Center" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="cmbClashTest" Grid.Column="1" FontSize="12" SelectionChanged="OnClashTestChanged"/>
+                    <Button Grid.Column="2" Content="Matrix" Style="{StaticResource Btn}" Click="OnShowMatrix" Margin="6,0,0,0" FontSize="11" ToolTip="Clash matrix — all test pairs at a glance"/>
+                    <Button Grid.Column="3" Content="Refresh" Style="{StaticResource Btn}" Click="OnRefreshTests" Margin="6,0,0,0" FontSize="11"/>
+                </Grid>
+
+                <!-- GLOBAL GROUPING (applies to all tests) -->
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Grouping (all tests):" VerticalAlignment="Center" Foreground="#6B7280"
+                               FontSize="12" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="cmbGroupMode" Grid.Column="1" FontSize="12" VerticalAlignment="Center"
+                              ToolTip="How active clashes are clustered into Clash Detective groups when rules run.">
+                        <ComboBoxItem Content="None — every clash on its own"/>
+                        <ComboBoxItem Content="Shared element — clashes touching the same item"/>
+                        <ComboBoxItem Content="Proximity — clashes within the distance below"/>
+                        <ComboBoxItem Content="Grid — one group per grid cell (e.g. H-22)"/>
+                        <ComboBoxItem Content="Level — one group per building level"/>
+                        <ComboBoxItem Content="Assignee / trade — one group per trade"/>
+                        <ComboBoxItem Content="Hybrid — shared element OR proximity"/>
+                        <ComboBoxItem Content="Grid + trade — split each cell by trade (named by grid)"/>
+                    </ComboBox>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                        <TextBlock Text="Proximity (m):" VerticalAlignment="Center" Foreground="#6B7280" FontSize="11" Margin="0,0,4,0"/>
+                        <TextBox x:Name="txtThreshold" FontSize="12" Width="50" VerticalAlignment="Center"
+                                 ToolTip="Distance for Proximity / Hybrid grouping (metres)."/>
+                    </StackPanel>
+                    <CheckBox x:Name="chkAssignByGroup" Grid.Column="3" VerticalAlignment="Center" Margin="10,0,0,0"
+                              FontSize="11" Foreground="#1A1A2E" Content="Group-then-assign"
+                              ToolTip="After clustering, every clash in a group is given the same assignee — the one most members resolved to."/>
+                </Grid>
+                <CheckBox x:Name="chkOnlyNew" Margin="0,6,0,0" FontSize="11" Foreground="#1A1A2E"
+                          Content="Only assign NEW clashes (leave active / assigned / grouped clashes as-is)"
+                          ToolTip="Incremental re-run: only New + unassigned clashes get assigned/approved/grouped; everything already triaged is left exactly as it is."/>
+            </StackPanel>
         </Border>
 
         <!-- TAB STRIP + CONTENT -->
@@ -153,22 +217,12 @@
                         <Border x:Name="bdTabClashes" Padding="12,8" Cursor="Hand"
                                 MouseLeftButtonDown="OnTabClashesClick"
                                 BorderBrush="Transparent" BorderThickness="0,0,0,2" Background="Transparent">
-                            <TextBlock x:Name="txtTabClashes" Text="Clashes" FontSize="12" FontWeight="SemiBold" Foreground="#9CA3AF"/>
-                        </Border>
-                        <Border x:Name="bdTabHierarchy" Padding="12,8" Cursor="Hand"
-                                MouseLeftButtonDown="OnTabHierarchyClick"
-                                BorderBrush="Transparent" BorderThickness="0,0,0,2" Background="Transparent">
-                            <TextBlock x:Name="txtTabHierarchy" Text="Hierarchy" FontSize="12" FontWeight="SemiBold" Foreground="#9CA3AF"/>
-                        </Border>
-                        <Border x:Name="bdTabLists" Padding="12,8" Cursor="Hand"
-                                MouseLeftButtonDown="OnTabListsClick"
-                                BorderBrush="Transparent" BorderThickness="0,0,0,2" Background="Transparent">
-                            <TextBlock x:Name="txtTabLists" Text="Assignees &amp; Groups" FontSize="12" FontWeight="SemiBold" Foreground="#9CA3AF"/>
+                            <TextBlock x:Name="txtTabClashes" Text="Clashes" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280"/>
                         </Border>
                         <Border x:Name="bdTabGeneral" Padding="12,8" Cursor="Hand"
                                 MouseLeftButtonDown="OnTabGeneralClick"
                                 BorderBrush="Transparent" BorderThickness="0,0,0,2" Background="Transparent">
-                            <TextBlock x:Name="txtTabGeneral" Text="General" FontSize="12" FontWeight="SemiBold" Foreground="#9CA3AF"/>
+                            <TextBlock x:Name="txtTabGeneral" Text="General" FontSize="12" FontWeight="SemiBold" Foreground="#6B7280"/>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
@@ -210,7 +264,7 @@
                                     <Border Grid.Column="0" Background="{Binding Color, Converter={StaticResource HexToBrush}}" CornerRadius="6,0,0,6"/>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,8" Width="36">
                                         <TextBlock Text="{Binding Priority, Converter={StaticResource PriorityToDisplay}}" FontSize="14" FontWeight="Bold" Foreground="#2563EB" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="&#x22EE;&#x22EE;" FontSize="10" Foreground="#9CA3AF" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                        <TextBlock Text="&#x22EE;&#x22EE;" FontSize="10" Foreground="#6B7280" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Margin="4,8,8,8">
                                         <StackPanel Orientation="Horizontal">
@@ -218,7 +272,7 @@
                                                       Click="OnToggleRuleEnabled" Tag="{Binding}"
                                                       VerticalAlignment="Center" Margin="0,0,6,0"
                                                       ToolTip="Enable / disable this rule (disabled rules are skipped when running)"/>
-                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="#111827" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="#1A1A2E" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <ItemsControl ItemsSource="{Binding Conditions}" Margin="0,3,0,0">
                                             <ItemsControl.ItemTemplate>
@@ -231,12 +285,12 @@
                                         </ItemsControl>
                                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                                             <Border Background="#F0FDF4" CornerRadius="3" Padding="5,2" Margin="0,0,4,0">
-                                                <TextBlock FontSize="10" Foreground="#166534">
+                                                <TextBlock FontSize="10" Foreground="#16A34A">
                                                     <Run Text="Group: "/><Run Text="{Binding GroupName}"/>
                                                 </TextBlock>
                                             </Border>
                                             <Border Background="#FFFBEB" CornerRadius="3" Padding="5,2">
-                                                <TextBlock FontSize="10" Foreground="#92400E">
+                                                <TextBlock FontSize="10" Foreground="#D97706">
                                                     <Run Text="Assign: "/><Run Text="{Binding AssigneeDisplay, Mode=OneWay}"/>
                                                 </TextBlock>
                                             </Border>
@@ -245,25 +299,25 @@
                                     <Grid Grid.Column="3" VerticalAlignment="Center" Margin="4,4,8,4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="5"/>
+                                            <ColumnDefinition Width="6"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <!-- Reorder arrows — bolder, larger -->
+                                        <!-- Reorder: clear text labels Up / Dn (glyph arrows render faintly in the UI font) -->
                                         <StackPanel Orientation="Vertical" VerticalAlignment="Center">
-                                            <Button Content="&#x25B2;" Width="28" Height="26" FontSize="13" FontWeight="Bold"
-                                                    Foreground="#374151" Style="{StaticResource Btn}"
-                                                    Click="OnMoveRuleUp" Tag="{Binding}" Margin="0,0,0,3" ToolTip="Move up"/>
-                                            <Button Content="&#x25BC;" Width="28" Height="26" FontSize="13" FontWeight="Bold"
-                                                    Foreground="#374151" Style="{StaticResource Btn}"
-                                                    Click="OnMoveRuleDown" Tag="{Binding}" ToolTip="Move down"/>
+                                            <Button Content="Up" Width="38" Height="26" FontSize="11" FontWeight="SemiBold"
+                                                    Foreground="#374151" Style="{StaticResource Btn}" Padding="0"
+                                                    Click="OnMoveRuleUp" Tag="{Binding}" Margin="0,0,0,4" ToolTip="Move rule up (higher priority)"/>
+                                            <Button Content="Dn" Width="38" Height="26" FontSize="11" FontWeight="SemiBold"
+                                                    Foreground="#374151" Style="{StaticResource Btn}" Padding="0"
+                                                    Click="OnMoveRuleDown" Tag="{Binding}" ToolTip="Move rule down (lower priority)"/>
                                         </StackPanel>
-                                        <!-- Edit + Delete -->
+                                        <!-- Edit + Delete: text labels (pencil glyph U+270F is missing from the UI font) -->
                                         <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Center">
-                                            <Button Content="&#x270F;" Width="28" Height="26" FontSize="13"
+                                            <Button Content="Edit" Width="52" Height="26" FontSize="11" FontWeight="SemiBold"
                                                     Background="#EFF6FF" Foreground="#2563EB" BorderBrush="#BFDBFE"
-                                                    Style="{StaticResource Btn}" Click="OnEditRule" Tag="{Binding}"
-                                                    Margin="0,0,0,3" ToolTip="Edit rule"/>
-                                            <Button Content="&#x2715;" Width="28" Height="26" FontSize="11"
+                                                    Style="{StaticResource Btn}" Click="OnEditRule" Tag="{Binding}" Padding="0"
+                                                    Margin="0,0,0,4" ToolTip="Edit rule"/>
+                                            <Button Content="Delete" Width="52" Height="26" FontSize="11" FontWeight="SemiBold"
                                                     Style="{StaticResource BtnDanger}" Click="OnDeleteRule" Tag="{Binding}"
                                                     Padding="0" ToolTip="Delete rule"/>
                                         </StackPanel>
@@ -277,8 +331,8 @@
                 <!-- Empty state (rules) -->
                 <StackPanel x:Name="pnlEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
                             Visibility="Collapsed">
-                    <TextBlock Text="No rules for this test" FontSize="14" Foreground="#9CA3AF" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Select a clash test above, then click '+ New Rule'" FontSize="11" Foreground="#D1D5DB"
+                    <TextBlock Text="No rules for this test" FontSize="14" Foreground="#6B7280" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Select a clash test above, then click '+ New Rule'" FontSize="11" Foreground="#6B7280"
                                HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap"
                                TextAlignment="Center" MaxWidth="240"/>
                 </StackPanel>
@@ -307,13 +361,13 @@
                             <TextBlock x:Name="txtClashCount" VerticalAlignment="Center"
                                        FontSize="11" Foreground="#6B7280" Margin="4,0,0,0"
                                        TextWrapping="Wrap"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                 <ToggleButton x:Name="btnMarkers" Content="3D Markers" FontSize="11"
-                                              Margin="0,0,6,0" Padding="8,3" Cursor="Hand"
+                                              Margin="0,0,6,0" Padding="10,5" Cursor="Hand" VerticalAlignment="Center"
                                               ToolTip="Show coloured markers at each clash in the 3D view; click a marker to select it"
                                               Checked="OnToggleMarkers" Unchecked="OnToggleMarkers"/>
                                 <Button Content="Refresh" Style="{StaticResource Btn}"
-                                        Click="OnRefreshClashes" FontSize="11"/>
+                                        Click="OnRefreshClashes" FontSize="11" Padding="10,5"/>
                             </StackPanel>
                         </Grid>
                         <!-- Status filter chips (built in code so counts stay live) -->
@@ -371,7 +425,7 @@
                                                            FontWeight="Bold" Foreground="White"/>
                                             </Border>
                                             <TextBlock Text="{Binding ClashName}" FontSize="12"
-                                                       FontWeight="SemiBold" Foreground="#111827"
+                                                       FontWeight="SemiBold" Foreground="#1A1A2E"
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <TextBlock FontSize="10.5" Foreground="#6B7280" Margin="0,2,0,0">
@@ -380,16 +434,16 @@
                                             <Run Text="{Binding Item2Name}"/>
                                         </TextBlock>
                                         <TextBlock Text="{Binding Description}" FontSize="10"
-                                                   Foreground="#9CA3AF" TextTrimming="CharacterEllipsis"
+                                                   Foreground="#6B7280" TextTrimming="CharacterEllipsis"
                                                    MaxWidth="260" Margin="0,1,0,0"/>
                                     </StackPanel>
                                     <!-- Inspect button -->
                                     <Button Grid.Column="2" Content="Inspect" Tag="{Binding}"
                                             Click="OnInspectClash" Margin="4,0,6,0"
                                             VerticalAlignment="Center" FontSize="11"
-                                            Padding="8,4" Cursor="Hand"
+                                            Padding="8,4" Cursor="Hand" Style="{StaticResource Btn}"
                                             Background="#EFF6FF" Foreground="#2563EB"
-                                            BorderBrush="#BFDBFE" BorderThickness="1"/>
+                                            BorderBrush="#2563EB" BorderThickness="1"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>
@@ -400,192 +454,13 @@
                 <StackPanel x:Name="pnlClashEmptyState" Grid.Row="1"
                             HorizontalAlignment="Center" VerticalAlignment="Center"
                             Visibility="Collapsed">
-                    <TextBlock Text="No clashes found" FontSize="14" Foreground="#9CA3AF"
+                    <TextBlock Text="No clashes found" FontSize="14" Foreground="#6B7280"
                                HorizontalAlignment="Center"/>
                     <TextBlock Text="Select a clash test above, or click Refresh"
-                               FontSize="11" Foreground="#D1D5DB"
+                               FontSize="11" Foreground="#6B7280"
                                HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap"
                                TextAlignment="Center" MaxWidth="240"/>
                 </StackPanel>
-            </Grid>
-
-            <!-- HIERARCHY TAB CONTENT -->
-            <Grid Grid.Row="1" x:Name="pnlTabHierarchy" Visibility="Collapsed">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <CheckBox Grid.Row="0" x:Name="chkFallback" Margin="10,8,10,6"
-                          FontSize="12.5" FontWeight="SemiBold" Foreground="#111827"
-                          Content="Auto-assign unmatched clashes using the discipline hierarchy"/>
-
-                <TextBlock Grid.Row="1" TextWrapping="Wrap" FontSize="11" Foreground="#6B7280" Margin="10,0,10,8">
-                    Order = precedence: the discipline at the TOP is hardest to move (right-of-way). In any clash the
-                    LOWER discipline is held responsible. "Assign the clash to" sends it to that trade, the other trade,
-                    or a specific owner. Keywords match the element's model file name, tree path and key properties.
-                    Rules always win when they match — the hierarchy fills the gaps.
-                </TextBlock>
-
-                <!-- GROUPING -->
-                <Border Grid.Row="2" Background="#FFFFFF" CornerRadius="6" BorderBrush="#E5E7EB" BorderThickness="1"
-                        Margin="10,0,10,8" Padding="10">
-                    <StackPanel>
-                        <TextBlock Text="GROUPING" Style="{StaticResource FieldLabel}"/>
-                        <Grid Margin="0,4,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2*"/>
-                                <ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="BUNDLE CLASHES BY" Style="{StaticResource FieldLabel}"/>
-                                <ComboBox x:Name="cmbGroupMode" FontSize="12"
-                                          ToolTip="How active clashes are clustered into Clash Detective groups when rules run.">
-                                    <ComboBoxItem Content="None (no grouping)"/>
-                                    <ComboBoxItem Content="Shared element"/>
-                                    <ComboBoxItem Content="Proximity (within distance)"/>
-                                    <ComboBoxItem Content="Grid intersection (e.g. G-21)"/>
-                                    <ComboBoxItem Content="Level"/>
-                                    <ComboBoxItem Content="Assignee / trade"/>
-                                    <ComboBoxItem Content="Hybrid (shared + proximity)"/>
-                                </ComboBox>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="PROXIMITY (metres)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox x:Name="txtThreshold" FontSize="12"
-                                         ToolTip="Distance for Proximity / Hybrid grouping (metres)."/>
-                            </StackPanel>
-                        </Grid>
-                        <CheckBox x:Name="chkAssignByGroup" Margin="0,8,0,0" FontSize="12" Foreground="#111827"
-                                  Content="Group first, then assign each group one trade (group-then-assign)"
-                                  ToolTip="After clustering, every clash in a group is given the same assignee — the one most members resolved to."/>
-                    </StackPanel>
-                </Border>
-
-                <ListBox Grid.Row="3" x:Name="lstDisciplines" Background="Transparent" BorderThickness="0" Margin="6,0"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="Padding" Value="0"/>
-                            <Setter Property="Margin" Value="0,0,0,6"/>
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="#FFFFFF" CornerRadius="6" BorderBrush="#E5E7EB" BorderThickness="1">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="6"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <Border Grid.Column="0" CornerRadius="6,0,0,6"
-                                            Background="{Binding Color, Converter={StaticResource HexToBrush}}"/>
-
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0">
-                                        <Button Width="26" Height="24" Style="{StaticResource Btn}" Click="OnMoveUp"
-                                                Tag="{Binding}" Margin="0,0,0,3" ToolTip="Higher precedence">
-                                            <Path Data="M0,6 L5,0 L10,6 Z" Fill="#374151"
-                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Button>
-                                        <Button Width="26" Height="24" Style="{StaticResource Btn}" Click="OnMoveDown"
-                                                Tag="{Binding}" ToolTip="Lower precedence">
-                                            <Path Data="M0,0 L10,0 L5,6 Z" Fill="#374151"
-                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Button>
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Column="2" Margin="8,8,8,8">
-                                        <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}"
-                                                 FontWeight="SemiBold" FontSize="13"/>
-                                        <TextBlock Text="DETECT WITH KEYWORDS (comma-separated)" Style="{StaticResource FieldLabel}" Margin="0,6,0,2"/>
-                                        <TextBox Text="{Binding KeywordsCsv, UpdateSourceTrigger=LostFocus}"
-                                                 TextWrapping="Wrap" FontSize="11.5"/>
-                                        <TextBlock Text="ASSIGN THE CLASH TO" Style="{StaticResource FieldLabel}" Margin="0,6,0,2"/>
-                                        <ComboBox FontSize="12"
-                                                  SelectedIndex="{Binding AssigneeMode, Mode=TwoWay, Converter={StaticResource ModeIdx}, UpdateSourceTrigger=PropertyChanged}"
-                                                  ToolTip="Who resolves a clash this trade is responsible for. 'The other trade' routes it across to the opposing service in every test (e.g. Hydraulic drainage).">
-                                            <ComboBoxItem Content="A specific owner (named below)"/>
-                                            <ComboBoxItem Content="This trade (owning)"/>
-                                            <ComboBoxItem Content="The other trade in the clash"/>
-                                        </ComboBox>
-                                        <Grid Margin="0,6,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="8"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="OWNER / ASSIGNEE (optional — defaults to trade name)" Style="{StaticResource FieldLabel}"/>
-                                                <ComboBox IsEditable="True" FontSize="12"
-                                                          ItemsSource="{Binding AvailableAssignees, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                          Text="{Binding Assignee, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Text="GROUP (optional)" Style="{StaticResource FieldLabel}"/>
-                                                <TextBox Text="{Binding GroupName, UpdateSourceTrigger=LostFocus}" FontSize="12"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </StackPanel>
-
-                                    <Button Grid.Column="3" Content="&#x2715;" Width="26" Height="26" FontSize="11"
-                                            VerticalAlignment="Top" Margin="4,8,8,0"
-                                            Foreground="#DC2626" Background="Transparent" BorderBrush="#FCA5A5"
-                                            Style="{StaticResource Btn}" Click="OnDeleteDiscipline" Tag="{Binding}"
-                                            ToolTip="Remove discipline"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-
-                <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="10,8,10,10">
-                    <Button Content="+ Add Discipline" Style="{StaticResource Btn}" Click="OnAddDiscipline"/>
-                    <Button Content="Restore Defaults" Style="{StaticResource Btn}" Click="OnRestoreDefaults" Margin="6,0,0,0"/>
-                    <Button Content="Save" Style="{StaticResource BtnPrimary}" Click="OnSaveSetup" Margin="12,0,0,0" Width="90"/>
-                </StackPanel>
-            </Grid>
-
-            <!-- ASSIGNEES & GROUPS TAB CONTENT -->
-            <Grid Grid.Row="1" x:Name="pnlTabLists" Visibility="Collapsed" Margin="10">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" TextWrapping="Wrap" FontSize="11" Foreground="#6B7280" Margin="2,2,2,8"
-                           Text="One per line. These pre-populate the dropdowns in the rule editor and the discipline owners. (Assignees used by rules/disciplines also appear automatically.)"/>
-                <Grid Grid.Row="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="10"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <DockPanel Grid.Column="0">
-                        <TextBlock DockPanel.Dock="Top" Text="ASSIGNEES" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
-                        <TextBox x:Name="txtAssignees" AcceptsReturn="True" TextWrapping="NoWrap"
-                                 VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
-                    </DockPanel>
-                    <DockPanel Grid.Column="2">
-                        <TextBlock DockPanel.Dock="Top" Text="GROUPS" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
-                        <TextBox x:Name="txtGroups" AcceptsReturn="True" TextWrapping="NoWrap"
-                                 VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"/>
-                    </DockPanel>
-                </Grid>
-                <Button Grid.Row="2" Content="Save" Style="{StaticResource BtnPrimary}" Click="OnSaveSetup"
-                        Width="90" HorizontalAlignment="Left" Margin="0,10,0,0"/>
             </Grid>
 
             <!-- GENERAL TAB CONTENT -->
@@ -596,7 +471,7 @@
 
                     <TextBlock Text="CLAUDE API KEY" Style="{StaticResource FieldLabel}"/>
                     <TextBox x:Name="txtApiKey" Margin="0,0,0,4"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="10.5" Foreground="#9CA3AF" Margin="0,0,0,12"
+                    <TextBlock TextWrapping="Wrap" FontSize="10.5" Foreground="#6B7280" Margin="0,0,0,12"
                                Text="Stored locally in the project's .clashre file. Used by the AI rule generation feature."/>
 
                     <TextBlock x:Name="txtConfigStats" FontSize="11" Foreground="#6B7280" Margin="0,0,0,12"/>
@@ -624,12 +499,12 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Margin="12,8,0,8">
                         <TextBlock x:Name="txtResultsTitle" Text="Run results" FontSize="12"
-                                   FontWeight="Bold" Foreground="#111827"/>
+                                   FontWeight="Bold" Foreground="#1A1A2E"/>
                         <!-- Stat chips -->
                         <StackPanel x:Name="pnlResultStats" Orientation="Horizontal" Margin="0,6,0,0"/>
                     </StackPanel>
-                    <Button Grid.Column="1" Content="&#x2715;" Style="{StaticResource Btn}"
-                            Click="OnDismissResults" Width="28" Height="26" Margin="8,8,12,8"
+                    <Button Grid.Column="1" Content="Dismiss" Style="{StaticResource Btn}"
+                            Click="OnDismissResults" Height="28" Margin="8,8,12,8" FontSize="11"
                             ToolTip="Dismiss results"/>
                 </Grid>
 
@@ -660,7 +535,7 @@
                                             </Border>
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding RuleName}" FontSize="11.5"
-                                                           FontWeight="SemiBold" Foreground="#111827"/>
+                                                           FontWeight="SemiBold" Foreground="#1A1A2E"/>
                                                 <TextBlock FontSize="10" Foreground="#6B7280">
                                                     <Run Text="&#x2192; "/><Run Text="{Binding GroupName}"/>
                                                     <Run Text="  &#x2022;  "/><Run Text="{Binding Assignee}"/>
@@ -676,9 +551,9 @@
                         <Expander x:Name="expResultWarnings" Margin="0,4,0,0" Visibility="Collapsed">
                             <Expander.Header>
                                 <TextBlock x:Name="txtResultWarningsHeader" FontSize="11"
-                                           FontWeight="SemiBold" Foreground="#B45309"/>
+                                           FontWeight="SemiBold" Foreground="#D97706"/>
                             </Expander.Header>
-                            <TextBlock x:Name="txtResultWarnings" FontSize="10.5" Foreground="#92400E"
+                            <TextBlock x:Name="txtResultWarnings" FontSize="10.5" Foreground="#D97706"
                                        TextWrapping="Wrap" Margin="4,4,0,0"/>
                         </Expander>
                     </StackPanel>
@@ -687,19 +562,21 @@
         </Border>
 
         <!-- FOOTER — WrapPanel so the buttons reflow instead of clipping in a narrow dock.
-             Most-used action (Run This Test) first so it's always visible. -->
+             Primary run actions first, then a divider, then rule/export utilities. -->
         <Border Grid.Row="4" Background="#FFFFFF" Padding="8,8" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0">
             <WrapPanel>
-                <Button Content="Run This Test" Style="{StaticResource BtnPrimary}" Click="OnRunSelectedTest" Margin="0,0,4,4"/>
-                <Button Content="Run All Tests" Style="{StaticResource Btn}" Click="OnRunAllTests" Margin="0,0,4,4"/>
-                <Button Content="AI Rules" Style="{StaticResource Btn}" Click="OnAiRules" Margin="0,0,4,4"
+                <Button Content="Run This Test" Style="{StaticResource BtnPrimary}" Click="OnRunSelectedTest" Margin="0,0,5,5"/>
+                <Button Content="Run All Tests" Style="{StaticResource Btn}" Click="OnRunAllTests" Margin="0,0,5,5"/>
+                <!-- divider between run actions and utilities -->
+                <Border Width="1" Background="#E5E7EB" Margin="3,2,8,7"/>
+                <Button Content="AI Rules" Style="{StaticResource Btn}" Click="OnAiRules" Margin="0,0,5,5"
                         Foreground="#7C3AED" BorderBrush="#C4B5FD"
                         ToolTip="Describe your coordination rules in plain English and let Claude write them"/>
-                <Button Content="Save" Style="{StaticResource Btn}" Click="OnSaveRules" Margin="0,0,4,4"/>
-                <Button Content="Export Summary" Style="{StaticResource Btn}" Click="OnExportSummary" Margin="0,0,4,4"
-                        Foreground="#0F766E" BorderBrush="#5EEAD4"
+                <Button Content="Save" Style="{StaticResource Btn}" Click="OnSaveRules" Margin="0,0,5,5"/>
+                <Button Content="Export Summary" Style="{StaticResource Btn}" Click="OnExportSummary" Margin="0,0,5,5"
+                        Foreground="#0D9488" BorderBrush="#99F6E4"
                         ToolTip="Compact per-test assignment summary across ALL tests — small enough to paste into a prompt"/>
-                <Button Content="Export Session" Style="{StaticResource Btn}" Click="OnExportSession" Margin="0,0,0,4"
+                <Button Content="Export Session" Style="{StaticResource Btn}" Click="OnExportSession" Margin="0,0,0,5"
                         ToolTip="Full export: every clash disposition + item properties to JSON (large)"/>
             </WrapPanel>
         </Border>

@@ -26,26 +26,59 @@ namespace ClashRuleEngine.Plugin
             _panel = null;
             if (_host != null) { _host.Dispose(); _host = null; }
         }
+
+        /// <summary>
+        /// Show the dock pane from a ribbon button. Closing the pane UNLOADS the plugin in
+        /// Navisworks (the View → Windows tick is just load/unload), so loading it when it's
+        /// not loaded re-opens it. The API exposes no separate show/activate for a pane.
+        /// </summary>
+        internal static void ShowPanel()
+        {
+            try
+            {
+                var rec = Autodesk.Navisworks.Api.Application.Plugins.FindPlugin("ClashRuleEngine.ACME")
+                          as DockPanePluginRecord;
+                if (rec != null && rec.LoadedPlugin == null) rec.LoadPlugin();
+            }
+            catch { }
+        }
     }
 
     [Plugin("ClashRuleEngineRibbon", "ACME",
-        DisplayName = "Clash Rule Engine",
-        ToolTip = "Open the Clash Rule Engine panel")]
+        DisplayName = "OConnors Clash",
+        ToolTip = "Open the OConnors Clash panel")]
     [RibbonLayout("ClashRuleEngineRibbon.xaml")]
-    [RibbonTab("ID_ClashRuleEngine_Tab", DisplayName = "Clash Rules")]
-    [Command("ID_OpenPanel", DisplayName = "Open Panel", ToolTip = "Open the Clash Rule Engine dockable panel")]
+    [RibbonTab("ID_ClashRuleEngine_Tab", DisplayName = "OConnors Clash")]
+    [Command("ID_OpenPanel", DisplayName = "Clash Engine", ToolTip = "Open the OConnors Clash panel")]
     public class ClashRuleEngineRibbonHandler : CommandHandlerPlugin
     {
         public override int ExecuteCommand(string commandId, params string[] parameters)
         {
-            if (commandId == "ID_OpenPanel")
-            {
-                var rec = Autodesk.Navisworks.Api.Application.Plugins.FindPlugin("ClashRuleEngine.ACME");
-                if (rec != null && rec.LoadedPlugin == null) rec.LoadPlugin();
-            }
+            if (commandId == "ID_OpenPanel") ClashRuleEnginePlugin.ShowPanel();
             return 0;
         }
 
+        // Always enabled (don't gate on a document being open) and always show the tab.
+        public override CommandState CanExecuteCommand(string commandId) => new CommandState(true);
+        public override bool CanExecuteRibbonTab(string ribbonTabId) => true;
         public override bool TryShowCommandHelp(string commandId) { return false; }
+    }
+
+    /// <summary>
+    /// Ribbon button under "Tool Add-ins" (same place as Clash Batch Extract) that
+    /// opens/shows the OConnors Clash dock pane — so it's a click, not a tick in
+    /// the Windows menu.
+    /// </summary>
+    [Plugin("ClashRuleEngineShow", "ACME",
+        DisplayName = "Clash Engine",
+        ToolTip = "Open the Clash Rule Engine panel")]
+    [AddInPlugin(AddInLocation.AddIn, LoadForCanExecute = true)]
+    public class ClashRuleEngineShowPlugin : AddInPlugin
+    {
+        public override int Execute(params string[] parameters)
+        {
+            ClashRuleEnginePlugin.ShowPanel();
+            return 0;
+        }
     }
 }

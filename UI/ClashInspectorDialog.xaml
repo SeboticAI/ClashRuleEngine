@@ -10,10 +10,16 @@
     <Window.Resources>
         <local:HexToBrushConverter x:Key="HexToBrush"/>
 
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+        </Style>
+
         <Style x:Key="SmBtn" TargetType="Button">
             <Setter Property="Background" Value="#FFFFFF"/>
             <Setter Property="Foreground" Value="#374151"/>
-            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,5"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -62,7 +68,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock x:Name="txtClashName" FontSize="14" FontWeight="Bold" Foreground="#111827"/>
+                    <TextBlock x:Name="txtClashName" FontSize="14" FontWeight="Bold" Foreground="#1A1A2E"/>
                     <TextBlock x:Name="txtDescription" FontSize="11" Foreground="#6B7280"
                                Margin="0,2,0,0" TextWrapping="Wrap" MaxHeight="36"/>
                 </StackPanel>
@@ -82,20 +88,20 @@
             </Grid.ColumnDefinitions>
 
             <!-- Item A -->
-            <Border Grid.Column="0" Background="#FFFFFF" CornerRadius="4"
-                    BorderBrush="#BFDBFE" BorderThickness="1">
+            <Border Grid.Column="0" Background="#F9FAFB" CornerRadius="4"
+                    BorderBrush="#2563EB" BorderThickness="1">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Background="#EFF6FF" Padding="10,8" CornerRadius="4,4,0,0"
-                            BorderBrush="#BFDBFE" BorderThickness="0,0,0,1">
+                            BorderBrush="#2563EB" BorderThickness="0,0,0,1">
                         <StackPanel>
-                            <TextBlock Text="ITEM A" FontSize="10" FontWeight="Bold" Foreground="#1E40AF" Margin="0,0,0,2"/>
+                            <TextBlock Text="ITEM A" FontSize="10" FontWeight="Bold" Foreground="#2563EB" Margin="0,0,0,2"/>
                             <TextBlock x:Name="txtItem1Name" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="#1E3A8A" TextWrapping="Wrap"/>
+                                       Foreground="#1E40AF" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                     <TextBlock DockPanel.Dock="Top" Text="Click any property row to add it as a rule condition"
-                               FontSize="10" Foreground="#93C5FD" Padding="10,4,10,4" FontStyle="Italic"
-                               Background="#F8FBFF"/>
+                               FontSize="10" Foreground="#2563EB" Padding="10,4,10,4" FontStyle="Italic"
+                               Background="#EFF6FF"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel x:Name="pnlItem1Props" Margin="0,2,0,4"/>
                     </ScrollViewer>
@@ -107,11 +113,11 @@
                           Background="#E5E7EB" Cursor="SizeWE"/>
 
             <!-- Item B -->
-            <Border Grid.Column="2" Background="#FFFFFF" CornerRadius="4"
-                    BorderBrush="#FED7AA" BorderThickness="1">
+            <Border Grid.Column="2" Background="#F9FAFB" CornerRadius="4"
+                    BorderBrush="#C2410C" BorderThickness="1">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Background="#FFF7ED" Padding="10,8" CornerRadius="4,4,0,0"
-                            BorderBrush="#FED7AA" BorderThickness="0,0,0,1">
+                            BorderBrush="#C2410C" BorderThickness="0,0,0,1">
                         <StackPanel>
                             <TextBlock Text="ITEM B" FontSize="10" FontWeight="Bold" Foreground="#C2410C" Margin="0,0,0,2"/>
                             <TextBlock x:Name="txtItem2Name" FontSize="12" FontWeight="SemiBold"
@@ -119,8 +125,8 @@
                         </StackPanel>
                     </Border>
                     <TextBlock DockPanel.Dock="Top" Text="Click any property row to add it as a rule condition"
-                               FontSize="10" Foreground="#FDBA74" Padding="10,4,10,4" FontStyle="Italic"
-                               Background="#FFFDF8"/>
+                               FontSize="10" Foreground="#C2410C" Padding="10,4,10,4" FontStyle="Italic"
+                               Background="#FFF7ED"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel x:Name="pnlItem2Props" Margin="0,2,0,4"/>
                     </ScrollViewer>
@@ -130,11 +136,11 @@
 
         <!-- SELECTED CONDITIONS PREVIEW -->
         <Border Grid.Row="2" x:Name="bdSelectedConditions" Background="#F0FDF4" CornerRadius="4"
-                Padding="10,8" BorderBrush="#86EFAC" BorderThickness="1"
+                Padding="10,8" BorderBrush="#BBF7D0" BorderThickness="1"
                 Margin="0,8,0,0" Visibility="Collapsed">
             <StackPanel>
                 <TextBlock Text="CONDITIONS FOR NEW RULE:" FontSize="10" FontWeight="Bold"
-                           Foreground="#166534" Margin="0,0,0,4"/>
+                           Foreground="#16A34A" Margin="0,0,0,4"/>
                 <StackPanel x:Name="pnlSelectedConditions"/>
             </StackPanel>
         </Border>

@@ -24,7 +24,7 @@ namespace ClashRuleEngine.UI
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             ResizeMode = ResizeMode.NoResize;
             Topmost = true;
-            Background = Brushes.White;
+            Background = new SolidColorBrush(Color.FromRgb(0xF8, 0xF9, 0xFA));
 
             var grid = new Grid { Margin = new Thickness(16) };
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -36,7 +36,7 @@ namespace ClashRuleEngine.UI
                 Text = "Starting…",
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x37, 0x41, 0x51))
+                Foreground = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x2E))
             };
             grid.Children.Add(_status);
 
@@ -45,7 +45,10 @@ namespace ClashRuleEngine.UI
                 Content = "Cancel",
                 Width = 90,
                 Height = 26,
-                HorizontalAlignment = HorizontalAlignment.Right
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF)),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x37, 0x41, 0x51)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEB))
             };
             btn.Click += (s, e) => { Cancelled = true; _status.Text = "Cancelling…"; };
             Grid.SetRow(btn, 2);

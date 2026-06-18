@@ -30,7 +30,26 @@ namespace ClashRuleEngine.Services
         public sealed class Result
         {
             public List<KindRule> Rules { get; set; } = new List<KindRule>();
-            public List<DisciplineDefinition> Trades { get; set; } = new List<DisciplineDefinition>();
+            /// <summary>Optional approve policy from the file's "approve" block (null if absent).</summary>
+            public ApprovePolicy Approve { get; set; }
+            /// <summary>Per-test default assignee (the learned clash-matrix responsibility).</summary>
+            public List<TestDefault> TestDefaults { get; set; } = new List<TestDefault>();
+            /// <summary>Per-test element-PAIR rules (category A vs category B → trade).</summary>
+            public List<TestPairRule> TestRules { get; set; } = new List<TestPairRule>();
+        }
+
+        public sealed class TestDefault
+        {
+            public string Test { get; set; } = "";
+            public string Assignee { get; set; } = "";
+        }
+
+        /// <summary>A learned element-pair rule scoped to one clash test: when an element
+        /// whose category contains A clashes one whose category contains B, assign to a trade.</summary>
+        public sealed class TestPairRule
+        {
+            public string Test { get; set; } = "";
+            public ClashRule Rule { get; set; }
         }
 
         public static bool LooksLikeKindRules(string text)
@@ -51,23 +70,6 @@ namespace ClashRuleEngine.Services
             var ser = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
             var root = ser.DeserializeObject(json) as Dictionary<string, object>;
             if (root == null) throw new FormatException("Not a JSON object.");
-
-            if (root.TryGetValue("trades", out var tradesObj) && tradesObj is object[] trades)
-            {
-                foreach (var t in trades.OfType<Dictionary<string, object>>())
-                {
-                    string name = Str(t, "name");
-                    if (string.IsNullOrWhiteSpace(name)) continue;
-                    res.Trades.Add(new DisciplineDefinition
-                    {
-                        Name = name,
-                        Assignee = Str(t, "assignee") ?? name,
-                        GroupName = Str(t, "group") ?? name,
-                        Keywords = StrList(t, "keywords"),
-                        Color = Str(t, "color") ?? "#6B7280"
-                    });
-                }
-            }
 
             if (root.TryGetValue("rules", out var rulesObj) && rulesObj is object[] rules)
             {
@@ -95,8 +97,114 @@ namespace ClashRuleEngine.Services
                 }
             }
 
+            if (root.TryGetValue("approve", out var apprObj) && apprObj is Dictionary<string, object> a)
+            {
+                var pol = new ApprovePolicy { Enabled = true };
+                if (a.TryGetValue("enabled", out var en) && en is bool enb) pol.Enabled = enb;
+                if (a.ContainsKey("minGapMm")) pol.MinGapMm = Dbl(a, "minGapMm");
+                if (a.ContainsKey("maxGapMm")) pol.MaxGapMm = Dbl(a, "maxGapMm");
+                if (a.ContainsKey("requireAssignee") && a["requireAssignee"] is bool rq) pol.RequireAssignee = rq;
+                if (a.ContainsKey("useTestNameGuard") && a["useTestNameGuard"] is bool tg) pol.UseTestNameGuard = tg;
+                var prot = StrList(a, "protectedTrades");
+                if (prot.Count > 0) pol.ProtectedTrades = prot;
+
+                if (a.TryGetValue("pairFloors", out var pfObj) && pfObj is object[] pfs)
+                {
+                    foreach (var pf in pfs.OfType<Dictionary<string, object>>())
+                    {
+                        string pa = Str(pf, "a"), pb = Str(pf, "b");
+                        if (string.IsNullOrWhiteSpace(pa) || string.IsNullOrWhiteSpace(pb)) continue;
+                        pol.PairFloors.Add(new PairFloor { A = pa, B = pb, MinGapMm = Dbl(pf, "minGapMm") });
+                    }
+                }
+
+                // Always-approve (gap-independent): assignees + element kinds.
+                var appAsg = StrList(a, "approveAssignees");
+                if (appAsg.Count > 0) pol.ApproveAssignees = appAsg;
+                if (a.TryGetValue("approveKinds", out var akObj) && akObj is object[] aks)
+                {
+                    foreach (var ak in aks.OfType<Dictionary<string, object>>())
+                    {
+                        var kws = StrList(ak, "keywords");
+                        if (kws.Count == 0) continue;
+                        pol.ApproveKinds.Add(new ApproveKind { Name = Str(ak, "name") ?? "", Keywords = kws });
+                    }
+                }
+                res.Approve = pol;
+            }
+
+            if (root.TryGetValue("tests", out var testsObj) && testsObj is object[] testArr)
+            {
+                foreach (var td in testArr.OfType<Dictionary<string, object>>())
+                {
+                    string test = Str(td, "test");
+                    string assign = Str(td, "assign") ?? Str(td, "assignee");
+                    if (string.IsNullOrWhiteSpace(test) || string.IsNullOrWhiteSpace(assign)) continue;
+                    res.TestDefaults.Add(new TestDefault { Test = test.Trim(), Assignee = assign.Trim() });
+                }
+            }
+
+            if (root.TryGetValue("testRules", out var trObj) && trObj is object[] trArr)
+            {
+                foreach (var tr in trArr.OfType<Dictionary<string, object>>())
+                {
+                    string test = Str(tr, "test");
+                    string catA = Str(tr, "a"); string catB = Str(tr, "b");
+                    string assign = Str(tr, "assign") ?? Str(tr, "assignee");
+                    if (string.IsNullOrWhiteSpace(test) || string.IsNullOrWhiteSpace(assign)) continue;
+                    if (string.IsNullOrWhiteSpace(catA) && string.IsNullOrWhiteSpace(catB)) continue;
+                    // match = "tree" → fine rule (matches the family/leaf in the tree path);
+                    // anything else → category match (the fallback tier).
+                    bool tree = string.Equals(Str(tr, "match"), "tree", StringComparison.OrdinalIgnoreCase);
+                    res.TestRules.Add(new TestPairRule { Test = test.Trim(), Rule = BuildPairRule(Str(tr, "name"), catA, catB, assign, Str(tr, "group"), tree) });
+                }
+            }
+
             return res;
         }
+
+        /// <summary>Builds a per-test element-pair ClashRule: AND of two "Category contains"
+        /// conditions. Distinct A/B use Either-target (unordered pair match); when A==B both
+        /// items must match (targeted Item1 + Item2) so it's truly that-vs-that.</summary>
+        private static ClashRule BuildPairRule(string name, string a, string b, string assign, string group, bool tree = false)
+        {
+            var conds = new List<RuleCondition>();
+            bool same = !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b)
+                        && string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
+            if (same)
+            {
+                conds.Add(FieldCond(a, ClashItemTarget.Item1, tree));
+                conds.Add(FieldCond(a, ClashItemTarget.Item2, tree));
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(a)) conds.Add(FieldCond(a, ClashItemTarget.Either, tree));
+                if (!string.IsNullOrWhiteSpace(b)) conds.Add(FieldCond(b, ClashItemTarget.Either, tree));
+            }
+            return new ClashRule
+            {
+                Name = string.IsNullOrWhiteSpace(name) ? $"{a} vs {b}" : name,
+                AssigneeMode = AssigneeMode.Named,
+                Assignee = assign.Trim(),
+                GroupName = string.IsNullOrWhiteSpace(group) ? assign.Trim() : group.Trim(),
+                ClashStatus = "Active",
+                ConditionLogic = LogicOperator.And,
+                IsEnabled = true,
+                Conditions = conds
+            };
+        }
+
+        /// <summary>A "contains" condition on either the element's Category property
+        /// (fallback tier) or its tree path (fine tier — where family/leaf names live).</summary>
+        private static RuleCondition FieldCond(string value, ClashItemTarget target, bool tree)
+            => new RuleCondition
+            {
+                PropertyCategory = tree ? RuleCondition.TreeCategory : "",
+                PropertyName = tree ? "Path" : "Category",
+                Operator = ConditionOperator.Contains,
+                Value = (value ?? "").Trim(),
+                Target = target
+            };
 
         private static KindMatchSide ParseSide(string s)
         {

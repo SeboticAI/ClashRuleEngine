@@ -44,7 +44,7 @@ namespace ClashRuleEngine.UI
             Width = 720;
             Height = 520;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
-            Background = Brushes.White;
+            Background = new SolidColorBrush(Color.FromRgb(0xF8, 0xF9, 0xFA));
 
             var list = (tests ?? Enumerable.Empty<ClashTestInfo>()).ToList();
 
@@ -82,7 +82,7 @@ namespace ClashRuleEngine.UI
             {
                 Text = "Clash matrix — active / total per test pair. Click a cell to open that test.",
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x37, 0x41, 0x51)),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x2E)),
                 Margin = new Thickness(0, 0, 0, 12),
                 TextWrapping = TextWrapping.Wrap
             };
@@ -120,7 +120,7 @@ namespace ClashRuleEngine.UI
             {
                 Text = unparsed > 0 ? $"{unparsed} test(s) not shown (name not a recognisable A v B pair)." : "",
                 FontSize = 11,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x9C, 0xA3, 0xAF)),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x6B, 0x72, 0x80)),
                 Margin = new Thickness(0, 12, 0, 0)
             };
             Grid.SetRow(footer, 2);
@@ -190,7 +190,7 @@ namespace ClashRuleEngine.UI
                     Text = text,
                     FontWeight = FontWeights.SemiBold,
                     FontSize = 12,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x1E, 0x40, 0xAF)),
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x25, 0x63, 0xEB)),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 }
@@ -212,14 +212,14 @@ namespace ClashRuleEngine.UI
             {
                 return new Border
                 {
-                    Background = new SolidColorBrush(Color.FromRgb(0xFA, 0xFA, 0xFA)),
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)),
+                    Background = new SolidColorBrush(Color.FromRgb(0xF9, 0xFA, 0xFB)),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEB)),
                     BorderThickness = new Thickness(1),
                     Margin = new Thickness(1),
                     Child = new TextBlock
                     {
                         Text = "—",
-                        Foreground = new SolidColorBrush(Color.FromRgb(0xD1, 0xD5, 0xDB)),
+                        Foreground = new SolidColorBrush(Color.FromRgb(0x6B, 0x72, 0x80)),
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center
                     }
@@ -227,9 +227,9 @@ namespace ClashRuleEngine.UI
             }
 
             Color bg, fg;
-            if (cell.Active > 0)       { bg = Color.FromRgb(0xFE, 0xE2, 0xE2); fg = Color.FromRgb(0x99, 0x1B, 0x1B); } // red
-            else if (cell.Total > 0)  { bg = Color.FromRgb(0xDC, 0xFC, 0xE7); fg = Color.FromRgb(0x16, 0x65, 0x34); } // green
-            else                      { bg = Color.FromRgb(0xF0, 0xFD, 0xF4); fg = Color.FromRgb(0x6B, 0x72, 0x80); } // empty
+            if (cell.Active > 0)       { bg = Color.FromRgb(0xFE, 0xF2, 0xF2); fg = Color.FromRgb(0xDC, 0x26, 0x26); } // red
+            else if (cell.Total > 0)  { bg = Color.FromRgb(0xF0, 0xFD, 0xF4); fg = Color.FromRgb(0x16, 0xA3, 0x4A); } // green
+            else                      { bg = Color.FromRgb(0xF9, 0xFA, 0xFB); fg = Color.FromRgb(0x6B, 0x72, 0x80); } // empty
 
             var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             content.Children.Add(new TextBlock
@@ -252,6 +252,7 @@ namespace ClashRuleEngine.UI
             {
                 Content = content,
                 Background = new SolidColorBrush(bg),
+                Foreground = new SolidColorBrush(fg),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEB)),
                 BorderThickness = new Thickness(1),
                 Margin = new Thickness(1),

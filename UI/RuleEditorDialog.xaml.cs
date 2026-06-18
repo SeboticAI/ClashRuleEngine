@@ -77,16 +77,6 @@ namespace ClashRuleEngine.UI
             cmbAssignee.ItemsSource = assignees;
             cmbAssignee.Text = Rule.Assignee;
 
-            // Assignee mode + subject anchor
-            switch (Rule.AssigneeMode)
-            {
-                case AssigneeMode.OwningTrade: cmbAssigneeMode.SelectedIndex = 0; break;
-                case AssigneeMode.OtherTrade:  cmbAssigneeMode.SelectedIndex = 1; break;
-                default:                       cmbAssigneeMode.SelectedIndex = 2; break;  // Named
-            }
-            cmbSubject.SelectedIndex = Rule.SubjectItem == ClashItemTarget.Item2 ? 1 : 0;
-            UpdateAssigneeModeVisibility();
-
             cmbLogic.SelectedIndex = Rule.ConditionLogic == LogicOperator.And ? 0 : 1;
 
             switch ((Rule.ClashStatus ?? "active").ToLowerInvariant())
@@ -110,20 +100,6 @@ namespace ClashRuleEngine.UI
             pnlNoPropsWarning.Visibility = (_modelProps.Count == 0) ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private void OnAssigneeModeChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateAssigneeModeVisibility();
-        }
-
-        /// <summary>Show the subject picker for relative modes, the named owner for "Specific owner".</summary>
-        private void UpdateAssigneeModeVisibility()
-        {
-            if (pnlSubject == null || pnlNamedAssignee == null) return;   // not built yet
-            bool named = cmbAssigneeMode.SelectedIndex == 2;
-            pnlSubject.Visibility = named ? Visibility.Collapsed : Visibility.Visible;
-            pnlNamedAssignee.Visibility = named ? Visibility.Visible : Visibility.Collapsed;
-        }
-
         // ──────────────────────────────────────────────────────
         // Category filter
         // ──────────────────────────────────────────────────────
@@ -137,7 +113,7 @@ namespace ClashRuleEngine.UI
                 bdFilterToggle.Background = new SolidColorBrush(
                     (Color)ColorConverter.ConvertFromString("#EFF6FF"));
                 bdFilterToggle.BorderBrush = new SolidColorBrush(
-                    (Color)ColorConverter.ConvertFromString("#93C5FD"));
+                    (Color)ColorConverter.ConvertFromString("#2563EB"));
                 txtFilterToggle.Foreground = new SolidColorBrush(
                     (Color)ColorConverter.ConvertFromString("#2563EB"));
                 txtFilterToggle.FontWeight = FontWeights.SemiBold;
@@ -145,11 +121,11 @@ namespace ClashRuleEngine.UI
             else
             {
                 bdFilterToggle.Background = new SolidColorBrush(
-                    (Color)ColorConverter.ConvertFromString("#F3F4F6"));
+                    (Color)ColorConverter.ConvertFromString("#FFFFFF"));
                 bdFilterToggle.BorderBrush = new SolidColorBrush(
-                    (Color)ColorConverter.ConvertFromString("#D1D5DB"));
+                    (Color)ColorConverter.ConvertFromString("#E5E7EB"));
                 txtFilterToggle.Foreground = new SolidColorBrush(
-                    (Color)ColorConverter.ConvertFromString("#374151"));
+                    (Color)ColorConverter.ConvertFromString("#1A1A2E"));
                 txtFilterToggle.FontWeight = FontWeights.Normal;
             }
 
@@ -191,7 +167,7 @@ namespace ClashRuleEngine.UI
             var border = new Border
             {
                 Background = new SolidColorBrush(
-                    (Color)ColorConverter.ConvertFromString("#F9FAFB")),
+                    (Color)ColorConverter.ConvertFromString("#FFFFFF")),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(10),
                 Margin = new Thickness(0, 0, 0, 6),
@@ -349,7 +325,7 @@ namespace ClashRuleEngine.UI
                     (Color)ColorConverter.ConvertFromString("#DC2626")),
                 Background = Brushes.Transparent,
                 BorderBrush = new SolidColorBrush(
-                    (Color)ColorConverter.ConvertFromString("#FCA5A5")),
+                    (Color)ColorConverter.ConvertFromString("#FECACA")),
                 BorderThickness = new Thickness(1),
                 Cursor = Cursors.Hand,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -377,7 +353,7 @@ namespace ClashRuleEngine.UI
                 FontSize = 9,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(
-                    (Color)ColorConverter.ConvertFromString("#9CA3AF")),
+                    (Color)ColorConverter.ConvertFromString("#6B7280")),
                 Margin = new Thickness(0, 0, 0, 0)
             };
         }
@@ -441,16 +417,11 @@ namespace ClashRuleEngine.UI
             Rule.Conditions = _conditions.ToList();
             Rule.Color = (cmbColor.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "#2563EB";
 
-            switch (cmbAssigneeMode.SelectedIndex)
-            {
-                case 0:  Rule.AssigneeMode = AssigneeMode.OwningTrade; break;
-                case 1:  Rule.AssigneeMode = AssigneeMode.OtherTrade; break;
-                default: Rule.AssigneeMode = AssigneeMode.Named; break;
-            }
-            Rule.SubjectItem = cmbSubject.SelectedIndex == 1 ? ClashItemTarget.Item2 : ClashItemTarget.Item1;
+            // Rules always set a fixed (named) assignee now that the trade hierarchy is gone.
+            Rule.AssigneeMode = AssigneeMode.Named;
 
-            // Remember literal owners/groups for the dropdowns (skip blanks and relative modes).
-            if (Rule.AssigneeMode == AssigneeMode.Named && !string.IsNullOrWhiteSpace(Rule.Assignee)
+            // Remember literal owners/groups for the dropdowns (skip blanks).
+            if (!string.IsNullOrWhiteSpace(Rule.Assignee)
                 && !_config.Assignees.Contains(Rule.Assignee, StringComparer.OrdinalIgnoreCase))
                 _config.Assignees.Add(Rule.Assignee);
             if (!string.IsNullOrWhiteSpace(Rule.GroupName)

@@ -8,16 +8,35 @@
     <Window.Resources>
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Setter Property="CaretBrush" Value="#1A1A2E"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="6,4"/>
         </Style>
         <Style TargetType="ComboBox">
             <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="Padding" Value="6,4"/>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#2563EB"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+        </Style>
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
         </Style>
         <Style TargetType="Label">
             <Setter Property="Foreground" Value="#6B7280"/>
@@ -28,7 +47,7 @@
         <Style x:Key="SmBtn" TargetType="Button">
             <Setter Property="Background" Value="#FFFFFF"/>
             <Setter Property="Foreground" Value="#374151"/>
-            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -101,31 +120,12 @@
             <StackPanel VerticalAlignment="Top">
                 <Label Content="GROUP NAME"/>
                 <ComboBox x:Name="cmbGroup" IsEditable="True"/>
-                <TextBlock FontSize="10" Foreground="#9CA3AF" Margin="2,3,0,0" TextWrapping="Wrap"
-                           Text="Leave blank to group by the responsible trade."/>
+                <TextBlock FontSize="10" Foreground="#6B7280" Margin="2,3,0,0" TextWrapping="Wrap"
+                           Text="Leave blank to group by the assignee." Background="Transparent"/>
             </StackPanel>
             <StackPanel Grid.Column="2">
-                <Label Content="ASSIGN TO"/>
-                <ComboBox x:Name="cmbAssigneeMode" SelectionChanged="OnAssigneeModeChanged">
-                    <ComboBoxItem Content="Owning trade — the subject's trade"/>
-                    <ComboBoxItem Content="Other trade — what it clashes with"/>
-                    <ComboBoxItem Content="Specific owner…"/>
-                </ComboBox>
-
-                <!-- Relative modes: which item the rule is about -->
-                <StackPanel x:Name="pnlSubject" Margin="0,6,0,0">
-                    <Label Content="THIS RULE IS ABOUT"/>
-                    <ComboBox x:Name="cmbSubject">
-                        <ComboBoxItem Content="Item A"/>
-                        <ComboBoxItem Content="Item B"/>
-                    </ComboBox>
-                </StackPanel>
-
-                <!-- Named mode: literal owner -->
-                <StackPanel x:Name="pnlNamedAssignee" Margin="0,6,0,0" Visibility="Collapsed">
-                    <Label Content="OWNER / ASSIGNEE"/>
-                    <ComboBox x:Name="cmbAssignee" IsEditable="True"/>
-                </StackPanel>
+                <Label Content="OWNER / ASSIGNEE"/>
+                <ComboBox x:Name="cmbAssignee" IsEditable="True"/>
             </StackPanel>
         </Grid>
 
@@ -155,7 +155,7 @@
                 </ComboBox>
             </StackPanel>
             <CheckBox Grid.Column="4" x:Name="chkEnabled" Content="Enabled"
-                      Foreground="#374151" IsChecked="True" VerticalAlignment="Bottom"/>
+                      Foreground="#1A1A2E" IsChecked="True" VerticalAlignment="Bottom"/>
         </Grid>
 
         <!-- ROW 3: Conditions toolbar -->
@@ -170,24 +170,24 @@
             <!-- Common-only filter toggle -->
             <Border Grid.Column="1" x:Name="bdFilterToggle" CornerRadius="3" Margin="0,0,6,0"
                     Cursor="Hand" Padding="7,3"
-                    Background="#F3F4F6" BorderBrush="#D1D5DB" BorderThickness="1"
+                    Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1"
                     MouseLeftButtonDown="OnToggleCommonFilter"
                     ToolTip="Show only commonly-used property categories (Item, Dimensions, Identity Data, Mechanical, etc.)">
                 <TextBlock x:Name="txtFilterToggle" Text="Common only"
-                           FontSize="11" Foreground="#374151" VerticalAlignment="Center"/>
+                           FontSize="11" Foreground="#1A1A2E" VerticalAlignment="Center"/>
             </Border>
             <Button Grid.Column="2" Content="Scan Model" Style="{StaticResource SmBtn}"
                     Click="OnScanModel" Margin="0,0,6,0"
-                    Background="#EFF6FF" Foreground="#2563EB" BorderBrush="#93C5FD"/>
+                    Background="#EFF6FF" Foreground="#2563EB" BorderBrush="#2563EB"/>
             <Button Grid.Column="3" Content="+ Add Condition" Style="{StaticResource SmBtn}"
                     Click="OnAddCondition"/>
         </Grid>
 
         <!-- ROW 4: No-properties warning bar -->
         <Border Grid.Row="4" x:Name="pnlNoPropsWarning" Background="#FFFBEB"
-                BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="4"
+                BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="4"
                 Padding="10,6" Margin="0,0,0,4" Visibility="Collapsed">
-            <TextBlock FontSize="11" Foreground="#92400E" TextWrapping="Wrap">
+            <TextBlock FontSize="11" Foreground="#D97706" TextWrapping="Wrap">
                 <Run Text="No model properties loaded. Click"/>
                 <Run Text="Scan Model" FontWeight="SemiBold"/>
                 <Run Text="to enable property autocomplete in conditions."/>
@@ -195,7 +195,7 @@
         </Border>
 
         <!-- ROW 5: Condition rows (scrollable) -->
-        <Border Grid.Row="5" Background="#FFFFFF" CornerRadius="4" Padding="8"
+        <Border Grid.Row="5" Background="#F9FAFB" CornerRadius="4" Padding="8"
                 BorderBrush="#E5E7EB" BorderThickness="1">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="pnlConditions"/>
@@ -206,7 +206,7 @@
         <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button Content="Cancel" Width="80" Padding="8,6" Style="{StaticResource SmBtn}"
                     Click="OnCancel" Margin="0,0,8,0"/>
-            <Button Content="Save Rule" Width="100" Padding="8,6"
+            <Button Content="Save Rule" Width="100" Padding="8,6" Style="{StaticResource SmBtn}"
                     Background="#2563EB" Foreground="White" FontWeight="SemiBold"
                     BorderBrush="#2563EB" Click="OnSave" Cursor="Hand"/>
         </StackPanel>

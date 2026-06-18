@@ -31,13 +31,11 @@ namespace ClashRuleEngine.UI
         private DocumentClashTests _subscribedTests;
         private bool _suppressClashRefresh;
 
-        // Setup tabs (Hierarchy / Assignees & Groups / General) — moved out of the
-        // old Settings dialog into the main tab bar. Editing works on a clone of the
-        // disciplines so it commits on Save / tab-leave.
-        private int _activeTab;   // 0 Rules, 1 Clashes, 2 Hierarchy, 3 Lists, 4 General
-        private System.Collections.ObjectModel.ObservableCollection<DisciplineDefinition> _disciplines;
+        // Setup tab (General) — moved out of the old Settings dialog into the main
+        // tab bar. Editing commits on Save / tab-leave.
+        private int _activeTab;   // 0 Rules, 1 Clashes, 2 General
 
-        /// <summary>Assignee suggestions for the per-discipline owner dropdowns (bound from XAML).</summary>
+        /// <summary>Assignee suggestions for dropdowns (bound from XAML).</summary>
         public List<string> AvailableAssignees { get; private set; } = new List<string>();
 
         // Subscribe the global UI-thread safety net once per process.
@@ -166,7 +164,6 @@ namespace ClashRuleEngine.UI
         {
             try { _config = RulePersistenceService.Load(); }
             catch { _config = RulePersistenceService.NewSeeded(); }
-            _config.Hierarchy?.EnsureSeeded();
         }
 
         private void RefreshClashTests()
@@ -345,16 +342,14 @@ namespace ClashRuleEngine.UI
                 LoadClashesForTest(testName);
         }
 
-        private void OnTabHierarchyClick(object sender, MouseButtonEventArgs e) => SetActiveTab(2);
-        private void OnTabListsClick(object sender, MouseButtonEventArgs e) => SetActiveTab(3);
-        private void OnTabGeneralClick(object sender, MouseButtonEventArgs e) => SetActiveTab(4);
+        private void OnTabGeneralClick(object sender, MouseButtonEventArgs e) => SetActiveTab(2);
 
         /// <summary>Legacy bool overload (true = Rules, false = Clashes).</summary>
         private void SetActiveTab(bool rulesActive) => SetActiveTab(rulesActive ? 0 : 1);
 
         private void SetActiveTab(int idx)
         {
-            // Leaving a setup tab commits its edits so nothing is lost on tab change.
+            // Leaving the General setup tab commits its edits so nothing is lost.
             if (_activeTab >= 2 && idx != _activeTab) CommitSettingsTabs();
 
             _activeTab = idx;
@@ -362,46 +357,34 @@ namespace ClashRuleEngine.UI
 
             pnlTabRules.Visibility     = idx == 0 ? Visibility.Visible : Visibility.Collapsed;
             pnlTabClashes.Visibility   = idx == 1 ? Visibility.Visible : Visibility.Collapsed;
-            pnlTabHierarchy.Visibility = idx == 2 ? Visibility.Visible : Visibility.Collapsed;
-            pnlTabLists.Visibility     = idx == 3 ? Visibility.Visible : Visibility.Collapsed;
-            pnlTabGeneral.Visibility   = idx == 4 ? Visibility.Visible : Visibility.Collapsed;
+            pnlTabGeneral.Visibility   = idx == 2 ? Visibility.Visible : Visibility.Collapsed;
 
             SetTabStyle(bdTabRules,     txtTabRules,     idx == 0);
             SetTabStyle(bdTabClashes,   txtTabClashes,   idx == 1);
-            SetTabStyle(bdTabHierarchy, txtTabHierarchy, idx == 2);
-            SetTabStyle(bdTabLists,     txtTabLists,     idx == 3);
-            SetTabStyle(bdTabGeneral,   txtTabGeneral,   idx == 4);
+            SetTabStyle(bdTabGeneral,   txtTabGeneral,   idx == 2);
         }
 
         private void SetTabStyle(System.Windows.Controls.Border bd, TextBlock tx, bool active)
         {
             bd.BorderBrush = active ? Brush("#2563EB") : Brushes.Transparent;
-            tx.Foreground  = active ? Brush("#2563EB") : Brush("#9CA3AF");
+            tx.Foreground  = active ? Brush("#2563EB") : Brush("#6B7280");
             tx.FontWeight  = active ? FontWeights.SemiBold : FontWeights.Normal;
         }
 
         // ──────────────────────────────────────────────────────
-        // Setup tabs: Hierarchy / Assignees & Groups / General
+        // Setup tabs: Assignees & Groups / General
         // ──────────────────────────────────────────────────────
 
         private void LoadSettingsTabs()
         {
             if (_config == null) return;
-            _config.Hierarchy?.EnsureSeeded();
             AvailableAssignees = _config.GetAllAssignees();
-
-            _disciplines = new System.Collections.ObjectModel.ObservableCollection<DisciplineDefinition>(
-                (_config.Hierarchy?.Disciplines ?? new List<DisciplineDefinition>()).Select(CloneDiscipline));
-            lstDisciplines.ItemsSource = _disciplines;
-
-            chkFallback.IsChecked = _config.UseHierarchyFallback;
 
             cmbGroupMode.SelectedIndex = (int)_config.GroupingMode;
             txtThreshold.Text = _config.ProximityThreshold.ToString(System.Globalization.CultureInfo.InvariantCulture);
             chkAssignByGroup.IsChecked = _config.AssignByGroup;
+            chkOnlyNew.IsChecked = _config.OnlyAssignNewClashes;
 
-            txtAssignees.Text = string.Join(Environment.NewLine, _config.Assignees ?? new List<string>());
-            txtGroups.Text = string.Join(Environment.NewLine, _config.GroupNames ?? new List<string>());
             txtProjectName.Text = _config.ProjectName;
             txtApiKey.Text = _config.ApiKey;
             txtConfigStats.Text = $"{_config.TestRuleSets.Count} test rule set(s) configured.";
@@ -409,10 +392,8 @@ namespace ClashRuleEngine.UI
 
         private void CommitSettingsTabs()
         {
-            if (_config == null || _disciplines == null) return;
+            if (_config == null) return;
             CommitFocusedEdit();
-
-            _config.UseHierarchyFallback = chkFallback.IsChecked ?? true;
 
             int gm = cmbGroupMode.SelectedIndex;
             if (gm >= 0 && Enum.IsDefined(typeof(ClashGroupingMode), gm))
@@ -421,11 +402,8 @@ namespace ClashRuleEngine.UI
                     System.Globalization.CultureInfo.InvariantCulture, out double thr) && thr > 0)
                 _config.ProximityThreshold = thr;
             _config.AssignByGroup = chkAssignByGroup.IsChecked ?? false;
+            _config.OnlyAssignNewClashes = chkOnlyNew.IsChecked ?? false;
 
-            if (_config.Hierarchy == null) _config.Hierarchy = new SystemHierarchy();
-            _config.Hierarchy.Disciplines = _disciplines.Where(d => !string.IsNullOrWhiteSpace(d.Name)).ToList();
-            _config.Assignees = SplitLines(txtAssignees.Text);
-            _config.GroupNames = SplitLines(txtGroups.Text);
             _config.ProjectName = string.IsNullOrWhiteSpace(txtProjectName.Text) ? "Untitled Project" : txtProjectName.Text.Trim();
             _config.ApiKey = txtApiKey.Text?.Trim() ?? "";
         }
@@ -446,70 +424,12 @@ namespace ClashRuleEngine.UI
             }
         }
 
-        private void OnMoveUp(object sender, RoutedEventArgs e)
-        {
-            var d = (sender as Button)?.Tag as DisciplineDefinition;
-            if (d == null || _disciplines == null) return;
-            int i = _disciplines.IndexOf(d);
-            if (i > 0) _disciplines.Move(i, i - 1);
-        }
-
-        private void OnMoveDown(object sender, RoutedEventArgs e)
-        {
-            var d = (sender as Button)?.Tag as DisciplineDefinition;
-            if (d == null || _disciplines == null) return;
-            int i = _disciplines.IndexOf(d);
-            if (i >= 0 && i < _disciplines.Count - 1) _disciplines.Move(i, i + 1);
-        }
-
-        private void OnDeleteDiscipline(object sender, RoutedEventArgs e)
-        {
-            var d = (sender as Button)?.Tag as DisciplineDefinition;
-            if (d != null) _disciplines?.Remove(d);
-        }
-
-        private void OnAddDiscipline(object sender, RoutedEventArgs e)
-        {
-            _disciplines?.Add(new DisciplineDefinition { Name = "New Discipline", Color = "#6B7280" });
-        }
-
-        private void OnRestoreDefaults(object sender, RoutedEventArgs e)
-        {
-            if (_disciplines == null) return;
-            if (MessageBox.Show(
-                    "Replace the current disciplines with the standard defaults?\nYour keyword/assignee edits in this list will be lost.",
-                    "Restore Defaults", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-                return;
-            _disciplines.Clear();
-            foreach (var d in SystemHierarchy.DefaultDisciplines()) _disciplines.Add(d);
-        }
-
-        private static DisciplineDefinition CloneDiscipline(DisciplineDefinition d) => new DisciplineDefinition
-        {
-            Name = d.Name,
-            Keywords = new List<string>(d.Keywords ?? new List<string>()),
-            Assignee = d.Assignee,
-            AssigneeMode = d.AssigneeMode,
-            GroupName = d.GroupName,
-            Color = d.Color
-        };
-
         private void CommitFocusedEdit()
         {
             if (Keyboard.FocusedElement is TextBox tb)
                 tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
             else if (Keyboard.FocusedElement is ComboBox cb)
                 cb.GetBindingExpression(ComboBox.TextProperty)?.UpdateSource();
-        }
-
-        private static List<string> SplitLines(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return new List<string>();
-            return text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                       .Select(s => s.Trim())
-                       .Where(s => s.Length > 0)
-                       .Distinct(StringComparer.OrdinalIgnoreCase)
-                       .ToList();
         }
 
         // ──────────────────────────────────────────────────────
@@ -645,7 +565,7 @@ namespace ClashRuleEngine.UI
             bool active = Equals(_clashFilter, status);
             var border = new Border
             {
-                Background = active ? Brush("#2563EB") : Brush("#F3F4F6"),
+                Background = active ? Brush("#2563EB") : Brush("#FFFFFF"),
                 BorderBrush = active ? Brush("#2563EB") : Brush("#E5E7EB"),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(12),
@@ -659,7 +579,7 @@ namespace ClashRuleEngine.UI
                 Text = $"{label} · {count}",
                 FontSize = 11,
                 FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal,
-                Foreground = active ? Brushes.White : Brush("#374151")
+                Foreground = active ? Brushes.White : Brush("#1A1A2E")
             };
             border.MouseLeftButtonDown += OnClashFilterChipClick;
             return border;
@@ -1008,10 +928,9 @@ namespace ClashRuleEngine.UI
             try
             {
                 SyncRulesToTestSet();
-                CommitSettingsTabs();   // capture the latest grouping/hierarchy UI
+                CommitSettingsTabs();   // capture the latest grouping UI
                 _processor.ApplyGroupingSettings(_config);
                 var result = _processor.ProcessSingleTest(testName, _currentTestRuleSet,
-                    _config.Hierarchy, _config.UseHierarchyFallback,
                     progress.Report, () => progress.Cancelled);
                 progress.Close();
                 ShowResults(result);
@@ -1036,7 +955,7 @@ namespace ClashRuleEngine.UI
             try
             {
                 SyncRulesToTestSet();
-                CommitSettingsTabs();   // capture the latest grouping/hierarchy UI
+                CommitSettingsTabs();   // capture the latest grouping UI
                 _processor.ApplyGroupingSettings(_config);
                 var result = _processor.ProcessAllTests(_config, progress.Report, () => progress.Cancelled);
                 progress.Close();
@@ -1066,12 +985,10 @@ namespace ClashRuleEngine.UI
 
             // Stat chips: evaluated / assigned / unmatched / skipped / groups
             pnlResultStats.Children.Clear();
-            pnlResultStats.Children.Add(MakeStatChip("evaluated", result.ClashesProcessed, "#EFF6FF", "#1E40AF"));
-            pnlResultStats.Children.Add(MakeStatChip("by rules", result.Assigned, "#F0FDF4", "#166534"));
-            if (result.HierarchyAssigned > 0)
-                pnlResultStats.Children.Add(MakeStatChip("by hierarchy", result.HierarchyAssigned, "#F5F3FF", "#5B21B6"));
-            pnlResultStats.Children.Add(MakeStatChip("unmatched", result.Unmatched, "#FFFBEB", "#92400E"));
-            pnlResultStats.Children.Add(MakeStatChip("groups", result.GroupsCreated, "#F5F3FF", "#5B21B6"));
+            pnlResultStats.Children.Add(MakeStatChip("evaluated", result.ClashesProcessed, "#EFF6FF", "#2563EB"));
+            pnlResultStats.Children.Add(MakeStatChip("by rules", result.Assigned, "#F0FDF4", "#16A34A"));
+            pnlResultStats.Children.Add(MakeStatChip("unmatched", result.Unmatched, "#FFFBEB", "#D97706"));
+            pnlResultStats.Children.Add(MakeStatChip("groups", result.GroupsCreated, "#F5F3FF", "#7C3AED"));
             if (result.Skipped > 0)
                 pnlResultStats.Children.Add(MakeStatChip("skipped", result.Skipped, "#F3F4F6", "#6B7280"));
 
@@ -1166,10 +1083,10 @@ namespace ClashRuleEngine.UI
         }
 
         /// <summary>
-        /// Imports a .clashre config from anywhere (rules, hierarchy, assignees,
-        /// groups, API key), makes it the active config, and saves it alongside the
-        /// current document so it persists. The Rules tab repopulates from the
-        /// imported per-test rules for whatever test is selected.
+        /// Imports a .clashre config from anywhere (rules, assignees, groups, API key),
+        /// makes it the active config, and saves it alongside the current document so it
+        /// persists. The Rules tab repopulates from the imported per-test rules for
+        /// whatever test is selected.
         /// </summary>
         private void OnImportConfig(object sender, RoutedEventArgs e)
         {
@@ -1187,43 +1104,79 @@ namespace ClashRuleEngine.UI
 
                 // Kind-rule list (the summary response derived from the batch JSONL):
                 // merge into the CURRENT config — keeps your rules/grouping, adds the
-                // element-kind hierarchy + trade taxonomy.
+                // element-kind rules.
                 if (KindRuleImport.LooksLikeKindRules(text))
                 {
                     var parsed = KindRuleImport.Parse(text);
                     _config.KindRules = parsed.Rules;
-                    _config.UseKindRules = true;
-                    if (parsed.Trades != null && parsed.Trades.Count > 0)
-                        _config.Hierarchy.Disciplines = parsed.Trades;   // for owner/other resolution
+                    _config.UseKindRules = parsed.Rules != null && parsed.Rules.Count > 0;
+                    if (parsed.Approve != null)
+                        _config.ApprovePolicy = parsed.Approve;           // auto-approve policy
+
+                    // Per-test element-pair rules: replace the rule set of each test they touch.
+                    if (parsed.TestRules != null && parsed.TestRules.Count > 0)
+                    {
+                        var affected = new HashSet<string>(
+                            parsed.TestRules.Select(r => r.Test), StringComparer.OrdinalIgnoreCase);
+                        foreach (var tn in affected)
+                            _config.GetOrCreateTestRuleSet(tn).Rules.Clear();
+                        foreach (var tr in parsed.TestRules)
+                            _config.GetOrCreateTestRuleSet(tr.Test).Rules.Add(tr.Rule);
+                        foreach (var tn in affected)
+                            _config.GetOrCreateTestRuleSet(tn).ReindexPriorities();
+                    }
+
+                    // Per-test default assignee (clash-matrix responsibility).
+                    if (parsed.TestDefaults != null)
+                        foreach (var td in parsed.TestDefaults)
+                            _config.GetOrCreateTestRuleSet(td.Test).DefaultAssignee = td.Assignee;
+
                     RulePersistenceService.Save(_config);
+
+                    // Repopulate the Rules tab for the currently selected test so the
+                    // imported per-test rules are visible immediately.
+                    string curTest = GetSelectedTestName();
+                    if (!string.IsNullOrEmpty(curTest))
+                    {
+                        _currentTestRuleSet = _config.GetOrCreateTestRuleSet(curTest);
+                        _currentTestRuleSet.ReindexPriorities();
+                        _rules.Clear();
+                        foreach (var r in _currentTestRuleSet.Rules) _rules.Add(r);
+                    }
                     LoadSettingsTabs();
                     UpdateUI();
                     MessageBox.Show(
-                        $"Imported {parsed.Rules.Count} element-kind rule(s)" +
-                        (parsed.Trades.Count > 0 ? $" and {parsed.Trades.Count} trade(s)" : "") +
-                        ".\n\nThese now drive assignment (after any per-test rules, before the trade fallback).",
-                        "Kind rules imported", MessageBoxButton.OK, MessageBoxImage.Information);
+                        $"Imported {parsed.TestRules?.Count ?? 0} per-test element-pair rule(s)" +
+                        (parsed.Rules.Count > 0 ? $", {parsed.Rules.Count} kind rule(s)" : "") +
+                        (parsed.Approve != null ? $"\nAuto-approve: ON (only clearances ≥ {parsed.Approve.MinGapMm:0.#} mm, never penetrations or structure)" : "") +
+                        ".\n\nSelect a test and Run to apply them.",
+                        "Rules imported", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
-                var imported = ProjectConfig.FromXml(text);
+                // FromXml returns an EMPTY config (not null) on parse failure, so guard on
+                // the actual content too — otherwise importing an unrecognised file would
+                // silently REPLACE the current config with an empty one (data loss).
+                bool looksLikeClashre = text.TrimStart().StartsWith("<")
+                    && text.IndexOf("ClashRuleEngineConfig", StringComparison.OrdinalIgnoreCase) >= 0;
+                var imported = looksLikeClashre ? ProjectConfig.FromXml(text) : null;
                 if (imported == null)
                 {
-                    MessageBox.Show("That file could not be read as a .clashre config.",
+                    MessageBox.Show("That file isn't recognised — it's neither a kind-rules JSON " +
+                        "nor a .clashre config. Nothing was changed.",
                         "Import", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
                 // Grouping is an ADDIN setting, not dictated by an imported file —
-                // import brings in rules + hierarchy + lists; the grouping you've set
-                // in the panel wins. Capture current settings and re-apply them.
+                // import brings in rules + lists; the grouping you've set in the panel
+                // wins. Capture current settings and re-apply them.
                 try { CommitSettingsTabs(); } catch { }
                 var keepMode = _config?.GroupingMode ?? Models.ClashGroupingMode.None;
                 var keepThreshold = (_config?.ProximityThreshold ?? 1.0) > 0 ? _config.ProximityThreshold : 1.0;
                 var keepAssignByGroup = _config?.AssignByGroup ?? false;
 
                 _config = imported;
-                _config.Hierarchy?.EnsureSeeded();
                 _config.GroupingMode = keepMode;
                 _config.ProximityThreshold = keepThreshold;
                 _config.AssignByGroup = keepAssignByGroup;
@@ -1233,7 +1186,7 @@ namespace ClashRuleEngine.UI
 
                 // Repopulate everything from the imported config.
                 RefreshClashTests();                 // re-selects a test → reloads its rules
-                LoadSettingsTabs();                  // refresh Hierarchy / Lists / General tabs
+                LoadSettingsTabs();                  // refresh Lists / General tabs
                 string testName = GetSelectedTestName();
                 if (!string.IsNullOrEmpty(testName))
                 {
@@ -1246,10 +1199,8 @@ namespace ClashRuleEngine.UI
                 UpdateUI();
 
                 int ruleCount = _config.TestRuleSets?.Sum(t => t.Rules.Count) ?? 0;
-                int discCount = _config.Hierarchy?.Disciplines?.Count ?? 0;
                 MessageBox.Show(
-                    $"Imported config:\n\n• {ruleCount} rule(s) across {_config.TestRuleSets?.Count ?? 0} test(s)\n" +
-                    $"• {discCount} discipline(s) in the hierarchy\n• hierarchy fallback: {(_config.UseHierarchyFallback ? "on" : "off")}\n\n" +
+                    $"Imported config:\n\n• {ruleCount} rule(s) across {_config.TestRuleSets?.Count ?? 0} test(s)\n\n" +
                     "Saved alongside this document.",
                     "Import complete", MessageBoxButton.OK, MessageBoxImage.Information);
             }

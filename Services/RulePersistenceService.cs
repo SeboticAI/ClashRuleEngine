@@ -56,12 +56,10 @@ namespace ClashRuleEngine.Services
             catch { return NewSeeded(); }
         }
 
-        /// <summary>A fresh config with the default discipline hierarchy populated.</summary>
+        /// <summary>A fresh, empty project config.</summary>
         public static ProjectConfig NewSeeded()
         {
-            var cfg = new ProjectConfig();
-            cfg.Hierarchy.EnsureSeeded();
-            return cfg;
+            return new ProjectConfig();
         }
     }
 }

@@ -107,6 +107,7 @@
     <Compile Include="Models\ClashRule.cs" />
     <Compile Include="Models\RuleCondition.cs" />
     <Compile Include="Models\KindRule.cs" />
+    <Compile Include="Models\ApprovePolicy.cs" />
     <Compile Include="Models\TestRuleSet.cs" />
     <Compile Include="Plugin\ClashRuleEnginePlugin.cs" />
     <Compile Include="Plugin\ClashMarkerPlugins.cs" />
@@ -119,7 +120,6 @@
     <Compile Include="Services\ClashNavigationService.cs" />
     <Compile Include="Services\ClashProcessingService.cs" />
     <Compile Include="Services\ClaudeApiService.cs" />
-    <Compile Include="Services\DisciplineClassifier.cs" />
     <Compile Include="Services\ClashTestScanner.cs" />
     <Compile Include="Services\RulePersistenceService.cs" />
     <Compile Include="Services\ModelPropertyScanner.cs" />
@@ -138,9 +138,6 @@
     </Compile>
     <Compile Include="UI\RuleEnginePanel.xaml.cs">
       <DependentUpon>RuleEnginePanel.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="UI\SettingsDialog.xaml.cs">
-      <DependentUpon>SettingsDialog.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
 
@@ -162,10 +159,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="UI\SettingsDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
   </ItemGroup>
 
   <!-- Other files -->
@@ -175,9 +168,15 @@
     </None>
   </ItemGroup>
 
-  <!-- Ribbon XAML — MUST be EmbeddedResource for Navisworks to find it -->
+  <!-- Ribbon XAML — MUST be EmbeddedResource, and the resource name MUST be
+       <RootNamespace>.<RibbonLayout filename> (Navisworks looks it up that way).
+       The file lives in Plugin\, so set LogicalName to strip the folder segment —
+       otherwise the resource is "ClashRuleEngine.Plugin.ClashRuleEngineRibbon.xaml"
+       and Navisworks can't find it, so the custom ribbon tab never appears. -->
   <ItemGroup>
-    <EmbeddedResource Include="Plugin\ClashRuleEngineRibbon.xaml" />
+    <EmbeddedResource Include="Plugin\ClashRuleEngineRibbon.xaml">
+      <LogicalName>ClashRuleEngine.ClashRuleEngineRibbon.xaml</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <!-- Post-build: best-effort copy to the user Plugins folder for quick testing (Debug only).

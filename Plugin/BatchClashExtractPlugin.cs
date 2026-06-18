@@ -57,14 +57,24 @@ namespace ClashRuleEngine.Plugin
 
                 string docTitle = SafeStr(() => doc.Title) ?? SafeStr(() => doc.FileName) ?? "?";
 
-                // (test | kindA | kindB | assignee | status) -> count
+                // (test | kindA | kindB | assignee | status | gapBand | grid | level) -> count
                 var agg = new Dictionary<string, int[]>(StringComparer.Ordinal);
                 var meta = new Dictionary<string, string[]>(StringComparer.Ordinal);
+                // Per-bucket raw gap range (mm), so band boundaries can be re-tuned in
+                // analysis WITHOUT re-running the batch.
+                var gaps = new Dictionary<string, double[]>(StringComparer.Ordinal);
+                // Per-DOCUMENT element-kind cache: the same element clashes many times, so
+                // compute its kind once (the property walk is the bottleneck). Keyed by
+                // InstanceGuid. Cleared per document (this whole method runs once per NWD).
+                var kindCache = new Dictionary<string, ClashRuleEngine.Services.ElementKindInfo>(StringComparer.Ordinal);
+                // Per-bucket raw diameter range (mm) for each side [aMin,aMax,bMin,bMax],
+                // so rules can threshold on actual bore (e.g. small-bore <=25mm), not just the band.
+                var dias = new Dictionary<string, double[]>(StringComparer.Ordinal);
 
                 foreach (ClashTest test in ClashRuleEngine.Services.ClashApiCompat.GetAllTests(clash.TestsData))
                 {
                     string testName = SafeStr(() => test.DisplayName) ?? "?";
-                    WalkResults(test.Children, testName, agg, meta);
+                    WalkResults(test.Children, testName, agg, meta, gaps, kindCache, dias);
                 }
 
                 if (agg.Count == 0) return 0;
@@ -72,14 +82,21 @@ namespace ClashRuleEngine.Plugin
                 var sb = new StringBuilder(64 * 1024);
                 foreach (var kv in agg)
                 {
-                    var m = meta[kv.Key];   // [test, ka_cat, ka_kind, ka_sys, ka_dia, kb_cat, kb_kind, kb_sys, kb_dia, assignee, status]
+                    var m = meta[kv.Key];   // [test, ka_cat, ka_kind, ka_sys, ka_dia, kb_cat, kb_kind, kb_sys, kb_dia, assignee, status, gapBand, grid, level]
+                    var g = gaps.TryGetValue(kv.Key, out var gg) ? gg : new[] { 0.0, 0.0 };
+                    var dd = dias.TryGetValue(kv.Key, out var ddv) ? ddv : new[] { 0.0, 0.0, 0.0, 0.0 };
                     sb.Append('{');
                     F(sb, "file", docTitle); sb.Append(',');
                     F(sb, "test", m[0]); sb.Append(',');
-                    sb.Append("\"a\":{"); F(sb, "cat", m[1]); sb.Append(','); F(sb, "kind", m[2]); sb.Append(','); F(sb, "sys", m[3]); sb.Append(','); F(sb, "dia", m[4]); sb.Append("},");
-                    sb.Append("\"b\":{"); F(sb, "cat", m[5]); sb.Append(','); F(sb, "kind", m[6]); sb.Append(','); F(sb, "sys", m[7]); sb.Append(','); F(sb, "dia", m[8]); sb.Append("},");
+                    sb.Append("\"a\":{"); F(sb, "cat", m[1]); sb.Append(','); F(sb, "kind", m[2]); sb.Append(','); F(sb, "fam", m[14]); sb.Append(','); F(sb, "type", m[15]); sb.Append(','); F(sb, "leaf", m[16]); sb.Append(','); F(sb, "sys", m[3]); sb.Append(','); F(sb, "dia", m[4]); sb.Append(','); DiaMm(sb, dd[0], dd[1]); sb.Append("},");
+                    sb.Append("\"b\":{"); F(sb, "cat", m[5]); sb.Append(','); F(sb, "kind", m[6]); sb.Append(','); F(sb, "fam", m[17]); sb.Append(','); F(sb, "type", m[18]); sb.Append(','); F(sb, "leaf", m[19]); sb.Append(','); F(sb, "sys", m[7]); sb.Append(','); F(sb, "dia", m[8]); sb.Append(','); DiaMm(sb, dd[2], dd[3]); sb.Append("},");
                     F(sb, "assignee", m[9]); sb.Append(',');
                     F(sb, "status", m[10]); sb.Append(',');
+                    F(sb, "grid", m[12]); sb.Append(',');
+                    F(sb, "level", m[13]); sb.Append(',');
+                    sb.Append("\"gap\":{"); F(sb, "band", m[11]); sb.Append(',');
+                    sb.Append("\"min\":").Append(Round(g[0])); sb.Append(',');
+                    sb.Append("\"max\":").Append(Round(g[1])); sb.Append("},");
                     sb.Append("\"count\":").Append(kv.Value[0]);
                     sb.Append('}').Append('\n');
                 }
@@ -96,11 +113,14 @@ namespace ClashRuleEngine.Plugin
         }
 
         private void WalkResults(SavedItemCollection children, string testName,
-            Dictionary<string, int[]> agg, Dictionary<string, string[]> meta)
+            Dictionary<string, int[]> agg, Dictionary<string, string[]> meta,
+            Dictionary<string, double[]> gaps,
+            Dictionary<string, ClashRuleEngine.Services.ElementKindInfo> kindCache,
+            Dictionary<string, double[]> dias)
         {
             foreach (SavedItem si in children)
             {
-                if (si is ClashResultGroup grp) { WalkResults(grp.Children, testName, agg, meta); continue; }
+                if (si is ClashResultGroup grp) { WalkResults(grp.Children, testName, agg, meta, gaps, kindCache, dias); continue; }
                 if (!(si is ClashResult cr)) continue;
 
                 try
@@ -109,26 +129,120 @@ namespace ClashRuleEngine.Plugin
                     try { i1 = cr.Item1; } catch { }
                     try { i2 = cr.Item2; } catch { }
 
-                    // Same extractor the live engine uses -> learned rules match at run time.
-                    var ka = ClashRuleEngine.Services.ElementKind.Compute(i1);
-                    var kb = ClashRuleEngine.Services.ElementKind.Compute(i2);
+                    // Cached per element (same source extractor as the live engine).
+                    var ka = KindCached(i1, kindCache);
+                    var kb = KindCached(i2, kindCache);
                     string aCat = ka.Category, aSys = ka.System, aKind = ka.Label, aDia = Band(ka.DiameterMm);
+                    string aFam = ka.Family, aType = ka.Type, aLeaf = ka.Leaf;
                     string bCat = kb.Category, bSys = kb.System, bKind = kb.Label, bDia = Band(kb.DiameterMm);
+                    string bFam = kb.Family, bType = kb.Type, bLeaf = kb.Leaf;
 
                     string assignee = SafeStr(() => cr.AssignedTo?.DisplayName);
                     if (string.IsNullOrWhiteSpace(assignee)) assignee = "(unassigned)";
                     string status = SafeStr(() => cr.Status.ToString()) ?? "?";
 
-                    string key = string.Join("", testName, aCat, aKind, aSys, aDia, bCat, bKind, bSys, bDia, assignee, status);
-                    if (agg.TryGetValue(key, out var c)) c[0]++;
+                    // Clearance gap (mm, signed: <0 = hard penetration) + grid cell + level
+                    // from ONE spatial query (was two: ClosestIntersection is the expensive bit).
+                    double gapMm = GapMm(cr);
+                    string gapBand = GapBand(gapMm);
+                    string grid = null, level = null;
+                    try
+                    {
+                        var sys = Application.MainDocument?.Grids?.ActiveSystem;
+                        var inter = sys?.ClosestIntersection(cr.Center);
+                        if (inter != null) { grid = inter.DisplayName; level = inter.Level?.DisplayName; }
+                    }
+                    catch { }
+
+                    string key = string.Join("", testName, aCat, aKind, aSys, aDia, bCat, bKind, bSys, bDia, assignee, status, gapBand, grid ?? "", level ?? "", aFam, aType, aLeaf, bFam, bType, bLeaf);
+                    double aDiaMm = ka.DiameterMm, bDiaMm = kb.DiameterMm;
+                    if (agg.TryGetValue(key, out var c))
+                    {
+                        c[0]++;
+                        var gr = gaps[key];
+                        if (gapMm < gr[0]) gr[0] = gapMm;
+                        if (gapMm > gr[1]) gr[1] = gapMm;
+                        var dr = dias[key];
+                        Widen(dr, 0, 1, aDiaMm);
+                        Widen(dr, 2, 3, bDiaMm);
+                    }
                     else
                     {
                         agg[key] = new[] { 1 };
-                        meta[key] = new[] { testName, aCat, aKind, aSys, aDia, bCat, bKind, bSys, bDia, assignee, status };
+                        meta[key] = new[] { testName, aCat, aKind, aSys, aDia, bCat, bKind, bSys, bDia, assignee, status, gapBand, grid, level, aFam, aType, aLeaf, bFam, bType, bLeaf };
+                        gaps[key] = new[] { gapMm, gapMm };
+                        dias[key] = new[] { aDiaMm, aDiaMm, bDiaMm, bDiaMm };
                     }
                 }
                 catch { /* skip unreadable clash */ }
             }
+        }
+
+        /// <summary>Clash gap in mm (model length x 1000). Signed: hard-clash
+        /// penetration is negative, a clearance gap is positive. 0 if unreadable.</summary>
+        private static double GapMm(ClashResult cr)
+        {
+            try { return cr.Distance * 1000.0; } catch { return 0; }
+        }
+
+        /// <summary>Coarse gap band keyed in the aggregate; raw min/max kept alongside
+        /// so boundaries can be re-tuned in analysis without re-running the batch.</summary>
+        private static string GapBand(double mm)
+        {
+            if (mm <= -50) return "pen>=50mm";
+            if (mm <= -10) return "pen10-50mm";
+            if (mm < 0) return "pen<10mm";
+            if (mm <= 10) return "gap0-10mm";
+            if (mm <= 25) return "gap10-25mm";
+            if (mm <= 50) return "gap25-50mm";
+            if (mm <= 100) return "gap50-100mm";
+            return "gap>100mm";
+        }
+
+        /// <summary>ElementKind for an item, computed once per element and cached for the
+        /// rest of the document (the same element clashes many times).</summary>
+        private static ClashRuleEngine.Services.ElementKindInfo KindCached(
+            ModelItem item, Dictionary<string, ClashRuleEngine.Services.ElementKindInfo> cache)
+        {
+            if (item == null) return new ClashRuleEngine.Services.ElementKindInfo();
+            string key = KeyOf(item);
+            if (key == null || cache == null) return ClashRuleEngine.Services.ElementKind.Compute(item);
+            if (cache.TryGetValue(key, out var hit)) return hit;
+            var info = ClashRuleEngine.Services.ElementKind.Compute(item);
+            cache[key] = info;
+            return info;
+        }
+
+        /// <summary>Stable element identity: InstanceGuid when present, else a short path.</summary>
+        private static string KeyOf(ModelItem item)
+        {
+            try { if (item.InstanceGuid != Guid.Empty) return "G:" + item.InstanceGuid; } catch { }
+            try
+            {
+                var sb = new StringBuilder(64); var cur = item; int d = 0;
+                while (cur != null && d < 6) { sb.Append(SafeStr(() => cur.DisplayName)).Append('/'); cur = cur.Parent; d++; }
+                return sb.Length > 0 ? "P:" + sb : null;
+            }
+            catch { return null; }
+        }
+
+        private static string Round(double mm)
+        {
+            return mm.ToString("0.#", CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>Widen a [min,max] pair (indices lo,hi) with a positive value; 0 = unknown, ignored.</summary>
+        private static void Widen(double[] arr, int lo, int hi, double v)
+        {
+            if (v <= 0) return;
+            if (arr[lo] <= 0 || v < arr[lo]) arr[lo] = v;
+            if (v > arr[hi]) arr[hi] = v;
+        }
+
+        /// <summary>Emits "diaMm":{"min":..,"max":..} (raw bore range, mm; 0 = unknown).</summary>
+        private static void DiaMm(StringBuilder sb, double min, double max)
+        {
+            sb.Append("\"diaMm\":{\"min\":").Append(Round(min)).Append(",\"max\":").Append(Round(max)).Append('}');
         }
 
         /// <summary>The element's "kind": prefer its System, else the most specific

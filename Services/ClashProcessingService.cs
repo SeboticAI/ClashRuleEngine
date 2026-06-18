@@ -44,6 +44,13 @@ namespace ClashRuleEngine.Services
         public List<KindRule> KindRules { get; set; }
         public bool UseKindRules { get; set; } = true;
 
+        /// <summary>Auto-approve policy (gap + trade gate). Applied after assignment.</summary>
+        public ApprovePolicy ApprovePolicy { get; set; }
+
+        /// <summary>Incremental mode: only process NEW + unassigned clashes; leave every
+        /// already-triaged clash and existing group exactly as it is.</summary>
+        public bool OnlyNewClashes { get; set; } = false;
+
         /// <summary>Copies grouping + kind-rule settings off a ProjectConfig before processing.</summary>
         public void ApplyGroupingSettings(ProjectConfig config)
         {
@@ -53,10 +60,57 @@ namespace ClashRuleEngine.Services
             AssignByGroup = config.AssignByGroup;
             KindRules = config.KindRules;
             UseKindRules = config.UseKindRules;
+            ApprovePolicy = config.ApprovePolicy;
+            OnlyNewClashes = config.OnlyAssignNewClashes;
         }
 
         // Per-run element-kind cache (keyed by model-item identity).
         private Dictionary<string, ElementKindInfo> _kindCache;
+        // Per-run rule-matching caches (keyed by model-item identity): the tree path and
+        // each (category|property) value are computed ONCE per element and reused across
+        // every clash and every rule — the big speed win when there are many rules.
+        private Dictionary<string, string> _treePathCache;
+        private Dictionary<string, Dictionary<string, string>> _propValCache;
+
+        private string CachedTreePath(string key, ModelItem item)
+        {
+            if (item == null) return null;
+            if (key == null || _treePathCache == null) return BuildTreePath(item);
+            if (_treePathCache.TryGetValue(key, out var v)) return v;
+            v = BuildTreePath(item); _treePathCache[key] = v; return v;
+        }
+
+        private string CachedProp(string key, ModelItem item, string category, string property)
+        {
+            if (item == null) return null;
+            if (key == null || _propValCache == null) return GetPropertyValue(item, category, property);
+            if (!_propValCache.TryGetValue(key, out var d))
+                _propValCache[key] = d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            string vk = (category ?? "") + "" + (property ?? "");
+            if (d.TryGetValue(vk, out var v)) return v;
+            v = GetPropertyValue(item, category, property); d[vk] = v; return v;
+        }
+
+        /// <summary>Builds the (cached) property accessor for one clash — element keys are
+        /// computed ONCE here, not per rule, so all of a clash's rules share the lookups.</summary>
+        private Func<ClashItemTarget, string, string, string> MakeGetProp(ClashResult clash)
+        {
+            ModelItem i1 = null, i2 = null;
+            try { i1 = clash.Item1; } catch { }
+            try { i2 = clash.Item2; } catch { }
+            string k1 = GetModelItemKey(i1), k2 = GetModelItemKey(i2);
+            return (target, category, property) =>
+            {
+                ModelItem item; string key;
+                if (target == ClashItemTarget.Item1) { item = i1; key = k1; }
+                else if (target == ClashItemTarget.Item2) { item = i2; key = k2; }
+                else return null;
+                if (item == null) return null;
+                return RuleCondition.IsTreePathRef(category, property)
+                    ? CachedTreePath(key, item)
+                    : CachedProp(key, item, category, property);
+            };
+        }
 
         private ElementKindInfo KindCached(ModelItem item)
         {
@@ -71,11 +125,10 @@ namespace ClashRuleEngine.Services
 
         /// <summary>
         /// Element-kind assignment: the first KindRule whose detection matches a side
-        /// wins; the clash is assigned to that rule's owner / other / named trade.
-        /// Owner/Other resolve the trade via the discipline classifier. Edits the
+        /// wins; the clash is assigned to that rule's named trade. Edits the
         /// detached copy only.
         /// </summary>
-        private bool TryAssignByKind(ClashResult clash, HierarchyFallback fallback, ProcessingResult result)
+        private bool TryAssignByKind(ClashResult clash, ProcessingResult result)
         {
             if (!UseKindRules || KindRules == null || KindRules.Count == 0) return false;
 
@@ -88,21 +141,17 @@ namespace ClashRuleEngine.Services
             {
                 if (kr == null || !kr.IsEnabled) continue;
 
-                ModelItem matched = null, other = null;
+                ModelItem matched = null;
                 if ((kr.Side == KindMatchSide.Either || kr.Side == KindMatchSide.ItemA) && a != null && kr.MatchesItem(a))
-                { matched = clash.Item1; other = clash.Item2; }
+                { matched = clash.Item1; }
                 else if ((kr.Side == KindMatchSide.Either || kr.Side == KindMatchSide.ItemB) && b != null && kr.MatchesItem(b))
-                { matched = clash.Item2; other = clash.Item1; }
+                { matched = clash.Item2; }
 
                 if (matched == null) continue;
 
-                string assignee;
-                switch (kr.Assign)
-                {
-                    case KindAssign.Owner: assignee = TradeOf(matched, fallback?.Hierarchy) ?? kr.Assignee; break;
-                    case KindAssign.Other: assignee = TradeOf(other, fallback?.Hierarchy) ?? kr.Assignee; break;
-                    default: assignee = kr.Assignee; break;
-                }
+                // Without the discipline hierarchy, Owner/Other can't resolve a relative
+                // trade — fall back to the rule's named assignee for every mode.
+                string assignee = kr.Assignee;
                 if (string.IsNullOrWhiteSpace(assignee)) continue;   // can't resolve — let a later rule try
 
                 string grp = string.IsNullOrWhiteSpace(kr.GroupName) ? assignee : kr.GroupName;
@@ -115,13 +164,66 @@ namespace ClashRuleEngine.Services
             return false;
         }
 
-        /// <summary>Trade (assignee/name) of an element via the discipline classifier.</summary>
-        private string TradeOf(ModelItem item, SystemHierarchy hierarchy)
+        /// <summary>
+        /// The approve engine. After assignment, sets Status = Approved on each detached
+        /// copy whose clearance gap is inside the policy zone AND whose trade pairing is
+        /// negotiable (never structure). Edits copies only — survives the atomic write-back
+        /// exactly like an assignment. Returns the number approved.
+        /// </summary>
+        private int ApproveWithinTolerance(List<ClashResult> active, string testLabel,
+            ProcessingResult result)
         {
-            if (item == null || hierarchy == null) return null;
-            var d = ClassifyCached(item, hierarchy);
-            if (d == null) return null;
-            return string.IsNullOrWhiteSpace(d.Assignee) ? d.Name : d.Assignee;
+            var pol = ApprovePolicy;
+            if (pol == null || !pol.Enabled || active == null || active.Count == 0) return 0;
+
+            // Cheap, robust guard: a test that names a protected trade (e.g. "_MECH vs _STR")
+            // approves nothing — matches the data (0% approved in any vs-structure test).
+            if (pol.UseTestNameGuard && pol.IsProtected(testLabel)) return 0;
+
+            // The trade pair comes from the test name ("_FIRE vs _MECH" → FIRE,MECH) — that's
+            // the pairing used to pick the per-pair clearance floor.
+            ApprovePolicy.ParseTestTrades(testLabel, out string pa, out string pb);
+
+            int approved = 0;
+            foreach (var clash in active)
+            {
+                try
+                {
+                    if (clash.Status == ClashResultStatus.Approved ||
+                        clash.Status == ClashResultStatus.Resolved) continue;
+
+                    if (pol.RequireAssignee && string.IsNullOrWhiteSpace(SafeAssignee(clash))) continue;
+
+                    // Always-approve layer (data-driven, gap-independent): flexible elements
+                    // (flex pipe/duct — they bend) and certain assignees (tundish) are approved
+                    // even on a hard clash.
+                    if (pol.HasAlwaysApprove)
+                    {
+                        if (pol.IsApproveAssignee(SafeAssignee(clash)))
+                        { clash.Status = ClashResultStatus.Approved; approved++; continue; }
+
+                        string ka = null, kb = null;
+                        try { ka = KindCached(clash.Item1)?.Text; } catch { }
+                        try { kb = KindCached(clash.Item2)?.Text; } catch { }
+                        if (pol.KindApproved(ka, kb))
+                        { clash.Status = ClashResultStatus.Approved; approved++; continue; }
+                    }
+
+                    double gapMm;
+                    try { gapMm = clash.Distance * 1000.0; } catch { continue; }
+
+                    // Per-pair clearance floor: approve only once the gap clears this pairing's
+                    // threshold (ELEC·MECH 50 mm, FIRE·MECH 15 mm, HYD·MECH any, …).
+                    if (!pol.GapApproved(gapMm, pa, pb)) continue;
+
+                    clash.Status = ClashResultStatus.Approved;
+                    approved++;
+                }
+                catch { /* leave this clash untouched */ }
+            }
+
+            if (approved > 0) result.Approved += approved;
+            return approved;
         }
 
         // ── Progress / cancel (UI-thread; the panel pumps the progress window) ──
@@ -130,10 +232,6 @@ namespace ClashRuleEngine.Services
         private void Report(string msg) { try { _progress?.Invoke(msg); } catch { } }
         private bool IsCancelled { get { try { return _cancelled != null && _cancelled(); } catch { return false; } } }
 
-        // Per-run discipline-classification cache (keyed by model-item identity), so a
-        // model element shared across many clashes is classified once, not repeatedly.
-        private Dictionary<string, DisciplineDefinition> _classifyCache;
-
         // Reports progress roughly every this many clashes during evaluation.
         private const int ProgressEvery = 250;
 
@@ -141,13 +239,13 @@ namespace ClashRuleEngine.Services
         /// Process a specific clash test using its associated rule set
         /// </summary>
         public ProcessingResult ProcessSingleTest(string testName, TestRuleSet ruleSet,
-            SystemHierarchy hierarchy = null, bool useHierarchyFallback = false,
             Action<string> progress = null, Func<bool> cancelled = null)
         {
             _assignedToUnavailableReported = false;
             _progress = progress; _cancelled = cancelled;
-            _classifyCache = new Dictionary<string, DisciplineDefinition>(StringComparer.OrdinalIgnoreCase);
             _kindCache = new Dictionary<string, ElementKindInfo>(StringComparer.OrdinalIgnoreCase);
+            _treePathCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            _propValCache = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             var result = new ProcessingResult { TestName = testName };
             var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
             if (doc == null) { result.Errors.Add("No active document."); return result; }
@@ -169,8 +267,7 @@ namespace ClashRuleEngine.Services
             }
 
             result.TestsProcessed = 1;
-            var fallback = new HierarchyFallback(hierarchy, useHierarchyFallback);
-            ProcessTest(targetTest, orderedRules, ruleSet, result, doc, clashPlugin.TestsData, fallback, testName);
+            ProcessTest(targetTest, orderedRules, ruleSet, result, doc, clashPlugin.TestsData, testName);
 
             LastResult = result;
             return result;
@@ -184,8 +281,9 @@ namespace ClashRuleEngine.Services
         {
             _assignedToUnavailableReported = false;
             _progress = progress; _cancelled = cancelled;
-            _classifyCache = new Dictionary<string, DisciplineDefinition>(StringComparer.OrdinalIgnoreCase);
             _kindCache = new Dictionary<string, ElementKindInfo>(StringComparer.OrdinalIgnoreCase);
+            _treePathCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            _propValCache = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             var result = new ProcessingResult { TestName = "All Tests" };
             var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
             if (doc == null) { result.Errors.Add("No active document."); return result; }
@@ -195,7 +293,6 @@ namespace ClashRuleEngine.Services
 
             // Snapshot the test list first — we swap tests while iterating otherwise
             var tests = ClashApiCompat.GetAllTests(clashPlugin.TestsData);
-            var fallback = new HierarchyFallback(config.Hierarchy, config.UseHierarchyFallback);
 
             for (int ti = 0; ti < tests.Count; ti++)
             {
@@ -206,16 +303,18 @@ namespace ClashRuleEngine.Services
                 var testRuleSet = config.GetOrCreateTestRuleSet(ct.DisplayName);
                 var orderedRules = testRuleSet.Rules.Where(r => r.IsEnabled).OrderBy(r => r.Priority).ToList();
 
-                // With the hierarchy fallback on, a test with no rules can still be
-                // auto-assigned by discipline — so only skip when there's nothing to do.
-                if (orderedRules.Count == 0 && !fallback.Enabled)
+                // A test with no rules and no per-test default has nothing to do — skip.
+                bool hasDefault = !string.IsNullOrWhiteSpace(testRuleSet.DefaultAssignee) &&
+                    !string.Equals(testRuleSet.DefaultAssignee, "Unassigned", StringComparison.OrdinalIgnoreCase);
+                if (orderedRules.Count == 0 && !hasDefault &&
+                    !(UseKindRules && KindRules != null && KindRules.Count > 0))
                 {
                     result.Errors.Add($"No rules for test '{ct.DisplayName}' — skipped.");
                     continue;
                 }
 
                 string label = $"Test {ti + 1}/{tests.Count}: {ct.DisplayName}";
-                ProcessTest(ct, orderedRules, testRuleSet, result, doc, clashPlugin.TestsData, fallback, label);
+                ProcessTest(ct, orderedRules, testRuleSet, result, doc, clashPlugin.TestsData, label);
             }
 
             LastResult = result;
@@ -223,11 +322,11 @@ namespace ClashRuleEngine.Services
         }
 
         private void ProcessTest(ClashTest test, List<ClashRule> orderedRules, TestRuleSet ruleSet,
-            ProcessingResult result, Document doc, DocumentClashTests testsData, HierarchyFallback fallback, string testLabel)
+            ProcessingResult result, Document doc, DocumentClashTests testsData, string testLabel)
         {
             try
             {
-                ProcessTestCore(test, orderedRules, ruleSet, result, doc, testsData, fallback, testLabel);
+                ProcessTestCore(test, orderedRules, ruleSet, result, doc, testsData, testLabel);
             }
             catch (Exception ex)
             {
@@ -238,7 +337,7 @@ namespace ClashRuleEngine.Services
         }
 
         private void ProcessTestCore(ClashTest test, List<ClashRule> orderedRules, TestRuleSet ruleSet,
-            ProcessingResult result, Document doc, DocumentClashTests testsData, HierarchyFallback fallback, string testLabel)
+            ProcessingResult result, Document doc, DocumentClashTests testsData, string testLabel)
         {
             if (test.Children.Count == 0) return;
             Report($"{testLabel} — reading clashes…");
@@ -249,10 +348,12 @@ namespace ClashRuleEngine.Services
             // empty GUID so re-inserting it can't duplicate a result GUID.
             int originalCount = CountResults(test.Children);
             var active = new List<ClashResult>();
-            var passThrough = new List<ClashResult>();   // resolved — untouched by rules/grouping
-            FlattenResults(test.Children, active, passThrough);
+            // Preserved unchanged — Resolved always, plus (in incremental mode) everything
+            // already triaged: whole groups and triaged/assigned results.
+            var passThrough = new List<SavedItem>();
+            FlattenResults(test.Children, active, passThrough, topLevel: true);
 
-            if (active.Count == 0) { result.Skipped += passThrough.Count; return; }
+            if (active.Count == 0) { result.Skipped += passThrough.Sum(CountItem); return; }
 
             // Sanity guard: if the copies lost their model item references we
             // can neither evaluate rules nor group — abort BEFORE any write.
@@ -263,7 +364,7 @@ namespace ClashRuleEngine.Services
             }
 
             // ── 2. Evaluate rules and edit the detached copies ─────────────
-            result.Skipped += passThrough.Count;
+            result.Skipped += passThrough.Sum(CountItem);
             bool anyEdits = false;
 
             int evaluated = 0, activeTotal = active.Count;
@@ -279,11 +380,14 @@ namespace ClashRuleEngine.Services
                 result.ClashesProcessed++;
                 ClashRule matched = null;
 
+                // Build the cached property accessor ONCE per clash (element keys + tree
+                // path + property values are memoised across all rules for this clash).
+                var getProp = MakeGetProp(clash);
                 foreach (var rule in orderedRules)
                 {
                     try
                     {
-                        if (EvaluateClash(clash, rule, doc)) { matched = rule; break; }
+                        if (rule.Evaluate(getProp)) { matched = rule; break; }
                     }
                     catch (Exception ex)
                     {
@@ -295,30 +399,41 @@ namespace ClashRuleEngine.Services
                 {
                     result.Assigned++;
                     string rAssignee, rGroup;
-                    ResolveRuleAssignment(clash, matched, fallback, out rAssignee, out rGroup);
+                    ResolveRuleAssignment(clash, matched, out rAssignee, out rGroup);
                     EditClashCopy(clash, matched, rAssignee, rGroup, result);
                     result.RecordAssignment(matched.Name, rGroup, rAssignee, matched.Color);
                     anyEdits = true;
                 }
-                else if (TryAssignByKind(clash, fallback, result))
+                else if (TryAssignByKind(clash, result))
                 {
                     anyEdits = true;
                 }
-                else if (TryAssignByHierarchy(clash, fallback, result))
+                else if (!string.IsNullOrWhiteSpace(ruleSet.DefaultAssignee) &&
+                         !string.Equals(ruleSet.DefaultAssignee, "Unassigned", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Per-test default = the trade this clash test normally goes to (the
+                    // learned clash-matrix responsibility). This IS the assignment for the
+                    // test-driven model, not a fallback — so count it as assigned.
+                    string assignee = ruleSet.DefaultAssignee;
+                    clash.Description = $"[Group: {assignee}] [Assignee: {assignee}] Per-test default";
+                    TrySetAssignedTo(clash, assignee, result);
+                    result.Assigned++;
+                    result.RecordAssignment("Per-test default", assignee, assignee, "#2563EB");
                     anyEdits = true;
                 }
                 else
                 {
                     result.Unmatched++;
                     result.UnmatchedClashes.Add(clash.DisplayName);
-                    if (!string.IsNullOrWhiteSpace(ruleSet.DefaultAssignee))
-                    {
-                        clash.Description = $"[Unmatched] Default assignee: {ruleSet.DefaultAssignee}";
-                        TrySetAssignedTo(clash, ruleSet.DefaultAssignee, result);
-                        anyEdits = true;
-                    }
                 }
+            }
+
+            // ── 2b. Auto-approve within-tolerance clashes (assign-then-approve) ──
+            int approved = ApproveWithinTolerance(active, testLabel, result);
+            if (approved > 0)
+            {
+                anyEdits = true;
+                Report($"{testLabel} — approved {approved:N0} within tolerance…");
             }
 
             // ── 3. Cluster active clashes into groups (union-find) ─────────
@@ -335,7 +450,7 @@ namespace ClashRuleEngine.Services
             if (!anyEdits && groups.Count == 0) return;   // nothing to write
 
             // Guard: never write back fewer results than we started with.
-            int rebuiltCount = groups.Sum(g => g.Children.Count) + ungrouped.Count + passThrough.Count;
+            int rebuiltCount = groups.Sum(g => g.Children.Count) + ungrouped.Count + passThrough.Sum(CountItem);
             if (rebuiltCount != originalCount)
             {
                 result.Errors.Add($"'{test.DisplayName}': rebuilt {rebuiltCount} of {originalCount} results — aborted, nothing written.");
@@ -360,7 +475,7 @@ namespace ClashRuleEngine.Services
         /// dispose rolls the whole thing back — the document is left untouched.
         /// </summary>
         private static void WriteBack(Document doc, DocumentClashTests testsData, ClashTest test,
-            List<ClashResultGroup> groups, List<ClashResult> ungrouped, List<ClashResult> passThrough)
+            List<ClashResultGroup> groups, List<ClashResult> ungrouped, List<SavedItem> passThrough)
         {
             using (var t = doc.BeginTransaction("Clash Rule Engine — assign & group"))
             {
@@ -394,23 +509,60 @@ namespace ClashRuleEngine.Services
         /// results go to <paramref name="active"/>, resolved ones (left untouched
         /// by rules/grouping) to <paramref name="passThrough"/>.
         /// </summary>
-        private static void FlattenResults(SavedItemCollection children,
-            List<ClashResult> active, List<ClashResult> passThrough)
+        private void FlattenResults(SavedItemCollection children,
+            List<ClashResult> active, List<SavedItem> passThrough, bool topLevel)
         {
             foreach (SavedItem si in children)
             {
                 if (si is ClashResultGroup grp)
                 {
-                    FlattenResults(grp.Children, active, passThrough);
+                    // Incremental mode: leave already-coordinated groups exactly as they
+                    // are (preserve the whole top-level group, untouched).
+                    if (OnlyNewClashes && topLevel)
+                        passThrough.Add(CopyGroupDetached(grp));
+                    else
+                        FlattenResults(grp.Children, active, passThrough, false);
                 }
                 else if (si is ClashResult cr)
                 {
                     var copy = (ClashResult)cr.CreateCopy();
                     copy.Guid = Guid.Empty;
-                    if (copy.Status == ClashResultStatus.Resolved) passThrough.Add(copy);
+                    // Always pass Resolved through. In incremental mode also pass through
+                    // anything already triaged — only NEW + unassigned clashes get processed.
+                    bool preserve = copy.Status == ClashResultStatus.Resolved
+                        || (OnlyNewClashes && !(copy.Status == ClashResultStatus.New
+                                                && string.IsNullOrWhiteSpace(SafeAssignee(copy))));
+                    if (preserve) passThrough.Add(copy);
                     else active.Add(copy);
                 }
             }
+        }
+
+        /// <summary>Deep-copies a group with fresh-GUID child results so it can be
+        /// re-inserted unchanged (re-adding a result with its original GUID corrupts
+        /// Clash Detective — quirk #0).</summary>
+        private static ClashResultGroup CopyGroupDetached(ClashResultGroup grp)
+        {
+            var g = new ClashResultGroup { DisplayName = grp.DisplayName };
+            foreach (SavedItem child in grp.Children)
+            {
+                if (child is ClashResultGroup sub) g.Children.Add(CopyGroupDetached(sub));
+                else if (child is ClashResult cr)
+                {
+                    var cc = (ClashResult)cr.CreateCopy();
+                    cc.Guid = Guid.Empty;
+                    g.Children.Add(cc);
+                }
+            }
+            return g;
+        }
+
+        /// <summary>Number of ClashResults a passed-through item represents (a result = 1,
+        /// a group = its result count) — used by the no-data-loss guard.</summary>
+        private static int CountItem(SavedItem si)
+        {
+            if (si is ClashResultGroup g) return CountResults(g.Children);
+            return si is ClashResult ? 1 : 0;
         }
 
         private static int CountResults(SavedItemCollection children)
@@ -425,60 +577,14 @@ namespace ClashRuleEngine.Services
         }
 
         /// <summary>
-        /// Resolves a matched rule's effective assignee + group for a specific clash.
-        /// For Named rules these are the literal fields. For Owning/Other rules the
-        /// trade is classified per-clash (always one of the two clashing trades) and
-        /// its owner — or the trade name if no owner is set — is used. A blank group
-        /// defaults to the resolved trade's group/name.
+        /// Resolves a matched rule's effective assignee + group for a specific clash —
+        /// the literal rule fields (rules are always Named now).
         /// </summary>
-        private void ResolveRuleAssignment(ClashResult clash, ClashRule rule, HierarchyFallback fallback,
+        private void ResolveRuleAssignment(ClashResult clash, ClashRule rule,
             out string assignee, out string group)
         {
             assignee = rule.Assignee;
             group = rule.GroupName;
-            if (rule.AssigneeMode == AssigneeMode.Named) return;
-
-            var disc = ResolveRelativeTrade(clash, rule, fallback);
-            if (disc != null)
-            {
-                assignee = string.IsNullOrWhiteSpace(disc.Assignee) ? disc.Name : disc.Assignee;
-                if (string.IsNullOrWhiteSpace(group))
-                    group = string.IsNullOrWhiteSpace(disc.GroupName) ? disc.Name : disc.GroupName;
-            }
-            // else: couldn't classify — keep the literal Assignee fallback (may be empty).
-        }
-
-        /// <summary>
-        /// Picks the trade for a relative-assignee rule: classify the subject item
-        /// (Owning) or the opposite item (Other). Needs a populated hierarchy.
-        /// </summary>
-        private DisciplineDefinition ResolveRelativeTrade(ClashResult clash, ClashRule rule, HierarchyFallback fallback)
-        {
-            var hierarchy = fallback?.Hierarchy;
-            if (hierarchy?.Disciplines == null || hierarchy.Disciplines.Count == 0) return null;
-
-            ModelItem subject = rule.SubjectItem == ClashItemTarget.Item2 ? clash.Item2 : clash.Item1;
-            ModelItem other   = rule.SubjectItem == ClashItemTarget.Item2 ? clash.Item1 : clash.Item2;
-            ModelItem target  = rule.AssigneeMode == AssigneeMode.OtherTrade ? other : subject;
-            return ClassifyCached(target, hierarchy);
-        }
-
-        /// <summary>
-        /// Discipline classification with a per-run cache keyed by model-item identity.
-        /// A beam clashing 40 pipes is classified once, not 40×. Falls back to a direct
-        /// classify when the item has no stable key.
-        /// </summary>
-        private DisciplineDefinition ClassifyCached(ModelItem item, SystemHierarchy hierarchy)
-        {
-            if (item == null) return null;
-            string key = GetModelItemKey(item);
-            if (key == null || _classifyCache == null)
-                return DisciplineClassifier.Classify(item, hierarchy);
-
-            if (_classifyCache.TryGetValue(key, out var cached)) return cached;
-            var disc = DisciplineClassifier.Classify(item, hierarchy);
-            _classifyCache[key] = disc;
-            return disc;
         }
 
         /// <summary>
@@ -501,59 +607,6 @@ namespace ClashRuleEngine.Services
                     case "approved": clash.Status = ClashResultStatus.Approved; break;
                     case "resolved": clash.Status = ClashResultStatus.Resolved; break;
                 }
-            }
-        }
-
-        /// <summary>
-        /// Fallback assignment for a clash no rule matched: classify both items into
-        /// disciplines and assign the clash to the LOWER-precedence (responsible)
-        /// discipline's owner. Requires BOTH sides to be classifiable so precedence
-        /// is meaningful — otherwise returns false and the caller uses the default
-        /// assignee. Edits the detached copy only.
-        /// </summary>
-        private bool TryAssignByHierarchy(ClashResult clash, HierarchyFallback fallback, ProcessingResult result)
-        {
-            if (fallback == null || !fallback.Enabled) return false;
-
-            var dA = ClassifyCached(clash.Item1, fallback.Hierarchy);
-            var dB = ClassifyCached(clash.Item2, fallback.Hierarchy);
-            if (dA == null || dB == null) return false;
-
-            var responsible = fallback.Hierarchy.GetResponsible(dA, dB);
-            if (responsible == null) return false;
-
-            // The responsible (lower-precedence) trade normally takes the clash. But a
-            // discipline can be set to route to the OTHER trade in any test (e.g. a
-            // "Hydraulic Drainage" sub-discipline → the other service). OwningTrade /
-            // Named both resolve to the responsible discipline's own owner.
-            var other = responsible == dA ? dB : dA;
-            var target = responsible.AssigneeMode == AssigneeMode.OtherTrade ? other : responsible;
-
-            string assignee = string.IsNullOrWhiteSpace(target.Assignee) ? target.Name : target.Assignee;
-            string grp = string.IsNullOrWhiteSpace(target.GroupName) ? target.Name : target.GroupName;
-
-            string how = responsible.AssigneeMode == AssigneeMode.OtherTrade
-                ? $"{responsible.Name} → other trade {target.Name}"
-                : $"{responsible.Name} responsible";
-            clash.Description =
-                $"[Group: {grp}] [Assignee: {assignee}] Hierarchy: {how} ({dA.Name} vs {dB.Name})";
-            TrySetAssignedTo(clash, assignee, result);
-
-            result.HierarchyAssigned++;
-            result.RecordAssignment($"⇣ {target.Name} (hierarchy)", grp, assignee, target.Color);
-            return true;
-        }
-
-        /// <summary>Immutable per-run carrier for the hierarchy fallback settings.</summary>
-        private sealed class HierarchyFallback
-        {
-            public SystemHierarchy Hierarchy { get; }
-            public bool Enabled { get; }
-
-            public HierarchyFallback(SystemHierarchy hierarchy, bool enabled)
-            {
-                Hierarchy = hierarchy;
-                Enabled = enabled && hierarchy?.Disciplines != null && hierarchy.Disciplines.Count > 0;
             }
         }
 
@@ -606,7 +659,10 @@ namespace ClashRuleEngine.Services
                     GroupByKey(active, SafeAssignee, "Unassigned", out groups, out ungrouped);
                     return;
                 case ClashGroupingMode.Grid:
-                    GroupByKey(active, GridKey, "Off-grid", out groups, out ungrouped);
+                    GroupByGrid(active, splitByTrade: false, out groups, out ungrouped);
+                    return;
+                case ClashGroupingMode.GridTrade:
+                    GroupByGrid(active, splitByTrade: true, out groups, out ungrouped);
                     return;
                 case ClashGroupingMode.Level:
                     GroupByKey(active, LevelKey, "No level", out groups, out ungrouped);
@@ -643,9 +699,9 @@ namespace ClashRuleEngine.Services
                 list.Add(c);
             }
 
+            // Group everything (even singletons) so the report leaves nothing ungrouped.
             foreach (var kv in buckets.OrderByDescending(b => b.Value.Count))
             {
-                if (kv.Value.Count < 2) { ungrouped.Add(kv.Value[0]); continue; }
                 var grp = new ClashResultGroup { DisplayName = $"{kv.Key} ({kv.Value.Count})" };
                 foreach (var c in kv.Value) grp.Children.Add(c);
                 groups.Add(grp);
@@ -655,6 +711,83 @@ namespace ClashRuleEngine.Services
         private static string SafeAssignee(ClashResult cr)
         {
             try { return cr.AssignedTo?.DisplayName; } catch { return null; }
+        }
+
+        /// <summary>
+        /// Groups by grid cell, named by the bare GRID INTERSECTION only (e.g. "H-22" —
+        /// level stripped, no count). APPROVED clashes in a cell are split into their own
+        /// sibling group suffixed " (1)" so a trade reviews active (to-do) vs approved
+        /// (done) separately; the main group keeps the active clashes only. With
+        /// <paramref name="splitByTrade"/> each cell is first split per trade. Colliding
+        /// names get further " (2)", " (3)" suffixes.
+        /// </summary>
+        private void GroupByGrid(List<ClashResult> active, bool splitByTrade,
+            out List<ClashResultGroup> groups, out List<ClashResult> ungrouped)
+        {
+            groups = new List<ClashResultGroup>();
+            ungrouped = new List<ClashResult>();
+
+            var buckets = new Dictionary<string, List<ClashResult>>(StringComparer.OrdinalIgnoreCase);
+            var bucketGrid = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in active)
+            {
+                string grid = null;
+                try { grid = GridKey(c); } catch { }
+                if (string.IsNullOrWhiteSpace(grid)) grid = "Off-grid";
+                string key = splitByTrade ? grid + "" + (SafeAssignee(c) ?? "Unassigned") : grid;
+                if (!buckets.TryGetValue(key, out var list)) { buckets[key] = list = new List<ClashResult>(); bucketGrid[key] = grid; }
+                list.Add(c);
+            }
+
+            // Ensure unique display names; collisions get " (2)", " (3)"…
+            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            Func<string, string> unique = name =>
+            {
+                if (used.Add(name)) return name;
+                for (int n = 2; ; n++) { string cand = name + " (" + n + ")"; if (used.Add(cand)) return cand; }
+            };
+
+            foreach (var kv in buckets.OrderByDescending(b => b.Value.Count))
+            {
+                // Group everything — even a single clash gets its own grid group so the
+                // report leaves nothing ungrouped.
+                string gridName = GridName(bucketGrid[kv.Key]);
+
+                var approved = kv.Value.Where(IsApprovedStatus).ToList();
+                var actives = kv.Value.Where(c => !IsApprovedStatus(c)).ToList();
+
+                if (approved.Count > 0 && actives.Count > 0)
+                {
+                    // Mixed cell → active in the main group, approved in a " (1)" sibling
+                    // so the trade reviews to-do vs done separately.
+                    groups.Add(MakeGroup(unique(gridName), actives));
+                    groups.Add(MakeGroup(unique(gridName + " (1)"), approved));
+                }
+                else
+                {
+                    groups.Add(MakeGroup(unique(gridName), kv.Value));   // all one kind
+                }
+            }
+        }
+
+        private static bool IsApprovedStatus(ClashResult cr)
+        {
+            try { return cr.Status == ClashResultStatus.Approved; } catch { return false; }
+        }
+
+        private static ClashResultGroup MakeGroup(string name, List<ClashResult> members)
+        {
+            var grp = new ClashResultGroup { DisplayName = name };
+            foreach (var c in members) grp.Children.Add(c);
+            return grp;
+        }
+
+        /// <summary>Bare grid-intersection label: strips a trailing " : &lt;level&gt;" if present.</summary>
+        private static string GridName(string gridLabel)
+        {
+            if (string.IsNullOrWhiteSpace(gridLabel)) return "Off-grid";
+            int idx = gridLabel.IndexOf(" : ", StringComparison.Ordinal);
+            return idx > 0 ? gridLabel.Substring(0, idx).Trim() : gridLabel.Trim();
         }
 
         // Ancestor names that aren't a meaningful element "service" (geometry leaf,
@@ -1024,6 +1157,14 @@ namespace ClashRuleEngine.Services
                 cur = cur.Parent;
                 depth++;
             }
+            // Also fold in the Family / Type property values so fine (tree-path) rules
+            // match the SAME family/type tokens the batch extractor keyed on, even when
+            // the family isn't its own tree node.
+            foreach (var pn in new[] { "Family", "Family Name", "Type", "Type Name" })
+            {
+                var v = GetPropertyValue(item, "", pn);
+                if (!string.IsNullOrWhiteSpace(v)) parts.Add(v);
+            }
             return parts.Count > 0 ? string.Join(" / ", parts) : null;
         }
 
@@ -1070,10 +1211,10 @@ namespace ClashRuleEngine.Services
         public int TestsWritten { get; set; }
         public int ClashesProcessed { get; set; }
         public int Assigned { get; set; }
-        public int HierarchyAssigned { get; set; }
         public int Unmatched { get; set; }
         public int Skipped { get; set; }
         public int GroupsCreated { get; set; }
+        public int Approved { get; set; }
         public List<string> Errors { get; set; } = new List<string>();
         public List<string> UnmatchedClashes { get; set; } = new List<string>();
         public Dictionary<string, AssignmentSummary> AssignmentsByRule { get; set; } = new Dictionary<string, AssignmentSummary>();
@@ -1092,9 +1233,9 @@ namespace ClashRuleEngine.Services
                 $"Test: {TestName}",
                 $"Clashes evaluated: {ClashesProcessed}",
                 $"Assigned by rules: {Assigned}",
-                $"Assigned by hierarchy: {HierarchyAssigned}",
                 $"Unmatched: {Unmatched}",
                 $"Skipped (resolved): {Skipped}",
+                $"Auto-approved (within tolerance): {Approved}",
                 $"Groups created: {GroupsCreated}", ""
             };
             if (AssignmentsByRule.Count > 0)

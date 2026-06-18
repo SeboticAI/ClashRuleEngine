@@ -44,14 +44,6 @@ namespace ClashRuleEngine.Services
             sb.AppendLine("    assignTo = \"Named\" (only if the user names a specific person/company in 'assignee').");
             sb.AppendLine("- subjectItem is ItemA or ItemB — the item the rule is primarily about (anchors Owning/Other).");
             sb.AppendLine();
-            sb.AppendLine("Project disciplines (precedence order; lower in the list = yields/responsible):");
-            var discs = config?.Hierarchy?.Disciplines ?? new List<DisciplineDefinition>();
-            for (int i = 0; i < discs.Count; i++)
-            {
-                var kw = discs[i].Keywords != null ? string.Join(", ", discs[i].Keywords) : "";
-                sb.AppendLine($"  {i + 1}. {discs[i].Name}  (keywords: {kw})");
-            }
-            sb.AppendLine();
             sb.AppendLine("Output STRICT JSON only — no prose, no markdown fences. Shape:");
             sb.AppendLine(@"{
   ""rules"": [

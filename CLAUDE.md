@@ -1,11 +1,11 @@
 # CLAUDE.md — Project Context for Claude Code
 
 ## Project overview
-This is a **Navisworks Manage** dockable panel plugin (C# / WPF / .NET Framework 4.8) for BIM coordination clash management. It provides a rule-based engine for grouping and assigning clash detection results, with per-test rule hierarchies and AI-assisted analysis planned.
+This is a **Navisworks Manage** dockable panel plugin (C# / WPF / .NET Framework 4.8) for BIM coordination clash management. It assigns and groups clash-detection results using **per-test element-pair rules** learned from historically-coordinated models, plus an **auto-approve engine** (clearance-based) and grid-aware grouping.
 
 Builds are per-Navisworks-version (`/p:NavisworksVersion=2027`, default = newest installed). **This machine has Navisworks Manage 2027** (2026 was removed in the 2026-04 upgrade cycle); older-version builds need that version's API DLLs dropped in `Refs\<version>\`.
 
-The business context: we're building a product to help companies automate BIM coordination workflows, following Australian BIM coordination standards (system hierarchy, clash matrix, discipline responsibility).
+The business context: we're building a product to help companies automate BIM coordination workflows. **Direction (2026-06):** assignment is driven by the *actual clashing elements* (category/family/size) per clash test, learned from ~28+ coordinated NWDs — NOT by a fixed discipline hierarchy (that system was removed). "In test _ELEC vs _HYD, a Cable Tray Fitting vs a Pipe → ELEC." Ambiguous element pairs are left unassigned for human review rather than guessed.
 
 ## Architecture
 
@@ -13,32 +13,39 @@ The business context: we're building a product to help companies automate BIM co
 ```
 ClashRuleEngine/
 ├── Models/
-│   ├── ClashRule.cs              # Single rule with conditions, group, assignee, priority
-│   ├── RuleCondition.cs          # Individual condition (category.property operator value)
-│   └── TestRuleSet.cs            # Per-test rules + ProjectConfig + SystemHierarchy
+│   ├── ClashRule.cs              # One rule: conditions (Item-A/B/Either), group, assignee, priority
+│   ├── RuleCondition.cs          # Individual condition (category.property operator value, per-side target)
+│   ├── KindRule.cs               # Single-element kind rule (keywords + size band → owner/other/named); largely unused now
+│   ├── ApprovePolicy.cs          # Auto-approve engine: min clearance gap, per-pair floors, never-penetration/structure
+│   └── TestRuleSet.cs            # Per-test rules + ProjectConfig + ClashGroupingMode enum
 ├── Services/
-│   ├── ClashProcessingService.cs # Evaluates rules + hierarchy, groups (mode-aware), writes back
+│   ├── ClashProcessingService.cs # assign (rules) → approve → group (mode-aware) → atomic write-back
 │   ├── ClashApiCompat.cs         # Version compat for the 2027 TestsRoot folder tree
 │   ├── ClashNavigationService.cs # Resolve-by-GUID navigate/select/frame (stale-ref-safe)
 │   ├── ClashMarkerService.cs     # Shared state + drawing for the 3D marker overlay
 │   ├── ClashTestScanner.cs       # Discovers clash tests/results from the NW document
-│   ├── DisciplineClassifier.cs   # Classifies an element to a discipline by keywords
+│   ├── ElementKind.cs            # Computes an element's kind (cat/family/type/system + diameter mm); shared by extractor + engine
+│   ├── KindRuleImport.cs         # Parses the clashre-kind-rules/1 JSON → testRules (element-pair ClashRules), approve policy
 │   ├── ModelPropertyScanner.cs   # Scans model for available properties (for dropdowns)
 │   ├── SessionExportService.cs   # Full session export + lean per-test assignment summary
 │   ├── AiRuleGenerator.cs / ClaudeApiService.cs # AI rule authoring (raw-HTTP, opus-4-8)
 │   └── RulePersistenceService.cs # Saves/loads ProjectConfig as .clashre XML file
 ├── UI/
-│   ├── Converters.cs             # WPF value converters (incl. AssigneeModeIndexConverter)
-│   ├── RuleEditorDialog.xaml/.cs # Rule creation/editing dialog
+│   ├── Converters.cs             # WPF value converters
+│   ├── RuleEditorDialog.xaml/.cs # Rule creation/editing dialog (Named assignee)
 │   ├── ClashInspectorDialog.xaml/.cs # Side-by-side Item A/B property inspector
-│   ├── ClashMatrixDialog.cs      # Code-only discipline-vs-discipline matrix view
+│   ├── ClashMatrixDialog.cs      # Code-only test-pair matrix view
 │   ├── ExportProgressWindow.cs   # Streaming-export progress + cancel
-│   ├── SettingsDialog.xaml/.cs   # LEGACY (settings now live in main tabs; file retained, unused)
-│   └── RuleEnginePanel.xaml/.cs  # Main panel: 5 tabs (Rules/Clashes/Hierarchy/Assignees&Groups/General)
+│   ├── AiAssistDialog.xaml/.cs   # AI rule-generation dialog
+│   └── RuleEnginePanel.xaml/.cs  # Main panel: 3 tabs (Rules/Clashes/General); grouping is a GLOBAL bar above the tabs (applies to all tests). Light theme.
 ├── Plugin/
 │   ├── ClashRuleEnginePlugin.cs  # DockPanePlugin + RibbonTab handler
 │   ├── ClashMarkerPlugins.cs     # RenderPlugin (overlay) + InputPlugin (click-to-select)
+│   ├── BatchClashExtractPlugin.cs# Headless AddInPlugin: extracts per-clash kind/assignee/status/gap/grid/level → JSONL (the learning data)
 │   └── ClashRuleEngineRibbon.xaml # Ribbon layout (embedded resource)
+├── tools/
+│   ├── BatchExtractor/           # Automation console driver for BatchClashExtractPlugin
+│   └── NwdClashLearner/          # WinForms GUI: pick NWDs, run the extractor (uses the DEPLOYED plugin)
 ├── Installer/
 │   └── ClashRuleEngine.iss       # Inno Setup installer script
 ├── PackageContents.xml           # Navisworks plugin manifest
@@ -46,10 +53,14 @@ ClashRuleEngine/
 ```
 
 ### Key design decisions
-- **Per-test rule hierarchies**: Each clash test (MC vs EC, HC vs SC, etc.) has its own independent list of rules with its own priority ordering. Stored in `ProjectConfig.TestRuleSets`.
-- **System hierarchy**: Structure > Architecture > HVAC > Plumbing > Fire > Electrical > Comms > Landscape. The lower-priority system is responsible for resolving clashes.
-- **Persistence**: Rules saved as `.clashre` XML file alongside the NW document (not embedded in the NW file — the Navisworks 2026 API doesn't expose reliable document-level user data storage).
-- **Light theme UI**: White backgrounds, dark text, blue accents. The dark theme was hard to read inside Navisworks.
+- **Per-test element-pair rules** (CURRENT model): each clash test has its own ordered `ClashRule` list in `ProjectConfig.TestRuleSets`. An element-pair rule = a `ClashRule` with `And` logic + two `Either`-target "Category contains" conditions → matches a clash where one element is category A and the other is category B (unordered), assigned to a Named trade. Imported from a `clashre-kind-rules/1` JSON's `"testRules":[{test,a,b,assign}]` block via `KindRuleImport`. Built from mining ~28 coordinated NWDs (`clash_kinds.jsonl`). Ambiguous pairs are intentionally omitted → left unassigned.
+- **Approve engine** (`ApprovePolicy` / `ClashProcessingService.ApproveWithinTolerance`): after assignment, auto-set Status=Approved. Two paths: (1) **always-approve** (gap-independent) — `ApproveKinds` (element-kind keywords, e.g. Flex Pipe 91% / Flex Duct 94% approved → approved even on a hard clash, they bend) and `ApproveAssignees` (e.g. TUNDISH 90% approved); (2) **clearance-gated** — gap ≥ a per-pair floor (default ≥50 mm). Hard gates: penetrations never approved by the gap path; `_X vs _STR` (structure) never approved (test-name guard). All learned from the data. (We do NOT set ApprovedBy — it caused a confusing "Approved by: varies" group rollup; Status only.)
+- **NO discipline/system hierarchy** — that whole responsibility system (SystemHierarchy, DisciplineClassifier, owner/other resolution, Hierarchy tab) was REMOVED 2026-06-17. Assignment comes only from per-test rules now.
+- **Pipeline order**: assign-per-clash (rules) → approve → group → ONE atomic write-back per test. Grouping only organises; it never re-assigns.
+- **Grouping** (`ClashGroupingMode`): None / SharedElement / Proximity / **Grid** / Level / ByAssignee / Hybrid. **Grid** is the recommended mode: groups named by the bare grid intersection only (e.g. "H-22" — level stripped, no trade, no count), with " (1)"/" (2)" suffixes when two groups share a grid name (`GroupByGrid`/`GridName`). (`GridTrade` enum value is retained but now routes to the same grid grouping.) `AssignByGroup` (group-then-assign majority) conflicts with per-element specificity — leave OFF.
+- **Persistence**: `.clashre` XML alongside the NW document (the API has no reliable document-level user-data store).
+- **Light theme UI**: white cards on `#F8F9FA`, dark `#1A1A2E` text, blue `#2563EB` accent, `#E5E7EB` borders. (A dark-theme attempt was reverted — it produced unreadable light-on-light fields.)
+- **Ribbon / naming**: the dock pane (the "app") is **Clash Rule Engine** (DockPanePlugin DisplayName → View→Windows entry + pane title). A custom ribbon tab **OConnors Clash** (CommandHandlerPlugin + RibbonLayout) holds a **Clash Engine** button that opens the pane; an `AddInPlugin` (DisplayName **Clash Engine**) under Tool Add-ins does the same. `ShowPanel()` = `if (rec.LoadedPlugin==null) rec.LoadPlugin()` — `DockPanePluginRecord` exposes ONLY LoadPlugin/IsLoaded (no Unload/Show), and closing a pane unloads it, so LoadPlugin re-opens.
 
 ## Navisworks API quirks (IMPORTANT)
 These were discovered through trial and error during development (2026/2027 APIs):
@@ -81,7 +92,7 @@ These were discovered through trial and error during development (2026/2027 APIs
 2. **`DockPanePluginRecord.Enabled`** — does NOT exist. Can't toggle visibility programmatically.
 3. **`ModelItemEnumerableCollection.DescendantsAndSelf`** — does NOT exist. Use `model.RootItem.Descendants` instead, iterating through `doc.Models` first.
 4. **`ModelItemEnumerableCollection.Descendants`** — does NOT exist on the collection. Must go through individual `Model` objects: `foreach (Model model in doc.Models) foreach (ModelItem item in model.RootItem.Descendants)`.
-5. **`ClashResult.ApprovedBy`** — is NOT a simple string. Can't assign strings directly. Use `Description` field for assignee info.
+5. **`ClashResult.ApprovedBy`** — is NOT a string; it's a typed `Assignee` (`[RW]`). Set `clash.ApprovedBy = new Assignee(name)` (same as `AssignedTo`), and `clash.ApprovedTime = DateTime.Now` (`[RW] DateTime?`) so an auto-approval is complete. The approve engine sets all three (Status/ApprovedBy/ApprovedTime) on the detached copy.
 6. **`ClashTest.LastRun`** — returns `DateTime?` (nullable), not `DateTime`. Use `ct.LastRun ?? DateTime.MinValue`.
 7. **`Document.SetUserString` / `GetUserString`** — do NOT exist. Don't try to store data in the NW document.
 8. **`SavedViewpoint.Comment`** — does NOT exist. 
@@ -94,6 +105,19 @@ These were discovered through trial and error during development (2026/2027 APIs
 - Navisworks references: `Private=False` (don't copy to output).
 - Platform: `x64` only.
 - Ribbon XAML: must be `<EmbeddedResource>`, not `<Page>` or `<None>`.
+- **Ribbon XAML resource NAME + format (debugged 2026-06-18 — why the custom tab never showed):**
+  1. The embedded-resource name MUST be exactly `<RootNamespace>.<RibbonLayout filename>` =
+     `ClashRuleEngine.ClashRuleEngineRibbon.xaml`. Because the file lives in `Plugin\`, MSBuild
+     names the resource `ClashRuleEngine.Plugin.ClashRuleEngineRibbon.xaml` — Navisworks can't
+     find that, so NO tab appears. Fix: set `<LogicalName>ClashRuleEngine.ClashRuleEngineRibbon.xaml</LogicalName>`
+     on the `<EmbeddedResource>`.
+  2. The XAML MUST use the SDK format (see `…\api\NET\examples\…\CustomRibbon\CustomRibbon.xaml`):
+     root `<RibbonControl xmlns="clr-namespace:Autodesk.Windows;assembly=AdWindows" …>` with
+     `<RibbonTab Id Title>`, `<RibbonPanel><RibbonPanelSource Title>`,
+     `<local:NWRibbonButton Id …>` where `local="clr-namespace:Autodesk.Navisworks.Gui.Roamer.AIRLook;assembly=navisworks.gui.roamer"`.
+     The old `<RibbonTab xmlns=".../navisworks/2023">` + `<RibbonButton>` form silently fails.
+  3. The CommandHandlerPlugin should override `CanExecuteCommand => new CommandState(true)` and
+     `CanExecuteRibbonTab => true` so the button isn't greyed out / the tab always shows.
 
 ### Build and deploy
 1. Build: `msbuild ClashRuleEngine.csproj /p:Configuration=Release /p:Platform=x64 /p:NavisworksVersion=2027`
@@ -159,46 +183,47 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
 
 ## Current state and next steps
 
-### Working (built + builds clean for 2027; live re-verification still pending after the June 2026 redesign)
-- **Main panel = 5 tabs**: Rules · Clashes · Hierarchy · Assignees & Groups · General
-  (the old Settings dialog's sections were promoted into tabs; `SettingsDialog` is now unused).
-  Header has **+ New Rule** and **Import** (load a `.clashre` from anywhere → saved beside the doc).
-- Clash test selector + per-test rule hierarchies; rule editor with model-property dropdowns
-  (Scan Model, lazy value loading); drag-and-drop + arrow rule reordering; **Tree-Path** condition.
+### Working (builds clean for 2027; live re-verification of the new rule model in progress)
+- **Main panel = 3 tabs**: Rules · Clashes · General (light theme). The GROUPING control is a
+  **global bar above the tabs** (applies to all tests). Header has **+ New Rule** and **Import**
+  (load a `.clashre` OR a `clashre-kind-rules/1` `.json` from anywhere → saved beside the doc).
+  Opened from the **Tool Add-ins** ribbon button.
+- **Learning pipeline**: `BatchClashExtractPlugin` (run headless via `tools\BatchExtractor` or the
+  `tools\NwdClashLearner` GUI over coordinated NWDs) extracts per clash: each side's element kind
+  (cat/family/type/system + diameter band), assignee, status, **clearance gap (mm, signed; <0 =
+  penetration)**, **grid cell**, **level** → one `clash_kinds.jsonl`. That data is mined into the
+  per-test element-pair rule set (the `clashre-kind-rules/1` JSON the user imports).
 - **Run rules** (selected test / all) — SDK-supported Transaction write-back (quirk #0):
-  per clash, rules first (first-match-wins) then the **discipline-hierarchy fallback**; then
-  **grouping** (mode-aware) in ONE atomic write per test. Re-runnable/idempotent.
-- **Grouping** (Hierarchy tab → GROUPING card): mode = None / Shared element / Proximity /
-  Grid / Level / Assignee / Hybrid; editable proximity threshold; **group-then-assign**
-  (`AssignByGroup`) gives each bundle one trade (majority of members). Persisted in `.clashre`.
-- **Discipline hierarchy editor** (Hierarchy tab): order = precedence, keywords, and an
-  **"Assign the clash to"** mode per discipline (Specific owner / This trade / **The other trade**)
-  — e.g. a "Hydraulic Drainage" sub-discipline set to "other trade" routes drainage across in any test.
+  per clash, the test's element-pair rules (first-match-wins) → **approve** (clearance-gated) →
+  **grouping** (mode-aware) in ONE atomic write per test. Re-runnable/idempotent. Clashes whose
+  element pair has no rule are left UNASSIGNED (no guessing).
+- **Approve engine**: `ApprovePolicy` on `ProjectConfig`. Always-approve kinds (Flex Pipe/Duct) +
+  assignees (TUNDISH); else per-pair clearance floors (default ≥50 mm). `NeverApprovePenetration`
+  + structure test-name guard. Status only (no ApprovedBy).
+- **Grouping**: **Grid** mode names bundles by the bare grid intersection ("H-22", with (1)/(2) on collision).
 - **Stale-ref safety**: clash list caches GUID + Center (never holds live `ClashResult`);
   navigate/inspect re-resolve via `TestsData.ResolveGuid`; panel subscribes `TestsData.Changed`
   (auto-refresh, suppressed during our own runs). Global WPF dispatcher safety-net keeps an
   unhandled UI-thread exception from killing Navisworks.
-- **3D clash markers** (Clashes tab toggle): `RenderPlugin` draws status-coloured circles at
-  clash centres; `InputPlugin` click-to-select; shared snapshot in `ClashMarkerService`.
-- **Clash matrix view** (Matrix button): discipline-vs-discipline grid, active/total per pair,
-  click a cell to open that test.
-- **Exports**: full session JSON (`ExportTests`) + lean per-test **assignment summary**
-  (`ExportSummary`, harvests element type/system/workset/family/diameter tokens per assignee
-  bucket + a raw tree sample) — small enough to paste into a prompt.
-- **AI rule generation** (AI Rules): Claude (raw-HTTP, `claude-opus-4-8`) authors rules, the engine executes.
-- Light theme UI.
+- **3D clash markers** (Clashes tab toggle); **clash matrix view** (Matrix button); **exports**
+  (full session JSON + lean per-test assignment summary); **AI rule generation** (Claude raw-HTTP,
+  `claude-opus-4-8`). Light theme UI.
 
 ### Next to build
-1. **AI rules-by-example REPLAY/validation** — score proposed rules against the example
-   assignments ("matches 37/40 of your Hydraulics") BEFORE the user accepts. The trust step.
-2. **Priority scoring** — deterministic clash triage (penetration depth, hard/soft pairing,
-   system criticality, cluster size).
-3. **Group → assign UI in the Clashes tab** — select a bundle, assign it a trade in one click
-   (SDK `TestsEditResultStatus` cascades to a whole `ClashResultGroup`).
-4. **In-document stamping** (optional) — write per-clash outcome onto model items via the COM
-   `InwGUIPropertyNode2` bridge for downstream visibility (config stays sidecar `.clashre`).
+1. **Family/size refinement of element-pair rules** — category is the START; split the MIXED pairs
+   (and cases like switchboard-vs-pipe → HYD) by Revit family / diameter where category is too coarse.
+2. **Rules-by-example replay/validation** — score a proposed rule set against the historical
+   assignments ("reproduces X% of your decisions") before trusting it. (Current replay: ~91% acc /
+   83% recall on the approve model; an assignment-replay is the next trust step.)
+3. **In-panel rule editing UX** for the per-test pair rules (add/disable/reorder, see confidence).
+4. **In-document stamping** (optional) — per-clash outcome onto model items via the COM
+   `InwGUIPropertyNode2` bridge (config stays sidecar `.clashre`).
 
-## Clash test pairs in the test model
-MC v EC, MC v FC, MC v HC, EC v FC, EC v HC, FC v HC, MC v SC, EC v SC, FC v SC, HC vs SC
+## Clash test pairs (real project models, "_X vs _Y" naming)
+Service-vs-service: `_ELEC vs _MECH`, `_FIRE vs _MECH`, `_ELEC vs _FIRE`, `_FIRE vs _HYD`, `_ICT vs _MECH`,
+`_ELEC vs _ICT`, `_HYD vs _MECH`, `_MECH vs _SEC`, `_ELEC vs _HYD`, `_ELEC vs _SEC`, `_FIRE vs _ICT`,
+`_ICT vs _SEC`, `_FIRE vs _SEC`, `_ELEC vs _FUEL`, `_HYD vs _ICT` … and each `_X vs _STR` (structure).
 
-Where: MC = Mechanical, EC = Electrical, FC = Fire, HC = Hydraulic, SC = Structural
+Trades: ELEC = Electrical, MECH = Mechanical, FIRE = Fire, HYD = Hydraulic, ICT = Comms/Data,
+SEC = Security, FUEL = Fuel, STR = Structure, DRUPS = diverse/redundant UPS power (a cable-tray
+subset of electrical, not separable from ELEC by element kind alone).

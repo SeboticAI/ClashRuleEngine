@@ -134,9 +134,9 @@ namespace ClashRuleEngine.UI
 
             bool isItemA = target == ClashItemTarget.Item1;
             string catHeaderBg  = isItemA ? "#EFF6FF" : "#FFF7ED";
-            string catHeaderFg  = isItemA ? "#1E40AF" : "#C2410C";
-            string hoverBg      = isItemA ? "#DBEAFE" : "#FFEDD5";
-            string selectedBg   = isItemA ? "#2563EB" : "#EA580C";
+            string catHeaderFg  = isItemA ? "#2563EB" : "#C2410C";
+            string hoverBg      = isItemA ? "#EFF6FF" : "#FFF7ED";
+            string selectedBg   = isItemA ? "#2563EB" : "#C2410C";
 
             // Order: priority categories first, then alphabetical
             var orderedCats = categories.Keys
@@ -204,7 +204,7 @@ namespace ClashRuleEngine.UI
             {
                 Text = propValue,
                 FontSize = 11,
-                Foreground = Hex("#111827"),
+                Foreground = Hex("#1A1A2E"),
                 FontWeight = FontWeights.SemiBold,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextWrapping = TextWrapping.Wrap
@@ -238,7 +238,7 @@ namespace ClashRuleEngine.UI
                     r.Tag = null;
                     r.Background = Brushes.Transparent;
                     nameBlock.Foreground = Hex("#6B7280");
-                    valueBlock.Foreground = Hex("#111827");
+                    valueBlock.Foreground = Hex("#1A1A2E");
                     valueBlock.FontWeight = FontWeights.SemiBold;
                     _selectedConditions.RemoveAll(c =>
                         c.Category == catName && c.PropertyName == propName && c.Target == target);
@@ -342,7 +342,7 @@ namespace ClashRuleEngine.UI
                 {
                     Text = $"  {targetLabel}  {sel.Category}.{sel.PropertyName}  =  \"{sel.Value}\"",
                     FontSize = 11,
-                    Foreground = Hex("#166534"),
+                    Foreground = Hex("#16A34A"),
                     FontFamily = new FontFamily("Consolas"),
                     Margin = new Thickness(0, 1, 0, 1)
                 });
