@@ -29,7 +29,7 @@ ClashRuleEngine/
 │   ├── ModelPropertyScanner.cs   # Scans model for available properties (for dropdowns)
 │   ├── SessionExportService.cs   # Full session export + lean per-test assignment summary
 │   ├── AiRuleGenerator.cs / ClaudeApiService.cs # AI rule authoring (raw-HTTP, opus-4-8)
-│   └── RulePersistenceService.cs # Saves/loads ProjectConfig as .clashre XML file
+│   └── RulePersistenceService.cs # Saves/loads ProjectConfig as ONE global .clashre (%AppData%\ClashRuleEngine)
 ├── UI/
 │   ├── Converters.cs             # WPF value converters
 │   ├── RuleEditorDialog.xaml/.cs # Rule creation/editing dialog (Named assignee)
@@ -58,7 +58,7 @@ ClashRuleEngine/
 - **NO discipline/system hierarchy** — that whole responsibility system (SystemHierarchy, DisciplineClassifier, owner/other resolution, Hierarchy tab) was REMOVED 2026-06-17. Assignment comes only from per-test rules now.
 - **Pipeline order**: assign-per-clash (rules) → approve → group → ONE atomic write-back per test. Grouping only organises; it never re-assigns.
 - **Grouping** (`ClashGroupingMode`): None / SharedElement / Proximity / **Grid** / Level / ByAssignee / Hybrid. **Grid** is the recommended mode: groups named by the bare grid intersection only (e.g. "H-22" — level stripped, no trade, no count), with " (1)"/" (2)" suffixes when two groups share a grid name (`GroupByGrid`/`GridName`). (`GridTrade` enum value is retained but now routes to the same grid grouping.) `AssignByGroup` (group-then-assign majority) conflicts with per-element specificity — leave OFF.
-- **Persistence**: `.clashre` XML alongside the NW document (the API has no reliable document-level user-data store).
+- **Persistence**: ONE GLOBAL `.clashre` XML at `%AppData%\ClashRuleEngine\config.clashre` (`RulePersistenceService`). It is the single source of truth — an imported rule set survives across files AND Navisworks instances; only a new import (or an edit) overwrites it. (Was a per-document sidecar; changed 2026-06-18 so a learned rule file follows the user, not the model. The API has no reliable document-level user-data store anyway.)
 - **Light theme UI**: white cards on `#F8F9FA`, dark `#1A1A2E` text, blue `#2563EB` accent, `#E5E7EB` borders. (A dark-theme attempt was reverted — it produced unreadable light-on-light fields.)
 - **Ribbon / naming**: the dock pane (the "app") is **Clash Rule Engine** (DockPanePlugin DisplayName → View→Windows entry + pane title). A custom ribbon tab **OConnors Clash** (CommandHandlerPlugin + RibbonLayout) holds a **Clash Engine** button that opens the pane; an `AddInPlugin` (DisplayName **Clash Engine**) under Tool Add-ins does the same. `ShowPanel()` = `if (rec.LoadedPlugin==null) rec.LoadPlugin()` — `DockPanePluginRecord` exposes ONLY LoadPlugin/IsLoaded (no Unload/Show), and closing a pane unloads it, so LoadPlugin re-opens.
 
@@ -186,13 +186,19 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
 ### Working (builds clean for 2027; live re-verification of the new rule model in progress)
 - **Main panel = 3 tabs**: Rules · Clashes · General (light theme). The GROUPING control is a
   **global bar above the tabs** (applies to all tests). Header has **+ New Rule** and **Import**
-  (load a `.clashre` OR a `clashre-kind-rules/1` `.json` from anywhere → saved beside the doc).
+  (load a `.clashre` OR a `clashre-kind-rules/1` `.json` from anywhere → saved to the global store, so it persists across files/instances).
   Opened from the **Tool Add-ins** ribbon button.
 - **Learning pipeline**: `BatchClashExtractPlugin` (run headless via `tools\BatchExtractor` or the
   `tools\NwdClashLearner` GUI over coordinated NWDs) extracts per clash: each side's element kind
   (cat/family/type/system + diameter band), assignee, status, **clearance gap (mm, signed; <0 =
-  penetration)**, **grid cell**, **level** → one `clash_kinds.jsonl`. That data is mined into the
-  per-test element-pair rule set (the `clashre-kind-rules/1` JSON the user imports).
+  penetration)**, **grid cell**, **level**, plus **family / type / leaf names** and **raw bore
+  (`diaMm` min/max)** → one `clash_kinds.jsonl`. That data is mined into the per-test element-pair
+  rule set (the `clashre-kind-rules/1` JSON the user imports) by **`tools\analyze_clashes.py`**
+  (`python tools\analyze_clashes.py [clash_kinds.jsonl]`) — emits the importable rule JSON (two-tier
+  per-test `testRules` fine→category, `tests` defaults, calibrated `approve` block) AND a
+  `clash_analysis_report.txt` (per-test coverage, approve calibration, **service-type × clearance**
+  breakdown, diameter-split suggestions). Rules are mined per CANONICAL trade pair and only where a
+  pair DEVIATES from the test's dominant assignee (no blanket rules; the default is the safety net).
 - **Run rules** (selected test / all) — SDK-supported Transaction write-back (quirk #0):
   per clash, the test's element-pair rules (first-match-wins) → **approve** (clearance-gated) →
   **grouping** (mode-aware) in ONE atomic write per test. Re-runnable/idempotent. Clashes whose
@@ -217,7 +223,7 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
    83% recall on the approve model; an assignment-replay is the next trust step.)
 3. **In-panel rule editing UX** for the per-test pair rules (add/disable/reorder, see confidence).
 4. **In-document stamping** (optional) — per-clash outcome onto model items via the COM
-   `InwGUIPropertyNode2` bridge (config stays sidecar `.clashre`).
+   `InwGUIPropertyNode2` bridge (config stays in the global `.clashre` store).
 
 ## Clash test pairs (real project models, "_X vs _Y" naming)
 Service-vs-service: `_ELEC vs _MECH`, `_FIRE vs _MECH`, `_ELEC vs _FIRE`, `_FIRE vs _HYD`, `_ICT vs _MECH`,

@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using Autodesk.Navisworks.Api;
 using ClashRuleEngine.Models;
 
 namespace ClashRuleEngine.Services
@@ -9,31 +8,23 @@ namespace ClashRuleEngine.Services
     {
         private const string FileExtension = ".clashre";
 
-        private static string GetConfigFilePath()
+        /// <summary>The GLOBAL config — one per user, persists across files AND Navisworks
+        /// instances. This is the single source of truth, so an imported rule set survives
+        /// until a new import (or edit) overwrites it, regardless of which model is open.</summary>
+        private static string GlobalConfigPath()
         {
-            var doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
-            if (doc == null) return null;
-
-            string docPath = doc.FileName;
-            if (string.IsNullOrEmpty(docPath))
-            {
-                string tempDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "ClashRuleEngine");
-                Directory.CreateDirectory(tempDir);
-                return Path.Combine(tempDir, "unsaved_config" + FileExtension);
-            }
-            return docPath + FileExtension;
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "ClashRuleEngine");
+            Directory.CreateDirectory(dir);
+            return Path.Combine(dir, "config" + FileExtension);
         }
 
         public static void Save(ProjectConfig config)
         {
             try
             {
-                string path = GetConfigFilePath();
-                if (string.IsNullOrEmpty(path))
-                    throw new InvalidOperationException("No active document.");
-                File.WriteAllText(path, config.ToXml());
+                File.WriteAllText(GlobalConfigPath(), config.ToXml());   // survives files + instances
             }
             catch (Exception ex)
             {
@@ -48,10 +39,9 @@ namespace ClashRuleEngine.Services
         {
             try
             {
-                string path = GetConfigFilePath();
-                if (string.IsNullOrEmpty(path) || !File.Exists(path))
-                    return NewSeeded();
-                return ProjectConfig.FromXml(File.ReadAllText(path));   // FromXml seeds
+                string global = GlobalConfigPath();
+                if (!File.Exists(global)) return NewSeeded();
+                return ProjectConfig.FromXml(File.ReadAllText(global));   // FromXml seeds
             }
             catch { return NewSeeded(); }
         }
