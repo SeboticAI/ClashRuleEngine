@@ -194,11 +194,18 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
   penetration)**, **grid cell**, **level**, plus **family / type / leaf names** and **raw bore
   (`diaMm` min/max)** → one `clash_kinds.jsonl`. That data is mined into the per-test element-pair
   rule set (the `clashre-kind-rules/1` JSON the user imports) by **`tools\analyze_clashes.py`**
-  (`python tools\analyze_clashes.py [clash_kinds.jsonl]`) — emits the importable rule JSON (two-tier
-  per-test `testRules` fine→category, `tests` defaults, calibrated `approve` block) AND a
-  `clash_analysis_report.txt` (per-test coverage, approve calibration, **service-type × clearance**
-  breakdown, diameter-split suggestions). Rules are mined per CANONICAL trade pair and only where a
-  pair DEVIATES from the test's dominant assignee (no blanket rules; the default is the safety net).
+  (run via `tools\run-analyze.ps1`, which finds a real Python past the 0-byte MS-Store stub) —
+  emits the importable rule JSON (two-tier per-test `testRules` fine→category, `tests` defaults,
+  calibrated `approve` block, a `_confidence` replay block, an `_aiHandoff` block) AND a
+  `clash_analysis_report.txt` (confidence, per-test coverage, approve calibration, **service-type ×
+  clearance** breakdown, diameter-split suggestions). Rules are mined per CANONICAL trade pair and
+  only where a pair DEVIATES from the test's dominant assignee (no blanket rules; the default is the
+  safety net). **Specific-trade preference**: process/review labels (COORD-CHECK, *CLEARANCE CHECK*,
+  bare levels, etc.) are NEVER a rule/default target — `is_specific`/`pick_target` prefer a real trade,
+  so an easy fire-vs-elec hanger gets FIRE/ELEC, not "COORD-CHECK". **Confidence**: `replay()` scores
+  the rules against history ("reproduces 82% of your specific calls"; per-test, lowest first) — the
+  number for an Apply step. **AI handoff**: `_aiHandoff` lists low-confidence + soft-default tests so
+  the deterministic miner (grounded proposer) hands the residue to the AI step (judgment/naming).
 - **Run rules** (selected test / all) — SDK-supported Transaction write-back (quirk #0):
   per clash, the test's element-pair rules (first-match-wins) → **approve** (clearance-gated) →
   **grouping** (mode-aware) in ONE atomic write per test. Re-runnable/idempotent. Clashes whose
@@ -216,12 +223,18 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
   `claude-opus-4-8`). Light theme UI.
 
 ### Next to build
-1. **Family/size refinement of element-pair rules** — category is the START; split the MIXED pairs
-   (and cases like switchboard-vs-pipe → HYD) by Revit family / diameter where category is too coarse.
-2. **Rules-by-example replay/validation** — score a proposed rule set against the historical
-   assignments ("reproduces X% of your decisions") before trusting it. (Current replay: ~91% acc /
-   83% recall on the approve model; an assignment-replay is the next trust step.)
-3. **In-panel rule editing UX** for the per-test pair rules (add/disable/reorder, see confidence).
+1. **One easy EXE** (the big one — see [[product-roadmap-decisions]]): combine extract→analyze→apply
+   into a single desktop app. `tools\NwdClashLearner` already does the extract half; the work is to
+   **PORT `tools\analyze_clashes.py` mining logic to C#** (zero Python dependency — the MS-Store stub /
+   stale-PATH friction must never reach a customer), then output both a reviewable file AND an "Apply
+   now" button that writes the global `%AppData%\ClashRuleEngine\config.clashre` (REPLACE, never append),
+   gated by the replay-confidence line ("reproduces 82% of your calls"). The Python analyzer's logic is
+   now FINAL (specific-preference, confidence, AI handoff) → the port is a clean translation.
+2. **Family/size refinement** — split the MIXED pairs by Revit family / diameter (needs a re-extract
+   with `diaMm` populated; the analyzer's diameter-split section is wired and waiting on that data).
+3. **Wire the AI handoff** — feed `_aiHandoff` (low-confidence + soft-default tests) to the existing
+   AI rule generator so the deterministic miner proposes and the AI refines the residue.
+4. **In-panel rule editing UX** for the per-test pair rules (add/disable/reorder, see confidence).
 4. **In-document stamping** (optional) — per-clash outcome onto model items via the COM
    `InwGUIPropertyNode2` bridge (config stays in the global `.clashre` store).
 

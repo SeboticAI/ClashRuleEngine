@@ -147,11 +147,12 @@ def side_cat(s):
 
 
 def side_fine(s):
-    """Most specific within-trade token: leaf > type > family > kind > system."""
+    """Most specific within-trade token: leaf > type > family > kind > system.
+    Skips render/material/colour finishes (a paint colour is not a service identity)."""
     s = s or {}
     for k in ("leaf", "type", "fam", "kind", "sys"):
         v = clean(s.get(k))
-        if v:
+        if v and not _looks_like_material(v):
             return v
     return None
 
@@ -229,6 +230,65 @@ def pct(n, d):
     return (100.0 * n / d) if d else 0.0
 
 
+# Process/review labels are NOT clean trade decisions - they're a coordinator's
+# "needs checking / shared / clearance" note. The miner must PREFER a specific trade
+# over these, so an easy clash (e.g. a fire-vs-elec hanger) gets a real assignee
+# instead of "COORD-CHECK".
+SOFT_ASSIGNEE_HINTS = (
+    "check", "clearance", "coord", "duplication", "overlap", "doubled", "interface",
+    "advise", "email", "response", "note", "tbc", "tba", "review", "shared", "both",
+    "zone", "verify", "confirm", "query", "maybe", "error", "?",
+)
+SPECIFIC_EXTRA = {"TUNDISH", "RCP", "DRUPS"}
+
+
+def _is_bare_level(name):
+    """A bare level label like 'L1' / 'L02' - not a trade."""
+    t = name.strip().upper()
+    return len(t) >= 2 and t[0] == "L" and t[1:].isdigit()
+
+
+def is_soft_assignee(name):
+    """True for a process/review label (not a real trade assignment)."""
+    if not name:
+        return True
+    t = name.lower()
+    if any(h in t for h in SOFT_ASSIGNEE_HINTS):
+        return True
+    if _is_bare_level(name):
+        return True
+    return len(name.strip()) > 22   # long = a sentence/note, not a trade token
+
+
+def is_specific(name):
+    """True for a concrete trade decision - a canonical trade, or a short named trade
+    like TUNDISH/RCP - i.e. something worth assigning, not a 'check this' note."""
+    if not name or is_soft_assignee(name):
+        return False
+    if canon_trade(name) in ("ELEC", "FIRE", "HYD", "MECH", "ICT", "SEC", "STR", "FUEL"):
+        return True
+    if name.strip().upper() in SPECIFIC_EXTRA:
+        return True
+    return len(name.strip()) <= 12   # short clean label -> treat as a real assignee
+
+
+def pick_target(dist):
+    """Choose the assignee for a rule/default from a {assignee: weight} distribution,
+    PREFERRING a specific trade over process labels. Returns (assignee, total, purity);
+    when a specific is chosen, purity is its share among real-trade weight (so the
+    threshold judges 'how consistent is the trade call', not diluted by review notes)."""
+    total = sum(dist.values())
+    if total <= 0:
+        return None, 0.0, 0.0
+    specifics = {a: w for a, w in dist.items() if is_specific(a)}
+    spec_total = sum(specifics.values())
+    if specifics and (spec_total >= 0.5 * total or max(specifics.values()) >= 0.3 * total):
+        a, w = max(specifics.items(), key=lambda kv: kv[1])
+        return a, total, (w / spec_total if spec_total else 0.0)
+    a, w = max(dist.items(), key=lambda kv: kv[1])
+    return a, total, w / total
+
+
 # ---------------------------------------------------------------------------
 # Load
 # ---------------------------------------------------------------------------
@@ -261,12 +321,11 @@ def test_defaults(rows):
             bucket[r["_test"]][a] += weight(r)
     out = {}
     for test, asgs in bucket.items():
-        total = sum(asgs.values())
-        if total <= 0:
+        if sum(asgs.values()) <= 0:
             continue
-        asg, top = max(asgs.items(), key=lambda kv: kv[1])
-        if top / total >= DEFAULT_MIN_PURITY:
-            out[test] = (asg, top, total, top / total)
+        asg, tot, purity = pick_target(asgs)
+        if asg and purity >= DEFAULT_MIN_PURITY:
+            out[test] = (asg, tot, tot, purity)
     return out
 
 
@@ -288,10 +347,11 @@ def mine_pairs(rows, token_fn, min_support, min_purity, defaults, tier):
         total = sum(asgs.values())
         if total < min_support:
             continue
-        asg, top = max(asgs.items(), key=lambda kv: kv[1])
-        purity = top / total
-        if purity < min_purity:
+        asg, _tot, purity = pick_target(asgs)
+        if not asg or purity < min_purity:
             continue
+        if not is_specific(asg):
+            continue  # never emit a 'needs checking' label as a rule target
         default_asg = defaults.get(test, (None,))[0]
         if asg == default_asg:
             continue  # covered by the per-test default - not worth a rule (keeps it lean)
@@ -466,9 +526,120 @@ def detect_dia_splits(rows):
 
 
 # ---------------------------------------------------------------------------
+# Validation - replay the generated rules against history (propose -> validate)
+# ---------------------------------------------------------------------------
+def _row_side_texts(r):
+    """The two elements' searchable text blobs (leaf/type/fam/kind/sys/cat, lowercased)."""
+    out = []
+    for sd in (r.get("a"), r.get("b")):
+        sd = sd or {}
+        parts = [clean(sd.get(k)) for k in ("leaf", "type", "fam", "kind", "sys", "cat")]
+        out.append(" | ".join(p for p in parts if p).lower())
+    return out
+
+
+def _rule_matches(rule, text_a, text_b):
+    """Mirror the engine's 'Contains' match: rule side a in one element's text AND rule
+    side b in the other's (unordered); an empty rule side is a wildcard."""
+    a = (rule.get("a") or "").lower().strip()
+    b = (rule.get("b") or "").lower().strip()
+
+    def has(t, needle):
+        return (not needle) or (needle in t)
+
+    return (has(text_a, a) and has(text_b, b)) or (has(text_b, a) and has(text_a, b))
+
+
+def replay(rows, defaults, cat_rules, tree_rules):
+    """Replay the generated rules+defaults over the historical clashes and measure how
+    many SPECIFIC assignments they reproduce - the 'how close / how confident' number
+    for an Apply step. Per-test: reproduction % and what fraction a real rule covers."""
+    per_test = defaultdict(list)
+    for r in tree_rules:
+        per_test[r["_test"]].append(r)
+    for r in cat_rules:
+        per_test[r["_test"]].append(r)
+    for t in per_test:
+        per_test[t].sort(key=lambda r: (r["tier"], -r["support"]))
+
+    stats = defaultdict(lambda: {"spec_tot": 0.0, "spec_hit": 0.0,
+                                 "cov_tot": 0.0, "by_rule": 0.0, "by_default": 0.0})
+    for r in rows:
+        actual = assignee_of(r)
+        if not actual:
+            continue
+        w = weight(r)
+        ta, tb = _row_side_texts(r)
+        pred, via = None, "none"
+        for rule in per_test.get(r["_test"], []):
+            if _rule_matches(rule, ta, tb):
+                pred, via = rule["assign"], "rule"
+                break
+        if pred is None:
+            d = defaults.get(r["_test"])
+            if d:
+                pred, via = d[0], "default"
+        s = stats[r["_test"]]
+        s["cov_tot"] += w
+        if via == "rule":
+            s["by_rule"] += w
+        elif via == "default":
+            s["by_default"] += w
+        if is_specific(actual):
+            s["spec_tot"] += w
+            if pred is not None and pred == actual:
+                s["spec_hit"] += w
+    return stats
+
+
+def confidence_summary(stats):
+    tot_spec = sum(s["spec_tot"] for s in stats.values())
+    hit_spec = sum(s["spec_hit"] for s in stats.values())
+    tot_cov = sum(s["cov_tot"] for s in stats.values())
+    by_rule = sum(s["by_rule"] for s in stats.values())
+    per = []
+    for test, s in stats.items():
+        per.append({
+            "test": test,
+            "n": int(s["cov_tot"]),
+            "specN": int(s["spec_tot"]),
+            "reproducedPct": round(pct(s["spec_hit"], s["spec_tot"]), 1),
+            "ruleCoveragePct": round(pct(s["by_rule"], s["cov_tot"]), 1),
+        })
+    per.sort(key=lambda x: -x["n"])
+    return {
+        "reproducedPctOverall": round(pct(hit_spec, tot_spec), 1),
+        "ruleCoveragePctOverall": round(pct(by_rule, tot_cov), 1),
+        "assignedClashesScored": int(tot_spec),
+        "perTest": per,
+    }
+
+
+def build_ai_handoff(confidence, defaults):
+    """Flag where the deterministic miner ran out of signal, so an AI/human refinement
+    pass knows exactly what to work on - the 'hand off to AI where we can' step. The
+    miner stays the grounded proposer; this is its honest list of weak spots."""
+    low = sorted(
+        ({"test": p["test"], "reproducedPct": p["reproducedPct"], "n": p["specN"]}
+         for p in confidence["perTest"] if p["specN"] >= 30 and p["reproducedPct"] < 70.0),
+        key=lambda p: p["reproducedPct"])
+    soft_default = [
+        {"test": t, "default": d[0]}
+        for t, d in sorted(defaults.items())
+        if "STR" not in t and not is_specific(d[0])
+    ]
+    return {
+        "note": "Miner is confident elsewhere; focus AI/human refinement here.",
+        "lowConfidenceTests": low,        # rules reproduce <70% of your calls
+        "softDefaultTests": soft_default,  # no clear trade emerged (review-label default)
+    }
+
+
+# ---------------------------------------------------------------------------
 # Emit
 # ---------------------------------------------------------------------------
-def build_rules_json(defaults, cat_rules, tree_rules, floors, approve_assignees, flex_kinds):
+def build_rules_json(defaults, cat_rules, tree_rules, floors, approve_assignees,
+                     flex_kinds, confidence):
     # Order per test: tree (fine) rules first, then category fallback; highest support first.
     per_test = defaultdict(list)
     for r in tree_rules:
@@ -512,6 +683,7 @@ def build_rules_json(defaults, cat_rules, tree_rules, floors, approve_assignees,
     return {
         "schema": "clashre-kind-rules/1",
         "_generatedBy": "tools/analyze_clashes.py",
+        "_confidence": confidence,
         "tests": tests_json,
         "testRules": test_rules_json,
         "approve": approve,
@@ -519,7 +691,7 @@ def build_rules_json(defaults, cat_rules, tree_rules, floors, approve_assignees,
 
 
 def write_report(path, rows, defaults, cat_rules, tree_rules, floors, approve_assignees,
-                 flex_kinds, flex_extra, svc, dia_splits, asg_stat, band_stat):
+                 flex_kinds, flex_extra, svc, dia_splits, asg_stat, band_stat, confidence):
     L = []
     w = L.append
     total_clashes = sum(weight(r) for r in rows)
@@ -550,6 +722,47 @@ def write_report(path, rows, defaults, cat_rules, tree_rules, floors, approve_as
     w("")
 
     w("-" * 78)
+    w("CONFIDENCE  (replay of the generated rules vs your historical assignments)")
+    w("-" * 78)
+    w("Reproduces %.1f%% of your specific historical assignments overall." %
+      confidence["reproducedPctOverall"])
+    w("%.1f%% of assigned clashes are caught by a specific rule (the rest fall to the "
+      "per-test default)." % confidence["ruleCoveragePctOverall"])
+    w("(Scored on %d clashes that carry a real trade assignee; review/'check' notes excluded.)" %
+      confidence["assignedClashesScored"])
+    w("(In-sample: rules are mined from this same data, so read it as a ceiling, not "
+      "out-of-sample accuracy.)")
+    w("Per-test, lowest reproduction first (where to look before trusting it):")
+    shown = 0
+    for p in sorted(confidence["perTest"], key=lambda x: x["reproducedPct"]):
+        if p["specN"] < 20:
+            continue
+        w("    %-22s reproduces %5.1f%%   rule-coverage %5.1f%%   (n=%d)" % (
+            p["test"], p["reproducedPct"], p["ruleCoveragePct"], p["specN"]))
+        shown += 1
+        if shown >= 12:
+            break
+    w("")
+
+    hand = build_ai_handoff(confidence, defaults)
+    w("-" * 78)
+    w("AI HANDOFF  (where the miner ran out of signal - refine these with AI/human)")
+    w("-" * 78)
+    w("Low-confidence tests (rules reproduce <70%% of your calls):")
+    if hand["lowConfidenceTests"]:
+        for p in hand["lowConfidenceTests"]:
+            w("    %-22s %5.1f%%  (n=%d)" % (p["test"], p["reproducedPct"], p["n"]))
+    else:
+        w("    (none)")
+    w("Tests with no clear trade default (a review label won - genuinely ambiguous):")
+    if hand["softDefaultTests"]:
+        for s in hand["softDefaultTests"]:
+            w("    %-22s default-> %s" % (s["test"], s["default"]))
+    else:
+        w("    (none)")
+    w("")
+
+    w("-" * 78)
     w("PER-TEST: assignee mix, default (fallback) and rule coverage")
     w("-" * 78)
     rule_tests = defaultdict(int)
@@ -566,7 +779,7 @@ def write_report(path, rows, defaults, cat_rules, tree_rules, floors, approve_as
         d = defaults.get(test)
         w("%-22s n=%-6d rules=%-3d default=%s" % (
             test, round(tot), rule_tests.get(test, 0),
-            ("%s (%.0f%%)" % (d[0], 100 * d[3])) if d else "(none - low dominance)"))
+            ("%s (%.0f%% of trade calls)" % (d[0], 100 * d[3])) if d else "(none - low dominance)"))
         w("    mix: " + ", ".join("%s %.0f%%" % (a, pct(v, tot)) for a, v in top))
     w("")
 
@@ -675,8 +888,12 @@ def main():
     svc = service_clearance(rows)
     dia_splits = detect_dia_splits(rows)
 
+    stats = replay(rows, defaults, cat_rules, tree_rules)
+    confidence = confidence_summary(stats)
+
     rules_json = build_rules_json(defaults, cat_rules, tree_rules, floors,
-                                  approve_assignees, flex_kinds)
+                                  approve_assignees, flex_kinds, confidence)
+    rules_json["_aiHandoff"] = build_ai_handoff(confidence, defaults)
 
     out_dir = os.path.dirname(os.path.abspath(in_path))
     json_path = os.path.join(out_dir, "clashre_kind_rules.generated.json")
@@ -685,12 +902,16 @@ def main():
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(rules_json, f, indent=2, ensure_ascii=False)
     write_report(report_path, rows, defaults, cat_rules, tree_rules, floors,
-                 approve_assignees, flex_kinds, flex_extra, svc, dia_splits, asg_stat, band_stat)
+                 approve_assignees, flex_kinds, flex_extra, svc, dia_splits,
+                 asg_stat, band_stat, confidence)
 
     print("Read %d rows (%d weighted clashes) from %s" %
           (len(rows), round(sum(weight(r) for r in rows)), in_path))
     print("Mined: %d default(s), %d fine rule(s), %d category rule(s), %d pair floor(s)" %
           (len(defaults), len(tree_rules), len(cat_rules), len(floors)))
+    print("Confidence: reproduces %.1f%% of specific historical assignments "
+          "(rule coverage %.1f%%)" %
+          (confidence["reproducedPctOverall"], confidence["ruleCoveragePctOverall"]))
     print("Wrote rules : %s" % json_path)
     print("Wrote report: %s" % report_path)
     print("Import the .json via the Clash Rule Engine -> Import button.")
