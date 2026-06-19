@@ -98,6 +98,8 @@
   .pri .w{color:var(--muted);font-size:11px;width:86px;text-align:right}
   .chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:3px 0}
   .chips .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;width:64px}
+  .inp{border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;width:130px}
+  .email{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff}
 </style>
 </head>
 <body>
@@ -113,6 +115,7 @@
       <button data-tab="approvals"><span class="ico">◐</span> Approvals</button>
       <button data-tab="hierarchy"><span class="ico">⛓</span> Trade hierarchy</button>
       <button data-tab="closeout"><span class="ico">✉</span> Close-out</button>
+      <button data-tab="distribute"><span class="ico">↗</span> Distribute</button>
       <button data-tab="report"><span class="ico">▤</span> Report</button>
     </nav>
     <div class="foot">Reads your generated rules file. Values not in the file are mocked.</div>
@@ -256,6 +259,52 @@
           <button class="btn primary" id="coApply">Apply 4 matched actions</button>
           <button class="btn ghost">Send 1 unmatched back to AI</button>
           <span class="audit" id="coMsg">1 action couldn't be matched confidently — held for review.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- DISTRIBUTE -->
+    <section data-panel="distribute" class="hidden">
+      <h2 class="section">Per-trade reports &amp; distribution <span class="src">prototype — no real emails are sent</span></h2>
+      <div class="card">
+        <h3>Drafter directory &amp; send</h3>
+        <p class="hint">Set who drafts each trade on this job, then send them their open clashes. <b>Hard</b> = penetrations (gap &lt; 0); <b>Priority</b> = deep / vs-structure / life-safety.</p>
+        <table id="distTbl">
+          <tr><th>Trade</th><th>Drafter</th><th>Email</th><th>Active</th><th>Hard</th><th>Priority</th><th>Status</th><th></th></tr>
+        </table>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+          <button class="btn primary" id="sendAll">Send all reports</button>
+          <span class="audit" id="sendMsg">6 trade reports ready.</span>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:16px">
+        <div class="card">
+          <h3>Report preview — FIRE</h3>
+          <p class="hint">What the FIRE drafter receives — priority &amp; hard clashes first.</p>
+          <div style="display:flex;gap:20px;margin-bottom:10px">
+            <div><div class="audit">Active</div><div style="font-size:22px;font-weight:700">2,061</div></div>
+            <div><div class="audit">Hard</div><div style="font-size:22px;font-weight:700;color:var(--red)">371</div></div>
+            <div><div class="audit">Priority</div><div style="font-size:22px;font-weight:700;color:var(--amber)">124</div></div>
+          </div>
+          <table>
+            <tr><th>Clash</th><th>Grid</th><th>Gap</th><th>Why it's flagged</th></tr>
+            <tr><td>Clash01902</td><td>H-22</td><td><span class="tag red">−48 mm</span></td><td class="audit">penetration vs slab</td></tr>
+            <tr><td>Clash01877</td><td>G-19</td><td><span class="tag red">−12 mm</span></td><td class="audit">sprinkler vs duct</td></tr>
+            <tr><td>Clash01950</td><td>J-24</td><td><span class="tag amber">6 mm</span></td><td class="audit">life-safety, tight</td></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>The reply loop</h3>
+          <p class="hint">Push out → trade replies by email → AI parses → hands to Close-out. This is how the loop closes.</p>
+          <div class="email">
+            <div style="font-size:12px;color:var(--muted)">▾ Reply from Sam Patel (FIRE) — 18/06 15:10</div>
+            <div style="font-size:13px;margin-top:8px">“Approved Clash01902, we'll drop the sprinkler. Clash01877 is Mech to move — reassign to them. Clash01950 fine as is.”</div>
+          </div>
+          <div id="replyState" style="margin-top:12px">
+            <button class="btn" id="parseReply">🤖 Parse reply with AI</button>
+          </div>
         </div>
       </div>
     </section>
@@ -516,6 +565,46 @@ $("#coApply").addEventListener("click",function(){
   $("#coStatus").className="tag green"; $("#coStatus").textContent="Applied";
   $("#coMsg").textContent="Done — audit notes written to each clash. 1 unmatched still held.";
 });
+
+// distribute / per-trade reports (mock — no real email is sent)
+(function distribute(){
+  const wl = Object.fromEntries(workload.map(w=>[w[0],w[1]]));
+  const drafters = {
+    FIRE:["Sam Patel","sam.patel@fireco.com"], HYD:["Joanne Lee","jlee@hydraulics.com"],
+    MECH:["Dmitri Novak","d.novak@mechgroup.com"], ELEC:["Aisha Khan","aisha@sparkelec.com"],
+    ICT:["Tom Reilly","tom.reilly@comms.io"], SEC:["Priya Shah","priya@securetech.com"]
+  };
+  const head=document.querySelector("#distTbl tr").outerHTML;
+  $("#distTbl").innerHTML = head + Object.entries(drafters).map(([t,d])=>{
+    const a=wl[t]||0, hard=Math.round(a*0.18), pri=Math.round(a*0.06);
+    return `<tr data-t="${t}"><td><b>${t}</b></td>
+      <td><input class="inp" value="${d[0]}"></td>
+      <td><input class="inp" style="width:168px" value="${d[1]}"></td>
+      <td>${a.toLocaleString()}</td><td><span class="tag red">${hard}</span></td>
+      <td><span class="tag amber">${pri}</span></td>
+      <td class="st"><span class="tag grey">Not sent</span></td>
+      <td><button class="btn ghost sendOne">Send →</button></td></tr>`;
+  }).join("");
+  const markSent = tr => tr.querySelector(".st").innerHTML='<span class="tag green">Sent ✓ 15:10</span>';
+  $("#distTbl").addEventListener("click",e=>{const b=e.target.closest(".sendOne");if(b)markSent(b.closest("tr"));});
+  $("#sendAll").addEventListener("click",function(){
+    document.querySelectorAll("#distTbl tr[data-t]").forEach(markSent);
+    this.disabled=true; this.textContent="✓ All reports sent";
+    $("#sendMsg").textContent="6 reports emailed to drafters (mock). Awaiting replies.";
+  });
+  const pr=$("#parseReply");
+  if(pr) pr.addEventListener("click",()=>{
+    $("#replyState").innerHTML =
+      '<div class="audit">AI parsed 3 actions from the reply:</div>'+
+      '<div style="margin:8px 0;display:flex;gap:6px;flex-wrap:wrap">'+
+      '<span class="tag green">Approve Clash01902</span>'+
+      '<span class="tag amber">Reassign Clash01877 → MECH</span>'+
+      '<span class="tag blue">Keep Clash01950</span></div>'+
+      '<div class="audit" style="margin-bottom:8px">→ written as a clashre-closeout/1 file, ready to preview &amp; apply.</div>'+
+      '<button class="btn primary" id="toCloseout">Open in Close-out →</button>';
+    $("#toCloseout").addEventListener("click",()=>document.querySelector('#nav button[data-tab="closeout"]').click());
+  });
+})();
 
 // load a real generated rules file (file:// can't auto-fetch, so user picks it)
 $("#loadJson").addEventListener("change",e=>{
