@@ -90,6 +90,14 @@
   .rank .n{width:24px;height:24px;border-radius:6px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
   .rank .w{margin-left:auto;color:var(--muted);font-size:12px}
   .src{font-size:11px;color:var(--muted);margin-left:8px}
+  .pri{padding:11px 0;border-bottom:1px solid var(--line)}
+  .pri .hd{display:flex;align-items:center;gap:8px}
+  .pri .hd b{font-size:14px}
+  .pri .n{width:22px;height:22px;border-radius:6px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:0 0 auto}
+  .pri .score{margin-left:auto;color:var(--muted);font-size:12px;font-weight:600}
+  .pri .w{color:var(--muted);font-size:11px;width:86px;text-align:right}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:3px 0}
+  .chips .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;width:64px}
 </style>
 </head>
 <body>
@@ -220,7 +228,7 @@
       <div class="grid2b">
         <div class="card">
           <h3>Overall trade priority <span class="src">illustrative ranking</span></h3>
-          <p class="hint">Emergent — who tends to keep position when two trades clash.</p>
+          <p class="hint">Each trade broken down: how often it keeps position, who it beats, who it yields to, and the typical elements — aggregated from every rule.</p>
           <div id="rank"></div>
         </div>
         <div class="card">
@@ -333,8 +341,14 @@ const BAKED = {
 // ====== mocked-only data (not present in the rules file) ======
 const workload = [["ELEC",18420,"#2563EB"],["FIRE",12760,"#DC2626"],["MECH",9880,"#16A34A"],
   ["HYD",7140,"#D97706"],["ICT",5210,"#7C3AED"],["SEC",3180,"#0891B2"],["TUNDISH",1290,"#DB2777"],["RCP",980,"#65A30D"]];
-const ranks = [["STR","held — everyone yields"],["FIRE","life-safety priority"],["HYD","gravity / falls"],
-  ["MECH","large plant"],["ELEC","trays reroute"],["ICT","most flexible"],["SEC","follows host"]];
+const tradeNotes = {
+  STR:["Structure is fixed — every service yields; clashes are penetrations held for review.","slabs, beams, walls"],
+  FIRE:["Life-safety — sprinkler & detection hold position; others route around.","sprinkler mains, pre-action, detectors"],
+  HYD:["Gravity services — drainage falls can't move.","waste, sanitary, tundishes"],
+  MECH:["Large plant & ducts — hard to relocate, but yields to life-safety.","AHU ducts, chilled-water mains"],
+  ELEC:["Cable trays reroute easily — usually gives way, except to comms.","cable tray, conduit"],
+  ICT:["Most flexible — trays & hangers move, except shared-hanger cases.","comms tray, copper"],
+  SEC:["Follows its host tray / structure.","cameras, access control"]};
 const trades = ["FIRE","HYD","MECH","ELEC","ICT","SEC"];
 const dom = { FIRE:{HYD:58,MECH:77,ELEC:71,ICT:64,SEC:80}, HYD:{FIRE:42,MECH:55,ELEC:60,ICT:78,SEC:62},
  MECH:{FIRE:23,HYD:45,ELEC:24,ICT:34,SEC:26}, ELEC:{FIRE:29,HYD:40,MECH:76,ICT:39,SEC:55},
@@ -426,8 +440,31 @@ $("#wl").innerHTML = workload.map(([n,v,c])=>
   $("#heat").innerHTML=html;
 })();
 
-$("#rank").innerHTML = ranks.map(([t,why],i)=>
-  `<div class="rank"><div class="n">${i+1}</div><div><b>${t}</b><div class="audit">${why}</div></div><div class="w">tier ${i+1}</div></div>`).join("");
+(function tradePriority(){
+  const avgWin = t => { const o=Object.values(dom[t]); return Math.round(o.reduce((a,b)=>a+b,0)/o.length); };
+  const wlMap = Object.fromEntries(workload.map(w=>[w[0],w[1]]));
+  // STR sits on top (held — every service yields); the rest ranked by keep-position score.
+  const ordered = [["STR",100], ...trades.map(t=>[t,avgWin(t)]).sort((a,b)=>b[1]-a[1])];
+  $("#rank").innerHTML = ordered.map(([t,score],i)=>{
+    let beats, yields;
+    if (dom[t]){
+      const e = Object.entries(dom[t]).sort((a,b)=>b[1]-a[1]);
+      beats  = e.filter(([,v])=>v>=50).map(([o,v])=>`<span class="tag green">${o} ${v}%</span>`).join(" ") || '<span class="audit">—</span>';
+      yields = e.filter(([,v])=>v<50).map(([o,v])=>`<span class="tag red">${o} ${100-v}%</span>`).join(" ") || '<span class="audit">none</span>';
+    } else { beats='<span class="tag green">all services</span>'; yields='<span class="audit">none — fixed</span>'; }
+    const col = score>=65?'var(--green)':score>=45?'var(--amber)':'var(--red)';
+    const note = tradeNotes[t] || ["",""];
+    const owns = wlMap[t] ? (wlMap[t].toLocaleString()+" clashes") : "held";
+    return `<div class="pri">
+      <div class="hd"><div class="n">${i+1}</div><b>${t}</b>
+        <div class="bar" style="width:84px"><span style="width:${score}%;background:${col}"></span></div>
+        <span class="score">${score}% keep-position</span><span class="w">${owns}</span></div>
+      <div class="audit" style="margin:5px 0 7px">${note[0]} · typical: ${note[1]}</div>
+      <div class="chips"><span class="lbl">Beats</span>${beats}</div>
+      <div class="chips"><span class="lbl">Yields to</span>${yields}</div>
+    </div>`;
+  }).join("");
+})();
 
 (function matrix(){
   let h="<tr><th class='lab'></th>"+trades.map(t=>`<th>${t}</th>`).join("")+"</tr>";
