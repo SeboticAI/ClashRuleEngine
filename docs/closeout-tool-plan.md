@@ -90,7 +90,10 @@ MVP = step 1 (a file → applied changes), which is small because WriteBack alre
 - Do we need per-trade auth ("only Mech can approve Mech clashes")? Probably out of scope.
 - Should an approve from a close-out file also move the clash into the approved grid
   sibling group (consistency with the Grid grouping), or leave grouping untouched?
-- Two-way: also EXPORT a per-trade "your open clashes" list to send out (closes the loop)?
+- Two-way: the OUTBOUND counterpart — per-trade reports + drafter directory + send — is
+  speced in [combined-exe-plan.md](combined-exe-plan.md) §3.7. Push each trade their open
+  clashes → they reply by email → AI → `clashre-closeout/1` → this importer. Same per-trade
+  contacts close the loop both directions.
 
 See also: [docs/combined-exe-plan.md](combined-exe-plan.md) (this could be a module of the
 Control Center), and CLAUDE.md → "Next to build".

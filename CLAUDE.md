@@ -231,6 +231,11 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
    now" button that writes the global `%AppData%\ClashRuleEngine\config.clashre` (REPLACE, never append),
    gated by the replay-confidence line ("reproduces 82% of your calls"). The Python analyzer's logic is
    now FINAL (specific-preference, confidence, AI handoff) → the port is a clean translation.
+   A clickable HTML prototype of the cockpit lives at
+   [docs/prototype/clash-control-center.html](docs/prototype/clash-control-center.html) — it reads the
+   REAL generated rules file (Load-rules-file button) and mocks the rest. The plan also covers a
+   **per-trade report + drafter directory + send** module (§3.7) — the OUTBOUND counterpart to the
+   close-out tool (push each trade their open/hard/priority clashes by email; they reply → close-out).
 2. **Family/size refinement** — split the MIXED pairs by Revit family / diameter (needs a re-extract
    with `diaMm` populated; the analyzer's diameter-split section is wired and waiting on that data).
 3. **Wire the AI handoff** — feed `_aiHandoff` (low-confidence + soft-default tests) to the existing

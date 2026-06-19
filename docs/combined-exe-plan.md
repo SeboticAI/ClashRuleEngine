@@ -9,6 +9,11 @@ This consolidates everything we already have (the Navisworks addin, the batch
 extractor, the Python analyzer, the global rule store) into a single product, plus
 the brainstormed control features below.
 
+> A clickable HTML prototype of these screens lives at
+> [prototype/clash-control-center.html](prototype/clash-control-center.html) — it reads the
+> real generated rules file (confidence, rules, floors, defaults, AI handoff) and mocks the
+> rest. Open it to visualise the BIM-manager feedback.
+
 ---
 
 ## 1. Why / who
@@ -108,6 +113,23 @@ Derive an **overall trade hierarchy from the individual rules** (not imposed —
   - The derived trade hierarchy (3.4) and confidence (3.1) summarised.
 - Builds on `SessionExportService` (the `clashre-session/1` export already exists).
 
+### 3.7 Per-trade reports & distribution  ⭐ (brainstormed)
+Push each trade *their* outstanding work, and close the loop with the close-out tool.
+- **Per-trade report:** for each trade, generate "what's left for you" — the active
+  (unresolved) clashes assigned to that trade, with **hard clashes** (penetrations, gap < 0)
+  and **priority** ones (deep penetration, vs-structure, life-safety, dense grid cells)
+  called out at the top. Output HTML / PDF / BCF.
+- **Drafter directory:** next to each trade in the UI, a small menu to set the **drafter's
+  name + email** for this job (persisted per project/trade). The manager records once who
+  drafts FIRE / HYD / ELEC … on this project.
+- **Send report:** one click emails each trade's drafter their report (or "Send all").
+  Transport options: SMTP, a draft via the default mail client (mailto + attachment), or
+  hand off to the dashboard export.
+- **Closes the loop both ways:** this is the OUTBOUND counterpart to the close-out tool
+  (§ inbound, see [closeout-tool-plan.md](closeout-tool-plan.md)). Push open clashes out →
+  the trade replies by email → AI turns the reply into a `clashre-closeout/1` file → import
+  & apply. Same per-trade contacts, same scoping.
+
 ---
 
 ## 4. Other useful features to fold in (backlog)
@@ -148,6 +170,9 @@ Everything after is the "control center" layer that makes it the be-all-end-all.
   (Default: replace + versioned backups; revisit if they ask for merge.)
 - Multi-project: one global config today. Do BIM managers need per-project rule sets
   (a project picker) once this is a product?
+- Per-trade reports (§3.7): email transport — SMTP (needs server creds) vs a draft handed to
+  the default mail client (no creds, manager hits send)? Where does the drafter directory
+  (name + email per trade per project) live — the global config, or a per-project contacts file?
 
 See also: [[product-roadmap-decisions]], [[analyzer-and-global-persistence]] in the
 session memory, and `CLAUDE.md` → "Next to build".
