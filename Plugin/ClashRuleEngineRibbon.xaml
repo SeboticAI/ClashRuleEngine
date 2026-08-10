@@ -23,6 +23,9 @@
         <local:NWRibbonButton x:Uid="ClashRuleEngineOpenBtn" Id="ID_OpenPanel"
                               Size="Large" ShowText="True" Text="Open Panel"
                               KeyTip="OP" Orientation="Vertical" />
+        <local:NWRibbonButton x:Uid="ClashRuleEngineExtractBtn" Id="ID_BatchExtract"
+                              Size="Large" ShowText="True" Text="Batch Extract"
+                              KeyTip="BX" Orientation="Vertical" />
       </RibbonPanelSource>
     </RibbonPanel>
   </RibbonTab>

@@ -113,12 +113,17 @@ namespace ClashRuleEngine.Plugin
 
                 // Append so a multi-file Automation run accumulates into one dataset.
                 File.AppendAllText(outPath, sb.ToString(), new UTF8Encoding(false));
-                return 0;
+
+                // Rows written, so an interactive caller (the ribbon button) can report a real
+                // result. The headless drivers in tools\ ignore the return value entirely, so
+                // this costs them nothing.
+                return agg.Count;
             }
             catch
             {
-                // Best-effort: one bad file must not abort the whole batch.
-                return 0;
+                // Best-effort: one bad file must not abort the whole batch. -1 rather than 0 so
+                // a failure is distinguishable from "this model had nothing to extract".
+                return -1;
             }
         }
 

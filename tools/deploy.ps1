@@ -43,8 +43,12 @@ $payload = @(
     "en-US\ClashRuleEngine.name",
     "oconnors_clash_16.ico",
     "oconnors_clash_32.ico",
+    "oconnors_extract_16.ico",
+    "oconnors_extract_32.ico",
     "Images\oconnors_clash_16.ico",
-    "Images\oconnors_clash_32.ico"
+    "Images\oconnors_clash_32.ico",
+    "Images\oconnors_extract_16.ico",
+    "Images\oconnors_extract_32.ico"
 )
 foreach ($f in $payload) {
     if (-not (Test-Path (Join-Path $srcDir $f))) {

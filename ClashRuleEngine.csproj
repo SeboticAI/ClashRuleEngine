@@ -267,6 +267,8 @@
   <ItemGroup>
     <RibbonIcon Include="Resources\oconnors_clash_16.ico" />
     <RibbonIcon Include="Resources\oconnors_clash_32.ico" />
+    <RibbonIcon Include="Resources\oconnors_extract_16.ico" />
+    <RibbonIcon Include="Resources\oconnors_extract_32.ico" />
     <None Include="Resources\oconnors_logo.png" />
   </ItemGroup>
 

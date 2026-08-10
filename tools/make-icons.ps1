@@ -120,16 +120,60 @@ function Add-ClashGlyph {
     finally { $penA.Dispose(); $penB.Dispose() }
 }
 
+# "Pull the data out": a down arrow landing on a tray. Distinguishes the Batch Extract
+# ribbon button from Open Panel — two Large buttons sharing one icon is unreadable.
+function Add-ExtractGlyph {
+    param($Graphics, [int]$Size)
+    $s = $Size / 32.0
+    $cx = $Size - (9.0 * $s)
+    $top = $Size - (15.5 * $s)
+    $headY = $Size - (7.0 * $s)
+    $w = [Math]::Max(2.0, 2.9 * $s)
+
+    $pen = New-Object System.Drawing.Pen($SLATE, $w)
+    $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Flat
+    try {
+        # shaft
+        $Graphics.DrawLine($pen, [single]$cx, [single]$top, [single]$cx, [single]($headY - (2.6 * $s)))
+        # arrowhead
+        $half = [Math]::Max(2.5, 4.0 * $s)
+        $pts = @(
+            (New-Object System.Drawing.PointF([single]($cx - $half), [single]($headY - (3.4 * $s)))),
+            (New-Object System.Drawing.PointF([single]($cx + $half), [single]($headY - (3.4 * $s)))),
+            (New-Object System.Drawing.PointF([single]$cx, [single]$headY))
+        )
+        $head = New-Object System.Drawing.SolidBrush($SLATE)
+        try { $Graphics.FillPolygon($head, $pts) } finally { $head.Dispose() }
+    }
+    finally { $pen.Dispose() }
+
+    # tray the data lands on, in amber so it reads at a glance
+    $tray = New-Object System.Drawing.Pen($AMBER, [Math]::Max(2.0, 2.6 * $s))
+    $tray.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $tray.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    try {
+        $half = [Math]::Max(3.0, 5.2 * $s)
+        $y = $Size - (2.6 * $s)
+        $Graphics.DrawLine($tray, [single]($cx - $half), [single]$y, [single]($cx + $half), [single]$y)
+    }
+    finally { $tray.Dispose() }
+}
+
 function New-Tile {
-    param([int]$Size, [switch]$Glyph, [switch]$UseBitmapMark)
+    param([int]$Size, [ValidateSet('none', 'clash', 'extract')][string]$Glyph = 'none',
+          [switch]$UseBitmapMark)
     $pair = New-Canvas -Size $Size
     $bmp = $pair[0]; $g = $pair[1]
     try {
         # With a glyph the mark yields 30% of the tile so the two elements do not touch.
-        $markSize = if ($Glyph) { [int][Math]::Round($Size * 0.70) } else { $Size }
+        $markSize = if ($Glyph -ne 'none') { [int][Math]::Round($Size * 0.70) } else { $Size }
         if ($UseBitmapMark) { Add-BitmapMark -Graphics $g -Size $markSize }
         else { Add-VectorMark -Graphics $g -Diameter ([single]$markSize) }
-        if ($Glyph) { Add-ClashGlyph -Graphics $g -Size $Size }
+        switch ($Glyph) {
+            'clash' { Add-ClashGlyph -Graphics $g -Size $Size }
+            'extract' { Add-ExtractGlyph -Graphics $g -Size $Size }
+        }
     }
     finally { $g.Dispose() }
     return $bmp
@@ -211,7 +255,7 @@ try {
 }
 finally { $t16.Dispose() }
 
-$t32 = New-Tile -Size 32 -Glyph
+$t32 = New-Tile -Size 32 -Glyph clash
 try {
     $p = Join-Path $resDir "oconnors_clash_32.ico"
     Save-Ico -Bitmaps @($t32) -Path $p; Report $p
@@ -220,8 +264,18 @@ try {
 }
 finally { $t32.Dispose() }
 
+Write-Host "Batch Extract button (down-arrow-into-tray glyph):"
+foreach ($sz in @(16, 32)) {
+    $t = New-Tile -Size $sz -Glyph extract
+    try {
+        $p = Join-Path $resDir "oconnors_extract_$sz.ico"
+        Save-Ico -Bitmaps @($t) -Path $p; Report $p
+    }
+    finally { $t.Dispose() }
+}
+
 Write-Host "Docs hero (real mark crop - detail survives at this size):"
-$t256 = New-Tile -Size 256 -Glyph -UseBitmapMark
+$t256 = New-Tile -Size 256 -Glyph clash -UseBitmapMark
 try {
     $p = Join-Path $resDir "oconnors_clash_256.png"
     $t256.Save($p, [System.Drawing.Imaging.ImageFormat]::Png); Report $p
@@ -229,7 +283,7 @@ try {
 finally { $t256.Dispose() }
 
 Write-Host "Installer icon (multi-size 16/32/48):"
-$multi = @((New-Tile -Size 16), (New-Tile -Size 32 -Glyph), (New-Tile -Size 48 -Glyph))
+$multi = @((New-Tile -Size 16), (New-Tile -Size 32 -Glyph clash), (New-Tile -Size 48 -Glyph clash))
 try {
     $p = Join-Path $insDir "oconnors_clash.ico"
     Save-Ico -Bitmaps $multi -Path $p; Report $p

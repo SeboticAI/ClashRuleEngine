@@ -28,3 +28,14 @@ Open the Clash Rule Engine panel
 
 ID_OpenPanel.ExtendedToolTip=
 Assign, auto-approve and group clash results from learned per-test element-pair rules.
+#
+# Batch Extract button
+#
+ID_BatchExtract.DisplayName=
+Batch Extract
+
+ID_BatchExtract.ToolTip=
+Extract this model's clash data to a .jsonl learning file
+
+ID_BatchExtract.ExtendedToolTip=
+For every clash, records each side's element kind, the assignee, status, clearance gap, grid and level.
