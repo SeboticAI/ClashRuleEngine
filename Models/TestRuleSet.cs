@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Xml.Serialization;
 
 namespace ClashRuleEngine.Models
@@ -159,8 +160,21 @@ namespace ClashRuleEngine.Models
             if (exact != null) return exact;
 
             string key = CanonicalTestKey(testName);
-            if (key == null) return null;
-            return TestRuleSets.FirstOrDefault(t => string.Equals(CanonicalTestKey(t.TestName), key, StringComparison.Ordinal));
+            if (key != null)
+            {
+                var hit = TestRuleSets.FirstOrDefault(
+                    t => string.Equals(CanonicalTestKey(t.TestName), key, StringComparison.Ordinal));
+                if (hit != null) return hit;
+            }
+
+            // Third pass: the LOOSE key, which tolerates decoration around the trade tokens.
+            // CanonicalTestKey concatenates every letter on each side of "vs", so a real test
+            // called "_ELEC vs _MECH 25mm" keys as ELEC|MECHMM and matches nothing — the rules
+            // silently appear to have vanished for that test (they were only ever unmatched).
+            string loose = CanonicalTestKeyLoose(testName);
+            if (loose == null) return null;
+            return TestRuleSets.FirstOrDefault(
+                t => string.Equals(CanonicalTestKeyLoose(t.TestName), loose, StringComparison.Ordinal));
         }
 
         // Trade synonyms — both the test-model codes (MC/EC/FC/HC/SC…) and full words map
@@ -183,9 +197,64 @@ namespace ClashRuleEngine.Models
         {
             ApprovePolicy.ParseTestTrades(name, out string a, out string b);
             if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return null;
+            return BuildKey(a, b);
+        }
+
+        /// <summary>
+        /// Like <see cref="CanonicalTestKey"/> but tolerant of decoration around the trade
+        /// tokens, for the last-chance pass in <see cref="ProjectConfig.FindRuleSet"/>.
+        ///
+        /// ParseTestTrades concatenates EVERY letter on its side of the separator, so a test
+        /// named "_ELEC vs _MECH 25mm" yields MECHMM and "Level 3 _ELEC vs _MECH" yields
+        /// LEVELELEC — neither matches a rule set stored as "_ELEC vs _MECH". This takes the
+        /// letter run NEAREST the separator instead, which is where the trade code sits in every
+        /// naming convention seen so far (leading level/zone prefixes, trailing tolerance or
+        /// "(Hard)" suffixes).
+        ///
+        /// Kept SEPARATE from ParseTestTrades on purpose: that method also drives the approve
+        /// engine's protected-trade and per-pair-floor lookups, and quietly changing how those
+        /// read a test name would change what gets auto-approved.
+        /// </summary>
+        public static string CanonicalTestKeyLoose(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            ApprovePolicy.ParseTestTrades(name, out string rawA, out string rawB);
+            if (string.IsNullOrEmpty(rawA) || string.IsNullOrEmpty(rawB)) return null;
+
+            // Re-split the original around the same separator ParseTestTrades found, then take
+            // the innermost letter run from each side.
+            int v = name.IndexOf(" vs ", StringComparison.OrdinalIgnoreCase);
+            int skip = 4;
+            if (v < 0) { int p = name.IndexOf(" v ", StringComparison.OrdinalIgnoreCase); if (p >= 0) { v = p; skip = 3; } }
+            if (v < 0) return BuildKey(rawA, rawB);      // odd shape — fall back to the strict tokens
+
+            string a = InnermostLetterRun(name.Substring(0, v), fromEnd: true) ?? rawA;
+            string b = InnermostLetterRun(name.Substring(v + skip), fromEnd: false) ?? rawB;
+            return BuildKey(a, b);
+        }
+
+        private static string BuildKey(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return null;
             a = TradeSynonyms.TryGetValue(a, out var ca) ? ca : a;
             b = TradeSynonyms.TryGetValue(b, out var cb) ? cb : b;
             return string.CompareOrdinal(a, b) <= 0 ? a + "|" + b : b + "|" + a;
+        }
+
+        /// <summary>Letter run closest to the separator: last one before it, first one after.</summary>
+        private static string InnermostLetterRun(string s, bool fromEnd)
+        {
+            if (string.IsNullOrEmpty(s)) return null;
+            var runs = new List<string>();
+            var sb = new StringBuilder();
+            foreach (char c in s)
+            {
+                if (char.IsLetter(c)) sb.Append(char.ToUpperInvariant(c));
+                else if (sb.Length > 0) { runs.Add(sb.ToString()); sb.Clear(); }
+            }
+            if (sb.Length > 0) runs.Add(sb.ToString());
+            if (runs.Count == 0) return null;
+            return fromEnd ? runs[runs.Count - 1] : runs[0];
         }
 
         /// <summary>Get all unique assignees from rules and the shared list</summary>

@@ -39,6 +39,11 @@ namespace ClashRuleEngine.UI
         // SelectionChanged isn't mistaken for the user choosing to switch.
         private bool _suppressRuleSetChange;
 
+        // False when the selected clash test matched NO stored rule set and is showing a
+        // freshly-invented empty one — the difference between "no rules configured" and
+        // "your rules are there but this test's name doesn't match any of them".
+        private bool _currentTestMatchedStoredSet;
+
         /// <summary>Assignee suggestions for dropdowns (bound from XAML).</summary>
         public List<string> AvailableAssignees { get; private set; } = new List<string>();
 
@@ -246,6 +251,12 @@ namespace ClashRuleEngine.UI
                     return;
                 }
 
+                // Did a STORED rule set actually match this test, or are we about to hand the
+                // user a blank one? GetOrCreateTestRuleSet cannot tell you — it silently
+                // invents an empty set on a miss, which is exactly how a full config can look
+                // like it has "lost" its rules. Ask first, then report it in the banner.
+                _currentTestMatchedStoredSet = _config.FindRuleSet(testName) != null;
+
                 _currentTestRuleSet = _config.GetOrCreateTestRuleSet(testName);
                 _currentTestRuleSet.ReindexPriorities();
 
@@ -377,6 +388,40 @@ namespace ClashRuleEngine.UI
 
             bdTestRuleInfo.Visibility = Visibility.Visible;
             int ruleCount = _rules.Count;
+
+            bdTestRuleInfo.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF));
+            txtTestRuleInfo.Foreground = new SolidColorBrush(Color.FromRgb(0x1E, 0x40, 0xAF));
+
+            // NO STORED SET MATCHED this test, so it is showing a freshly-invented empty one.
+            // Kept deliberately calm rather than alarming: for every "_X vs _STR" test this is
+            // the correct, intended state (structure pairs carry no rules and are never
+            // auto-approved), and those alone account for ~9 tests. What the user actually needs
+            // to know is that the rest of the config is intact and where it lives — that is the
+            // difference between "nothing is configured" and "I have lost my rules".
+            if (!_currentTestMatchedStoredSet)
+            {
+                int storedRules = _config?.TestRuleSets?.Sum(t => t.Rules?.Count ?? 0) ?? 0;
+                int storedSets = _config?.TestRuleSets?.Count ?? 0;
+                string examples = string.Join(", ", (_config?.TestRuleSets ?? new List<TestRuleSet>())
+                    .Where(t => t.Rules != null && t.Rules.Count > 0)
+                    .Take(2).Select(t => "\"" + t.TestName + "\""));
+
+                txtTestRuleInfo.Text =
+                    $"{setName} · no rules configured for this pair, so its clashes are left "
+                    + "unassigned for review — normal for structure (_STR) tests. "
+                    + $"Your other {storedRules} rule(s) across {storedSets} test(s) are intact"
+                    + (examples.Length > 0 ? $", under names like {examples}." : ".");
+
+                if (!hasRules)
+                {
+                    txtEmptyTitle.Text = "No rules for this pair";
+                    txtEmptyHint.Text = $"Clashes here are left unassigned for review. Your other "
+                        + $"{storedRules} rules are unaffected. Matching ignores order, punctuation "
+                        + "and any level/tolerance decoration around the two trade codes either side "
+                        + "of \"vs\", so if you expected rules here, check the test name.";
+                }
+                return;
+            }
 
             if (hasDefault)
             {
