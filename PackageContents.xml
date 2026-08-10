@@ -19,15 +19,13 @@
   ProductType="Application"
   Name="ClashRuleEngine"
   Description="Rule-based clash grouping and assignment engine for Navisworks"
-  Author="ACME"
+  Author="OConnors"
   AppVersion="1.1.0"
   FriendlyVersion="1.1.0"
   ProductCode="{B7C1D2E3-4455-6677-8899-AABBCCDDEE01}"
   UpgradeCode="{B7C1D2E3-4455-6677-8899-AABBCCDDEE02}">
 
-  <CompanyDetails Name="ACME"
-                  Url="https://example.com"
-                  Email="support@example.com"/>
+  <CompanyDetails Name="OConnors"/>
 
   <RuntimeRequirements OS="Win64"
                        Platform="NAVMAN"

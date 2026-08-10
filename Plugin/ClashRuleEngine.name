@@ -1,0 +1,30 @@
+﻿# Localised UI strings for the Clash Rule Engine ribbon (Navisworks [Strings] file).
+# FORMAT (copied from the SDK sample api\net\examples\...\CustomRibbon\CustomRibbon.name):
+#   - UTF-8 WITH BOM, and the $utf8 directive below.
+#   - The KEY ends with "=", and its VALUE is on the FOLLOWING line.
+#   - Lines starting with # or $, or ending with =, are not translated.
+# These override the DisplayName/ToolTip on the attributes in
+# ClashRuleEnginePlugin.cs; Title in ClashRuleEngineRibbon.xaml in turn overrides these.
+# Deployed to  Plugins\ClashRuleEngine\en-US\  next to the DLL - see the csproj.
+$utf8
+
+DisplayName=
+Clash Rule Engine
+
+#
+# Ribbon tab
+#
+ID_ClashRuleEngine_Tab.DisplayName=
+Clash Rule Engine
+
+#
+# Open Panel button
+#
+ID_OpenPanel.DisplayName=
+Open Panel
+
+ID_OpenPanel.ToolTip=
+Open the Clash Rule Engine panel
+
+ID_OpenPanel.ExtendedToolTip=
+Assign, auto-approve and group clash results from learned per-test element-pair rules.

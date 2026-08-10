@@ -22,7 +22,8 @@ namespace ClashRuleEngine.NwdClashLearner
     /// </summary>
     public class MainForm : Form
     {
-        private const string PluginId = "ClashBatchExtract.ACME";
+        // Must match PluginIds.BatchExtract in the plugin (Plugin\PluginIds.cs).
+        private const string PluginId = "ClashBatchExtract.OCON";
 
         private readonly ListBox _files = new ListBox();
         private readonly TextBox _output = new TextBox();

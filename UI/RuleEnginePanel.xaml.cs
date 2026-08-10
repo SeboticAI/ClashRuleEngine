@@ -35,6 +35,10 @@ namespace ClashRuleEngine.UI
         // tab bar. Editing commits on Save / tab-leave.
         private int _activeTab;   // 0 Rules, 1 Clashes, 2 General
 
+        // Set while the rule-set picker is being pointed at the loaded set, so the resulting
+        // SelectionChanged isn't mistaken for the user choosing to switch.
+        private bool _suppressRuleSetChange;
+
         /// <summary>Assignee suggestions for dropdowns (bound from XAML).</summary>
         public List<string> AvailableAssignees { get; private set; } = new List<string>();
 
@@ -57,6 +61,7 @@ namespace ClashRuleEngine.UI
                 LoadConfig();
                 RefreshClashTests();
                 LoadSettingsTabs();
+                SyncRuleSetPicker();
                 SubscribeClashChanges();
                 ClashMarkerService.MarkerClicked += OnMarkerClicked;
             }
@@ -164,6 +169,29 @@ namespace ClashRuleEngine.UI
         {
             try { _config = RulePersistenceService.Load(); }
             catch { _config = RulePersistenceService.NewSeeded(); }
+
+            // FIRST RUN: nobody should have to be sent a rules file and told where to put it.
+            // If the stored config has no per-test rules at all, seed it from the rule set
+            // shipped inside the plugin so the tool is useful the moment it is installed.
+            //
+            // The "no rules anywhere" test is what makes this safe: it cannot overwrite an
+            // imported or hand-authored set, because those have rules. No UI calls here — the
+            // constructor refreshes right after.
+            try
+            {
+                bool hasRules = _config != null && _config.TestRuleSets != null
+                    && _config.TestRuleSets.Any(t => t.Rules != null && t.Rules.Count > 0);
+                if (!hasRules)
+                {
+                    var seed = BuiltInRuleSets.Default;
+                    ApplyRuleSetText(BuiltInRuleSets.LoadText(seed), seed.Id, replaceAllRules: true);
+                }
+            }
+            catch
+            {
+                // A bad/missing embedded rule set must not stop the panel opening — the user
+                // can still import a file. BuiltInRuleSets.LoadText's message says what broke.
+            }
         }
 
         private void RefreshClashTests()
@@ -1095,10 +1123,193 @@ namespace ClashRuleEngine.UI
         }
 
         /// <summary>
-        /// Imports a .clashre config from anywhere (rules, assignees, groups, API key),
-        /// makes it the active config, and saves it alongside the current document so it
-        /// persists. The Rules tab repopulates from the imported per-test rules for
-        /// whatever test is selected.
+        /// Applies rule-set content — either a <c>.clashre</c> config or a
+        /// <c>clashre-kind-rules/1</c> JSON — to the live config and saves it.
+        ///
+        /// Shared by the Import button, the built-in rule-set picker and first-run seeding, so
+        /// those three can never drift apart. Deliberately does NO UI work: it also runs during
+        /// construction, before the tabs and test list exist. Callers refresh.
+        /// </summary>
+        /// <param name="builtInId">Id of the shipped set this came from, or null for a file the
+        /// user picked (which clears the marker, so the picker shows "Custom").</param>
+        /// <param name="replaceAllRules">true — wipe EVERY existing per-test rule and default
+        /// first, so switching between shipped sets is a clean swap rather than a merge of both.
+        /// false — the Import behaviour: only replace the tests the file actually mentions.</param>
+        /// <returns>A human-readable summary of what was applied.</returns>
+        private string ApplyRuleSetText(string text, string builtInId, bool replaceAllRules)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                throw new InvalidOperationException("The rule set is empty.");
+
+            // ---- clashre-kind-rules/1 JSON ----
+            if (KindRuleImport.LooksLikeKindRules(text))
+            {
+                var parsed = KindRuleImport.Parse(text);
+
+                // Without this, switching Mined -> Standard would leave Mined's rules behind on
+                // every test Standard happens not to mention, silently blending two rule sets.
+                if (replaceAllRules && _config.TestRuleSets != null)
+                {
+                    foreach (var s in _config.TestRuleSets)
+                    {
+                        if (s.Rules != null) s.Rules.Clear();
+                        s.DefaultAssignee = string.Empty;
+                    }
+                }
+
+                _config.KindRules = parsed.Rules;
+                _config.UseKindRules = parsed.Rules != null && parsed.Rules.Count > 0;
+                if (parsed.Approve != null)
+                    _config.ApprovePolicy = parsed.Approve;           // auto-approve policy
+
+                // Per-test element-pair rules: replace the rule set of each test they touch.
+                if (parsed.TestRules != null && parsed.TestRules.Count > 0)
+                {
+                    var affected = new HashSet<string>(
+                        parsed.TestRules.Select(r => r.Test), StringComparer.OrdinalIgnoreCase);
+                    foreach (var tn in affected)
+                        _config.GetOrCreateTestRuleSet(tn).Rules.Clear();
+                    foreach (var tr in parsed.TestRules)
+                        _config.GetOrCreateTestRuleSet(tr.Test).Rules.Add(tr.Rule);
+                    foreach (var tn in affected)
+                        _config.GetOrCreateTestRuleSet(tn).ReindexPriorities();
+                }
+
+                // Per-test default assignee (clash-matrix responsibility).
+                if (parsed.TestDefaults != null)
+                    foreach (var td in parsed.TestDefaults)
+                        _config.GetOrCreateTestRuleSet(td.Test).DefaultAssignee = td.Assignee;
+
+                _config.ActiveRuleSetId = builtInId ?? string.Empty;
+                RulePersistenceService.Save(_config);
+
+                return $"{parsed.TestRules?.Count ?? 0} element-pair rule(s), " +
+                       $"{parsed.TestDefaults?.Count ?? 0} per-test default(s)" +
+                       (parsed.Rules != null && parsed.Rules.Count > 0 ? $", {parsed.Rules.Count} kind rule(s)" : "") +
+                       (parsed.Approve != null
+                            ? $"\n• Auto-approve ON at ≥ {parsed.Approve.MinGapMm:0.#} mm (never penetrations or structure)"
+                            : "");
+            }
+
+            // ---- .clashre config ----
+            // FromXml returns an EMPTY config (not null) on parse failure, so guard on the
+            // actual content too — otherwise unrecognised input would silently REPLACE the
+            // current config with an empty one (data loss).
+            bool looksLikeClashre = text.TrimStart().StartsWith("<")
+                && text.IndexOf("ClashRuleEngineConfig", StringComparison.OrdinalIgnoreCase) >= 0;
+            var imported = looksLikeClashre ? ProjectConfig.FromXml(text) : null;
+            if (imported == null)
+                throw new InvalidOperationException(
+                    "That content isn't recognised — it's neither a kind-rules JSON nor a " +
+                    ".clashre config. Nothing was changed.");
+
+            // Grouping is a PANEL setting, not something an imported file dictates, and the API
+            // key is per-user (the shipped rule sets carry none, so a switch would wipe it) —
+            // carry both across.
+            try { CommitSettingsTabs(); } catch { }
+            var keepMode = _config?.GroupingMode ?? Models.ClashGroupingMode.None;
+            var keepThreshold = (_config?.ProximityThreshold ?? 1.0) > 0 ? _config.ProximityThreshold : 1.0;
+            var keepAssignByGroup = _config?.AssignByGroup ?? false;
+            var keepApiKey = _config?.ApiKey ?? string.Empty;
+
+            _config = imported;
+            _config.GroupingMode = keepMode;
+            _config.ProximityThreshold = keepThreshold;
+            _config.AssignByGroup = keepAssignByGroup;
+            if (string.IsNullOrWhiteSpace(_config.ApiKey)) _config.ApiKey = keepApiKey;
+            _config.ActiveRuleSetId = builtInId ?? string.Empty;
+
+            RulePersistenceService.Save(_config);
+
+            int ruleCount = _config.TestRuleSets?.Sum(t => t.Rules.Count) ?? 0;
+            int defaults = _config.TestRuleSets?.Count(t => !string.IsNullOrWhiteSpace(t.DefaultAssignee)) ?? 0;
+            bool approveOn = _config.ApprovePolicy != null && _config.ApprovePolicy.Enabled;
+            return $"{ruleCount} rule(s) across {_config.TestRuleSets?.Count ?? 0} test(s), " +
+                   $"{defaults} per-test default(s)" +
+                   (approveOn ? $"\n• Auto-approve ON at ≥ {_config.ApprovePolicy.MinGapMm:0.#} mm" : "\n• Auto-approve off");
+        }
+
+        /// <summary>Repopulates the whole panel after the rule set underneath it changed.</summary>
+        private void RefreshAfterRuleSetChange()
+        {
+            RefreshClashTests();                 // re-selects a test → reloads its rules
+            LoadSettingsTabs();                  // refresh Lists / General tabs
+            string testName = GetSelectedTestName();
+            if (!string.IsNullOrEmpty(testName))
+            {
+                _currentTestRuleSet = _config.GetOrCreateTestRuleSet(testName);
+                _currentTestRuleSet.ReindexPriorities();
+                _rules.Clear();
+                foreach (var r in _currentTestRuleSet.Rules) _rules.Add(r);
+            }
+            SyncRuleSetPicker();
+            UpdateUI();
+        }
+
+        /// <summary>
+        /// Points the picker at whatever is actually loaded. Guarded by _suppressRuleSetChange
+        /// because assigning SelectedItem raises SelectionChanged, which would otherwise
+        /// re-apply the set (and re-prompt) every time the panel refreshed.
+        /// </summary>
+        private void SyncRuleSetPicker()
+        {
+            if (cmbRuleSet == null) return;
+            _suppressRuleSetChange = true;
+            try
+            {
+                if (cmbRuleSet.Items.Count == 0)
+                    foreach (var s in BuiltInRuleSets.All) cmbRuleSet.Items.Add(s);
+
+                var active = BuiltInRuleSets.Find(_config?.ActiveRuleSetId);
+                cmbRuleSet.SelectedItem = active;      // null → blank, i.e. a custom import
+                if (txtRuleSetInfo != null)
+                    txtRuleSetInfo.Text = active != null
+                        ? active.Description
+                        : "Custom — these rules came from an imported file. Pick a shipped set to replace them.";
+            }
+            finally { _suppressRuleSetChange = false; }
+        }
+
+        private void OnRuleSetChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressRuleSetChange) return;
+            var chosen = cmbRuleSet.SelectedItem as BuiltInRuleSets.RuleSet;
+            if (chosen == null) return;
+            if (string.Equals(chosen.Id, _config?.ActiveRuleSetId, StringComparison.OrdinalIgnoreCase)) return;
+
+            try
+            {
+                if (MessageBox.Show(
+                        $"Switch to \"{chosen.Label}\"?\n\n{chosen.Description}\n\n" +
+                        "This REPLACES every per-test rule currently loaded, including any you " +
+                        "edited by hand.\n\nClashes already written into the model are not " +
+                        "touched until you Run again.",
+                        "Switch rule set", MessageBoxButton.OKCancel, MessageBoxImage.Warning)
+                    != MessageBoxResult.OK)
+                {
+                    SyncRuleSetPicker();          // snap the picker back to what is really loaded
+                    return;
+                }
+
+                string summary = ApplyRuleSetText(
+                    BuiltInRuleSets.LoadText(chosen), chosen.Id, replaceAllRules: true);
+                RefreshAfterRuleSetChange();
+                MessageBox.Show($"Now using \"{chosen.Label}\".\n\n• {summary}\n\n" +
+                                "Select a test and Run to apply it.",
+                                "Rule set switched", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not switch rule set: {ex.Message}",
+                    "Switch rule set", MessageBoxButton.OK, MessageBoxImage.Error);
+                SyncRuleSetPicker();
+            }
+        }
+
+        /// <summary>
+        /// Imports a .clashre config or kind-rules JSON from anywhere, makes it active and
+        /// saves it to the global store. Still here for one-off/experimental rule files; the
+        /// shipped sets are reached through the Rule set picker instead.
         /// </summary>
         private void OnImportConfig(object sender, RoutedEventArgs e)
         {
@@ -1113,107 +1324,11 @@ namespace ClashRuleEngine.UI
                 if (dlg.ShowDialog() != true) return;
 
                 string text = System.IO.File.ReadAllText(dlg.FileName);
+                string summary = ApplyRuleSetText(text, null, replaceAllRules: false);
 
-                // Kind-rule list (the summary response derived from the batch JSONL):
-                // merge into the CURRENT config — keeps your rules/grouping, adds the
-                // element-kind rules.
-                if (KindRuleImport.LooksLikeKindRules(text))
-                {
-                    var parsed = KindRuleImport.Parse(text);
-                    _config.KindRules = parsed.Rules;
-                    _config.UseKindRules = parsed.Rules != null && parsed.Rules.Count > 0;
-                    if (parsed.Approve != null)
-                        _config.ApprovePolicy = parsed.Approve;           // auto-approve policy
-
-                    // Per-test element-pair rules: replace the rule set of each test they touch.
-                    if (parsed.TestRules != null && parsed.TestRules.Count > 0)
-                    {
-                        var affected = new HashSet<string>(
-                            parsed.TestRules.Select(r => r.Test), StringComparer.OrdinalIgnoreCase);
-                        foreach (var tn in affected)
-                            _config.GetOrCreateTestRuleSet(tn).Rules.Clear();
-                        foreach (var tr in parsed.TestRules)
-                            _config.GetOrCreateTestRuleSet(tr.Test).Rules.Add(tr.Rule);
-                        foreach (var tn in affected)
-                            _config.GetOrCreateTestRuleSet(tn).ReindexPriorities();
-                    }
-
-                    // Per-test default assignee (clash-matrix responsibility).
-                    if (parsed.TestDefaults != null)
-                        foreach (var td in parsed.TestDefaults)
-                            _config.GetOrCreateTestRuleSet(td.Test).DefaultAssignee = td.Assignee;
-
-                    RulePersistenceService.Save(_config);
-
-                    // Repopulate the Rules tab for the currently selected test so the
-                    // imported per-test rules are visible immediately.
-                    string curTest = GetSelectedTestName();
-                    if (!string.IsNullOrEmpty(curTest))
-                    {
-                        _currentTestRuleSet = _config.GetOrCreateTestRuleSet(curTest);
-                        _currentTestRuleSet.ReindexPriorities();
-                        _rules.Clear();
-                        foreach (var r in _currentTestRuleSet.Rules) _rules.Add(r);
-                    }
-                    LoadSettingsTabs();
-                    UpdateUI();
-                    MessageBox.Show(
-                        $"Imported {parsed.TestRules?.Count ?? 0} per-test element-pair rule(s)" +
-                        (parsed.Rules.Count > 0 ? $", {parsed.Rules.Count} kind rule(s)" : "") +
-                        (parsed.Approve != null ? $"\nAuto-approve: ON (only clearances ≥ {parsed.Approve.MinGapMm:0.#} mm, never penetrations or structure)" : "") +
-                        ".\n\nSelect a test and Run to apply them.",
-                        "Rules imported", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-
-                // FromXml returns an EMPTY config (not null) on parse failure, so guard on
-                // the actual content too — otherwise importing an unrecognised file would
-                // silently REPLACE the current config with an empty one (data loss).
-                bool looksLikeClashre = text.TrimStart().StartsWith("<")
-                    && text.IndexOf("ClashRuleEngineConfig", StringComparison.OrdinalIgnoreCase) >= 0;
-                var imported = looksLikeClashre ? ProjectConfig.FromXml(text) : null;
-                if (imported == null)
-                {
-                    MessageBox.Show("That file isn't recognised — it's neither a kind-rules JSON " +
-                        "nor a .clashre config. Nothing was changed.",
-                        "Import", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                // Grouping is an ADDIN setting, not dictated by an imported file —
-                // import brings in rules + lists; the grouping you've set in the panel
-                // wins. Capture current settings and re-apply them.
-                try { CommitSettingsTabs(); } catch { }
-                var keepMode = _config?.GroupingMode ?? Models.ClashGroupingMode.None;
-                var keepThreshold = (_config?.ProximityThreshold ?? 1.0) > 0 ? _config.ProximityThreshold : 1.0;
-                var keepAssignByGroup = _config?.AssignByGroup ?? false;
-
-                _config = imported;
-                _config.GroupingMode = keepMode;
-                _config.ProximityThreshold = keepThreshold;
-                _config.AssignByGroup = keepAssignByGroup;
-
-                // Persist into THIS document's sidecar so it loads next time too.
-                RulePersistenceService.Save(_config);
-
-                // Repopulate everything from the imported config.
-                RefreshClashTests();                 // re-selects a test → reloads its rules
-                LoadSettingsTabs();                  // refresh Lists / General tabs
-                string testName = GetSelectedTestName();
-                if (!string.IsNullOrEmpty(testName))
-                {
-                    _currentTestRuleSet = _config.GetOrCreateTestRuleSet(testName);
-                    _currentTestRuleSet.ReindexPriorities();
-                    _rules.Clear();
-                    foreach (var r in _currentTestRuleSet.Rules) _rules.Add(r);
-                }
+                RefreshAfterRuleSetChange();
                 SetActiveTab(true);   // show the Rules tab so the imported rules are visible
-                UpdateUI();
-
-                int ruleCount = _config.TestRuleSets?.Sum(t => t.Rules.Count) ?? 0;
-                MessageBox.Show(
-                    $"Imported config:\n\n• {ruleCount} rule(s) across {_config.TestRuleSets?.Count ?? 0} test(s)\n\n" +
-                    "Saved alongside this document.",
+                MessageBox.Show($"Imported:\n\n• {summary}\n\nSelect a test and Run to apply.",
                     "Import complete", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)

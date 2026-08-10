@@ -4,7 +4,7 @@ using Autodesk.Navisworks.Api.Plugins;
 
 namespace ClashRuleEngine.Plugin
 {
-    [Plugin("ClashRuleEngine", "ACME",
+    [Plugin(PluginIds.PanelName, PluginIds.Developer,
         DisplayName = "Clash Rule Engine",
         ToolTip = "Rule-based clash grouping and assignment")]
     [DockPanePlugin(800, 600, FixedSize = false)]
@@ -28,28 +28,76 @@ namespace ClashRuleEngine.Plugin
         }
 
         /// <summary>
-        /// Show the dock pane from a ribbon button. Closing the pane UNLOADS the plugin in
-        /// Navisworks (the View → Windows tick is just load/unload), so loading it when it's
-        /// not loaded re-opens it. The API exposes no separate show/activate for a pane.
+        /// Open the dock pane and actually show it, from a ribbon/add-in button.
+        ///
+        /// LOADING THE PLUGIN IS NOT ENOUGH — that was the long-standing "janky button"
+        /// bug: LoadPlugin() only instantiates the pane, leaving Visible false, so the
+        /// user still had to tick View → Windows → Clash Rule Engine by hand. The pane
+        /// is shown by setting DockPanePlugin.Visible (that tick box IS this property),
+        /// and ActivatePane() brings it to the front when it is docked behind a sibling
+        /// tab. Pattern from the SDK sample
+        /// api\NET\examples\PlugIns\ClashDetective\EventLog\LogDockPaneAddin.cs.
+        ///
+        /// Idempotent: safe to click when the pane is already open (it just gets focus).
         /// </summary>
         internal static void ShowPanel()
         {
             try
             {
-                var rec = Autodesk.Navisworks.Api.Application.Plugins.FindPlugin("ClashRuleEngine.ACME")
-                          as DockPanePluginRecord;
-                if (rec != null && rec.LoadedPlugin == null) rec.LoadPlugin();
+                // Automation hosts (tools\BatchExtractor) have no GUI to dock into.
+                if (Autodesk.Navisworks.Api.Application.IsAutomated) return;
+
+                var rec = Autodesk.Navisworks.Api.Application.Plugins
+                          .FindPlugin(PluginIds.Panel) as DockPanePluginRecord;
+                if (rec == null || !rec.IsEnabled) return;
+
+                // TryLoadPlugin returns null instead of throwing if construction fails.
+                var pane = rec.LoadedPlugin ?? rec.TryLoadPlugin();
+                if (pane == null) return;
+
+                pane.Visible = true;
+                pane.ActivatePane();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Never let a failed open take Navisworks down; tell the user why.
+                System.Windows.Forms.MessageBox.Show(
+                    "Could not open the Clash Rule Engine panel.\r\n\r\n" + ex.Message,
+                    "Clash Rule Engine",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+            }
         }
     }
 
-    [Plugin("ClashRuleEngineRibbon", "ACME",
-        DisplayName = "OConnors Clash",
-        ToolTip = "Open the OConnors Clash panel")]
+    [Plugin(PluginIds.RibbonName, PluginIds.Developer,
+        DisplayName = "Clash Rule Engine",
+        ToolTip = "Clash Rule Engine — rule-based clash assignment, approval and grouping")]
+    // BOTH of these name LOOSE FILES that Navisworks loads from a locale subfolder next to
+    // the DLL — Plugins\ClashRuleEngine\en-US\. They are NOT embedded resources; treating
+    // the layout as one is why this tab never appeared before 2026-08-10. See the csproj.
     [RibbonLayout("ClashRuleEngineRibbon.xaml")]
-    [RibbonTab("ID_ClashRuleEngine_Tab", DisplayName = "OConnors Clash")]
-    [Command("ID_OpenPanel", DisplayName = "Clash Engine", ToolTip = "Open the OConnors Clash panel")]
+    [Strings("ClashRuleEngine.name")]
+    // The tab's visible name comes from Title in ClashRuleEngineRibbon.xaml, which
+    // overrides this DisplayName; both are set to the same thing so they can't drift.
+    [RibbonTab("ID_ClashRuleEngine_Tab", DisplayName = "Clash Rule Engine")]
+    // Icon/LargeIcon are resolved by Navisworks RELATIVE TO THE PLUGIN DLL (or an
+    // Images\ subfolder next to it), so these files must be deployed alongside
+    // ClashRuleEngine.dll — the csproj copies them and deploy.ps1/the installer ship
+    // them. CallCanExecute.Always keeps the button live with no document open (when
+    // CanExecuteCommand is never called, the command defaults to DISABLED).
+    [Command("ID_OpenPanel",
+        DisplayName = "Open Panel",
+        ToolTip = "Open the Clash Rule Engine panel",
+        ExtendedToolTip = "Assign, auto-approve and group clash results from learned per-test element-pair rules.",
+        Icon = "oconnors_clash_16.ico",
+        LargeIcon = "oconnors_clash_32.ico",
+        CallCanExecute = CallCanExecute.Always,
+        // Load at startup so CanExecuteCommand below is definitely called. The SDK docs
+        // say commands are enabled by default but ALSO that an uncalled
+        // CanExecuteCommand leaves the command disabled; this removes the ambiguity, and
+        // this handler is trivial (it does not build the panel).
+        LoadForCanExecute = true)]
     public class ClashRuleEngineRibbonHandler : CommandHandlerPlugin
     {
         public override int ExecuteCommand(string commandId, params string[] parameters)
@@ -64,21 +112,10 @@ namespace ClashRuleEngine.Plugin
         public override bool TryShowCommandHelp(string commandId) { return false; }
     }
 
-    /// <summary>
-    /// Ribbon button under "Tool Add-ins" (same place as Clash Batch Extract) that
-    /// opens/shows the OConnors Clash dock pane — so it's a click, not a tick in
-    /// the Windows menu.
-    /// </summary>
-    [Plugin("ClashRuleEngineShow", "ACME",
-        DisplayName = "Clash Engine",
-        ToolTip = "Open the Clash Rule Engine panel")]
-    [AddInPlugin(AddInLocation.AddIn, LoadForCanExecute = true)]
-    public class ClashRuleEngineShowPlugin : AddInPlugin
-    {
-        public override int Execute(params string[] parameters)
-        {
-            ClashRuleEnginePlugin.ShowPanel();
-            return 0;
-        }
-    }
+    // REMOVED 2026-08-10: ClashRuleEngineShowPlugin, an AddInPlugin that also opened the
+    // panel. It existed only as a fallback while the custom ribbon tab did not work (see the
+    // csproj note on the ribbon layout being a loose file). Now that the "Clash Rule Engine"
+    // tab appears, that second button was a duplicate sitting in Navisworks' stock
+    // "Tool add-ins 1" panel — which cannot be renamed and looked unfinished next to the
+    // branded tab. The tab is the single entry point.
 }

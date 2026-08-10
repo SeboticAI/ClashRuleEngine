@@ -1,19 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- BEGIN STANDARD SECTION DO NOT EDIT (header copied from the NW 2027 CustomRibbon SDK sample) -->
 <RibbonControl
-    x:Uid="OConnorsClashRibbon" xmlns="clr-namespace:Autodesk.Windows;assembly=AdWindows"
+    x:Uid="ClashRuleEngineRibbon" xmlns="clr-namespace:Autodesk.Windows;assembly=AdWindows"
     xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:adwi="clr-namespace:Autodesk.Internal.Windows;assembly=AdWindows"
     xmlns:system="clr-namespace:System;assembly=mscorlib"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="clr-namespace:Autodesk.Navisworks.Gui.Roamer.AIRLook;assembly=navisworks.gui.roamer">
   <!-- END STANDARD SECTION DO NOT EDIT -->
-  <RibbonTab Id="ID_ClashRuleEngine_Tab" Title="OConnors Clash" KeyTip="OC">
-    <RibbonPanel x:Uid="OConnorsClashPanel">
-      <RibbonPanelSource x:Uid="OConnorsClashPanelSource" Title="OConnors Clash">
-        <local:NWRibbonButton x:Uid="OConnorsClashOpenBtn" Id="ID_OpenPanel"
-                              Size="Large" ShowText="True" Text="Clash Engine"
-                              Orientation="Vertical" />
+  <!-- Title here is what the ribbon TAB reads, and it wins over the DisplayName on the
+       [RibbonTab] attribute. This custom tab is the ONLY way to get our own name onto the
+       ribbon: an [AddInPlugin] button lands in Navisworks' stock "Tool Add-ins" tab under a
+       panel it names itself ("Tool Add-ins 1"), which no plugin can rename. -->
+  <RibbonTab Id="ID_ClashRuleEngine_Tab" Title="Clash Rule Engine" KeyTip="CR">
+    <RibbonPanel x:Uid="ClashRuleEnginePanel">
+      <RibbonPanelSource x:Uid="ClashRuleEnginePanelSource" Title="Clash Rule Engine">
+        <!-- Image/LargeImage are omitted ON PURPOSE: the Icon/LargeIcon set on the
+             [Command] attribute in ClashRuleEnginePlugin.cs supply them, and an
+             attribute in this file would OVERRIDE those. Paths here would be resolved
+             relative to this ribbon definition, which is an embedded resource with no
+             folder on disk — a brittle "..\Images\x.ico" guess. Keep icons in code. -->
+        <local:NWRibbonButton x:Uid="ClashRuleEngineOpenBtn" Id="ID_OpenPanel"
+                              Size="Large" ShowText="True" Text="Open Panel"
+                              KeyTip="OP" Orientation="Vertical" />
       </RibbonPanelSource>
     </RibbonPanel>
   </RibbonTab>

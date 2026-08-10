@@ -39,15 +39,26 @@ ClashRuleEngine/
 │   ├── AiAssistDialog.xaml/.cs   # AI rule-generation dialog
 │   └── RuleEnginePanel.xaml/.cs  # Main panel: 3 tabs (Rules/Clashes/General); grouping is a GLOBAL bar above the tabs (applies to all tests). Light theme.
 ├── Plugin/
-│   ├── ClashRuleEnginePlugin.cs  # DockPanePlugin + RibbonTab handler
+│   ├── PluginIds.cs              # plugin Name/DeveloperId consts — the FindPlugin keys
+│   ├── ClashRuleEnginePlugin.cs  # DockPanePlugin + RibbonTab handler + ShowPanel()
 │   ├── ClashMarkerPlugins.cs     # RenderPlugin (overlay) + InputPlugin (click-to-select)
 │   ├── BatchClashExtractPlugin.cs# Headless AddInPlugin: extracts per-clash kind/assignee/status/gap/grid/level → JSONL (the learning data)
 │   └── ClashRuleEngineRibbon.xaml # Ribbon layout (embedded resource)
 ├── tools/
 │   ├── BatchExtractor/           # Automation console driver for BatchClashExtractPlugin
-│   └── NwdClashLearner/          # WinForms GUI: pick NWDs, run the extractor (uses the DEPLOYED plugin)
+│   ├── NwdClashLearner/          # WinForms GUI: pick NWDs, run the extractor (uses the DEPLOYED plugin)
+│   ├── make-icons.ps1            # regenerates the ribbon/installer icons from the logo
+│   ├── harvest-refs.ps1          # pulls a version's API DLLs into Refs\<year>\ (-List to survey)
+│   └── build-all.ps1             # builds every buildable version [-Installer compiles setup.exe]
+├── Resources/
+│   ├── oconnors_logo.png         # brand lockup (source for every icon)
+│   └── oconnors_clash_{16,32}.ico# ribbon icons — MUST deploy next to the DLL
 ├── Installer/
-│   └── ClashRuleEngine.iss       # Inno Setup installer script
+│   ├── ClashRuleEngine.iss       # Inno Setup installer script (2024-2027, multi-version)
+│   └── oconnors_clash.ico        # setup.exe icon (multi-size 16/32/48)
+├── rules/                        # DISTRIBUTABLE rule sets + analyzer report (see rules\README.md)
+│   ├── clashre-kind-rules-2026-06-18-mined.json  # current 2-tier model, 81.8% replay
+│   └── clashre-kind-rules-2026-06-18-full.json   # earlier 923-rule set = what is live now
 ├── PackageContents.xml           # Navisworks plugin manifest
 └── ClashRuleEngine.csproj        # Classic-style .NET 4.8 project (NOT SDK-style)
 ```
@@ -58,9 +69,56 @@ ClashRuleEngine/
 - **NO discipline/system hierarchy** — that whole responsibility system (SystemHierarchy, DisciplineClassifier, owner/other resolution, Hierarchy tab) was REMOVED 2026-06-17. Assignment comes only from per-test rules now.
 - **Pipeline order**: assign-per-clash (rules) → approve → group → ONE atomic write-back per test. Grouping only organises; it never re-assigns.
 - **Grouping** (`ClashGroupingMode`): None / SharedElement / Proximity / **Grid** / Level / ByAssignee / Hybrid. **Grid** is the recommended mode: groups named by the bare grid intersection only (e.g. "H-22" — level stripped, no trade, no count), with " (1)"/" (2)" suffixes when two groups share a grid name (`GroupByGrid`/`GridName`). (`GridTrade` enum value is retained but now routes to the same grid grouping.) `AssignByGroup` (group-then-assign majority) conflicts with per-element specificity — leave OFF.
+- **Shipped rule sets + picker** (2026-08-10, `Services\BuiltInRuleSets.cs`): two rule sets are
+  **embedded resources** in the DLL, so a new user never has to be sent a file —
+  `LoadConfig()` seeds from the default on first run (guard: only when NO test has any rule, so
+  it can't clobber an import). The **Rule set** picker above the tabs switches between them:
+  - `current` — `RuleSets\current.clashre`, the production config: 923 pair rules + 25 per-test
+    defaults, approve ≥50 mm. **It is a HYBRID neither analyzer JSON reproduces alone** (the pair
+    rules came from the 923-rule file, which has no defaults; the 25 defaults came from the mined
+    file). That's why it ships as a `.clashre`, not a kind-rules JSON. **Default.**
+  - `mined` — `RuleSets\mined.json`, newest analyzer output: 274 deviation-only rules + 25
+    defaults, 81.8% replay, approve ≥25 mm + 20 per-pair floors → **approves MORE** than
+    `current`, hence not the default.
+  `ProjectConfig.ActiveRuleSetId` records which is live (empty = hand-imported → "Custom").
+  All three entry points (picker, Import button, first-run seed) go through **one**
+  `ApplyRuleSetText(text, builtInId, replaceAllRules)`; the picker passes `replaceAllRules:true`
+  so a switch is a clean swap — otherwise the old set's rules survive on every test the new one
+  doesn't mention, silently blending the two. It also preserves grouping + `ApiKey` across a
+  `.clashre` swap (the shipped sets carry no key, so a switch would otherwise wipe it).
+  Refresh the embedded copies with `tools\stage-rulesets.ps1`, which **scrubs `ApiKey`** —
+  never hand-copy a `.clashre` in, or a user's Claude key ships inside the DLL and lands in git.
+  These ARE embedded resources; the ribbon layout deliberately is NOT (see the ribbon note).
 - **Persistence**: ONE GLOBAL `.clashre` XML at `%AppData%\ClashRuleEngine\config.clashre` (`RulePersistenceService`). It is the single source of truth — an imported rule set survives across files AND Navisworks instances; only a new import (or an edit) overwrites it. (Was a per-document sidecar; changed 2026-06-18 so a learned rule file follows the user, not the model. The API has no reliable document-level user-data store anyway.)
 - **Light theme UI**: white cards on `#F8F9FA`, dark `#1A1A2E` text, blue `#2563EB` accent, `#E5E7EB` borders. (A dark-theme attempt was reverted — it produced unreadable light-on-light fields.)
-- **Ribbon / naming**: the dock pane (the "app") is **Clash Rule Engine** (DockPanePlugin DisplayName → View→Windows entry + pane title). A custom ribbon tab **OConnors Clash** (CommandHandlerPlugin + RibbonLayout) holds a **Clash Engine** button that opens the pane; an `AddInPlugin` (DisplayName **Clash Engine**) under Tool Add-ins does the same. `ShowPanel()` = `if (rec.LoadedPlugin==null) rec.LoadPlugin()` — `DockPanePluginRecord` exposes ONLY LoadPlugin/IsLoaded (no Unload/Show), and closing a pane unloads it, so LoadPlugin re-opens.
+- **Ribbon / naming** (all "Clash Rule Engine" as of 2026-08-10): the dock pane is **Clash Rule
+  Engine** (DockPanePlugin DisplayName → View→Windows entry + pane title). A custom ribbon tab
+  **Clash Rule Engine** (CommandHandlerPlugin + RibbonLayout) holds an **Open Panel** button;
+  an `AddInPlugin` (DisplayName **Clash Rule Engine**) under Tool Add-ins does the same. Both
+  carry the OConnors icon. The tab's label comes from `Title` in the ribbon XAML, which
+  overrides the `[RibbonTab] DisplayName` — both are set identically so they can't drift.
+  **A custom RibbonTab is the ONLY way to get your own name on the ribbon**: an `AddInPlugin`
+  button lands in Navisworks' stock "Tool Add-ins" tab, in a panel Navisworks names itself
+  ("Tool add-ins 1"), and no plugin can rename that. **CONFIRMED WORKING 2026-08-10** — the tab
+  now shows, with the icon, alongside Navisworks' own tabs.
+  Consequently there are **no GUI AddInPlugins left**: the duplicate panel-opener add-in was
+  deleted, and `BatchClashExtractPlugin` moved to **`AddInLocation.None`** — registered and
+  still reachable via `Automation.ExecuteAddInPlugin("ClashBatchExtract.OCON", …)` from
+  `tools\BatchExtractor` / `tools\NwdClashLearner`, but placed nowhere in the UI, which makes
+  the stock "Tool add-ins" tab disappear entirely. `AddInLocation.None` exists for exactly this
+  (programmatically-invoked add-ins). If the headless learner ever can't find the plugin, put
+  `AddInLocation.AddIn` back — that is the whole revert.
+  The XAML can be syntax-checked offline against Navisworks' own types:
+  ```powershell
+  [void][Reflection.Assembly]::LoadFrom("$nav\AdWindows.dll")
+  [void][Reflection.Assembly]::LoadFrom("$nav\navisworks.gui.roamer.dll")
+  Add-Type -AssemblyName PresentationFramework, System.Xaml
+  [Windows.Markup.XamlReader]::Parse((Get-Content $xamlPath -Raw)).Tabs   # Title, Panels, Items
+  ```
+  **But that only proves the markup is well-formed — it does NOT prove Navisworks shows the
+  tab.** It parsed fine for months while no tab appeared, because the problem was WHERE the
+  file lived (see the Project-file-format section), not what was in it. The only real test is
+  restarting Navisworks and looking at the ribbon. `ShowPanel()` sets **`DockPanePlugin.Visible = true`** then `ActivatePane()` after loading — see API quirk #1; loading alone leaves the pane hidden. It is idempotent (clicking when already open just focuses it).
 
 ## Navisworks API quirks (IMPORTANT)
 These were discovered through trial and error during development (2026/2027 APIs):
@@ -88,8 +146,45 @@ These were discovered through trial and error during development (2026/2027 APIs
    test folders), so tests must be collected recursively. ALL test enumeration goes
    through `ClashApiCompat.GetAllTests()` (typed per-version via the `NW_TESTS_TREE`
    define) — never enumerate `TestsData` directly.
-1. **`DockPanePluginRecord.IsVisible`** — does NOT exist. Use `LoadedPlugin != null` to check if loaded.
-2. **`DockPanePluginRecord.Enabled`** — does NOT exist. Can't toggle visibility programmatically.
+1. **Showing a dock pane from a button (CORRECTED 2026-08-10 — this was the "janky ribbon
+   button"):** `DockPanePluginRecord` has no `IsVisible`/`Enabled`, but the members that
+   matter live on the **loaded plugin** and on the **base record**, not on
+   `DockPanePluginRecord`:
+   - **`DockPanePlugin.Visible` `[RW]`** EXISTS — and it *is* the View → Windows tick box.
+   - **`DockPanePlugin.ActivatePane()`** EXISTS — brings the pane forward when docked
+     behind a sibling tab.
+   - **`PluginRecord.IsEnabled`** EXISTS (it's `IsEnabled`, not `Enabled`), as does
+     `IsLoaded` and `TryLoadPlugin()` (null instead of throwing).
+   So the correct open-from-button sequence — SDK sample
+   `api\NET\examples\PlugIns\ClashDetective\EventLog\LogDockPaneAddin.cs`, now in
+   `ClashRuleEnginePlugin.ShowPanel()` — is:
+   ```csharp
+   if (Application.IsAutomated) return;                       // no GUI to dock into
+   var rec = Application.Plugins.FindPlugin("ClashRuleEngine.OCON") as DockPanePluginRecord;
+   if (rec == null || !rec.IsEnabled) return;
+   var pane = rec.LoadedPlugin ?? rec.TryLoadPlugin();         // load only if needed
+   if (pane == null) return;
+   pane.Visible = true;                                       // <-- THE ACTUAL FIX
+   pane.ActivatePane();
+   ```
+   The old code called only `LoadPlugin()`. That instantiates the pane but leaves
+   `Visible == false`, so the button appeared to do nothing and the user still had to tick
+   View → Windows by hand. **`LoadPlugin()` alone never shows a pane.**
+2. **Plugin lookup key** — `FindPlugin` takes `"<Name>.<DeveloperId>"` from the `[Plugin]`
+   attribute. Keep it in ONE place (`Plugin\PluginIds.cs`): a stale literal makes
+   `FindPlugin` return null and the button silently no-op. DeveloperId is `OCON`
+   (4 chars required; was the sample placeholder `ACME` until 2026-08-10).
+2b. **Ribbon button icons** — `[Command(Icon="x_16.ico", LargeIcon="x_32.ico")]` and
+   `[AddInPlugin(Icon=…, LargeIcon=…)]`. Navisworks resolves those paths **relative to the
+   plugin DLL** (or an `Images\` subfolder beside it), so the .ico files must be deployed
+   NEXT TO `ClashRuleEngine.dll` — the csproj target `CopyRibbonIcons` puts them in the
+   build output, and `deploy.ps1`/the installer ship them. Use **.ico** (16x16 and 32x32),
+   as the SDK samples do; Navisworks loads them with its own loader, not WPF, so
+   PNG-compressed ICOs and .png are not worth the risk. Do NOT also set `Image`/`LargeImage`
+   in the ribbon XAML — those OVERRIDE the attribute icons and would be resolved relative
+   to the embedded ribbon resource, which has no folder on disk.
+   Regenerate with `tools\make-icons.ps1` (brand mark + crossing-services clash glyph,
+   drawn as vector at 16/32px because a bicubic downscale of the logo goes mushy).
 3. **`ModelItemEnumerableCollection.DescendantsAndSelf`** — does NOT exist. Use `model.RootItem.Descendants` instead, iterating through `doc.Models` first.
 4. **`ModelItemEnumerableCollection.Descendants`** — does NOT exist on the collection. Must go through individual `Model` objects: `foreach (Model model in doc.Models) foreach (ModelItem item in model.RootItem.Descendants)`.
 5. **`ClashResult.ApprovedBy`** — is NOT a string; it's a typed `Assignee` (`[RW]`). Set `clash.ApprovedBy = new Assignee(name)` (same as `AssignedTo`), and `clash.ApprovedTime = DateTime.Now` (`[RW] DateTime?`) so an auto-approval is complete. The approve engine sets all three (Status/ApprovedBy/ApprovedTime) on the detached copy.
@@ -104,13 +199,41 @@ These were discovered through trial and error during development (2026/2027 APIs
 - MUST explicitly list all `<Compile>` items, `<Page>` XAML items, and `<EmbeddedResource>` for the ribbon XAML.
 - Navisworks references: `Private=False` (don't copy to output).
 - Platform: `x64` only.
-- Ribbon XAML: must be `<EmbeddedResource>`, not `<Page>` or `<None>`.
-- **Ribbon XAML resource NAME + format (debugged 2026-06-18 — why the custom tab never showed):**
-  1. The embedded-resource name MUST be exactly `<RootNamespace>.<RibbonLayout filename>` =
-     `ClashRuleEngine.ClashRuleEngineRibbon.xaml`. Because the file lives in `Plugin\`, MSBuild
-     names the resource `ClashRuleEngine.Plugin.ClashRuleEngineRibbon.xaml` — Navisworks can't
-     find that, so NO tab appears. Fix: set `<LogicalName>ClashRuleEngine.ClashRuleEngineRibbon.xaml</LogicalName>`
-     on the `<EmbeddedResource>`.
+- Ribbon XAML: `<None>` staged to `$(OutDir)en-US\` — **NOT** `<EmbeddedResource>`. See below.
+- **Ribbon XAML = LOOSE FILE IN A LOCALE FOLDER (SOLVED 2026-08-10 — read this before
+  touching the ribbon):**
+  1. Navisworks resolves the `[RibbonLayout]` `.xaml` and `[Strings]` `.name` of a
+     `CommandHandlerPlugin` from a **locale subfolder next to the plugin DLL**:
+     ```
+     Plugins\ClashRuleEngine\
+         ClashRuleEngine.dll
+         en-US\ClashRuleEngineRibbon.xaml
+         en-US\ClashRuleEngine.name
+         Images\*.ico
+     ```
+     Ground truth = the post-build event inside
+     `api\net\examples\Basic Examples\CSharp\CustomRibbon\CustomRibbon.csproj` (the file is
+     ACL-locked; copy it out with an elevated shell to read it):
+     ```
+     xcopy /Y "$(TargetPath)"    "...\Plugins\$(TargetName)\"
+     mkdir                       "...\Plugins\$(TargetName)\en-US"
+     copy /Y "CustomRibbon.xaml" "...\Plugins\$(TargetName)\en-US\"
+     copy /Y "CustomRibbon.name" "...\Plugins\$(TargetName)\en-US\"
+     xcopy /Y "Images\*.*"       "...\Plugins\$(TargetName)\Images\"
+     ```
+     Both are plain `<None>` + `CopyToOutputDirectory` there. Navisworks' own ribbons ship the
+     same way (`<install>\en-US\Ribbon.xaml`, `<install>\en-US\Clash.Plugin.name`).
+     **THE PREVIOUS NOTE HERE WAS WRONG** and cost a lot of time: it claimed the XAML had to be
+     an `<EmbeddedResource>` whose name was `<RootNamespace>.<file>`, set via `<LogicalName>`.
+     Navisworks never looks for an embedded resource, so the tab NEVER appeared — the resource
+     name was correct and completely irrelevant. Do not "restore" that.
+     A missing layout file fails **silently**: no tab, no error, nothing in any log.
+     Only `en-US` is shipped; a non-English Navisworks needs the two files under its own locale.
+  1b. **`.name` file format** (`Plugin\ClashRuleEngine.name`): UTF-8 **with BOM**, a `$utf8`
+     directive line, `#` comments, and each key ends with `=` with its **value on the NEXT
+     line** (`ID_OpenPanel.ToolTip=` ⏎ `Open the …`). Keys: `DisplayName`,
+     `<TabId>.DisplayName`, `<CommandId>.DisplayName/.ToolTip/.ExtendedToolTip`.
+     Precedence: XAML `Title` > `.name` > attribute `DisplayName`.
   2. The XAML MUST use the SDK format (see `…\api\NET\examples\…\CustomRibbon\CustomRibbon.xaml`):
      root `<RibbonControl xmlns="clr-namespace:Autodesk.Windows;assembly=AdWindows" …>` with
      `<RibbonTab Id Title>`, `<RibbonPanel><RibbonPanelSource Title>`,
@@ -119,16 +242,75 @@ These were discovered through trial and error during development (2026/2027 APIs
   3. The CommandHandlerPlugin should override `CanExecuteCommand => new CommandState(true)` and
      `CanExecuteRibbonTab => true` so the button isn't greyed out / the tab always shows.
 
+### Multi-version support (2024–2027) — ONE BUILD PER VERSION IS MANDATORY
+The Navisworks API assemblies are **strong-named and version-stamped per release** —
+`Autodesk.Navisworks.Api` is `21.0.0.0` (2024), `22.0` (2025), `23.0` (2026), `24.0` (2027),
+all `PublicKeyToken=d85e58fa5af9b484`. `roamer.exe.config` pins each one to its own release
+with `<bindingRedirect oldVersion="24.0.0.0-24.0.9999.9999">` **and
+`<publisherPolicy apply="no"/>`** (verified 2026-08-10). So a DLL compiled against 24.0
+physically cannot load in 2026, and there is no redirect, shim or bundle layout that makes
+one DLL span versions. Don't go looking for one — this was checked.
+
+Therefore: one build per year, each against that year's reference DLLs. A version is
+buildable when its refs are reachable — **installed locally** (the simplest route: just
+install that Navisworks version on the build machine) **or** harvested into `Refs\<year>\`.
+- `tools\build-all.ps1 [-Installer]` — regenerates icons, builds every buildable year, and
+  **reports the years it skipped** rather than quietly shipping fewer versions. Nothing to
+  configure: install Navisworks 2026 and the next run picks 2026 up.
+- `tools\harvest-refs.ps1 -List` — survey: installed / harvested / API version per year.
+- `tools\harvest-refs.ps1 -Version 2026` — fallback for a version you can't install here.
+  Copies the API DLLs into `Refs\2026\`; run it on a machine that HAS 2026, or
+  `-From "\\host\c$\Program Files\Autodesk\Navisworks Manage 2026"`. It warns loudly if the
+  API major doesn't match the year (i.e. `-From` pointed at the wrong install).
+  `Refs\` is **gitignored on purpose** (Autodesk binaries) — it lives on the build machine.
+- Only **Api + Clash** are required references. Automation and Controls are conditional in
+  the csproj (declared-but-unused; the Automation API is driven from the separate
+  `tools\BatchExtractor` / `tools\NwdClashLearner` projects), so a partial ref set builds.
+- Only ONE compile-time fork exists: `NW_TESTS_TREE` (≥2027) in `Services\ClashApiCompat.cs`.
+  **The ≤2026 branch (`DocumentClashTests.Tests`) has never been compiled** — 2026 was
+  removed from this machine before it was written, so the "verified" note on it is inherited,
+  not tested. Expect the FIRST 2024–2026 build to be where that surfaces; the fix is local to
+  that one `#else`. (Confirmed for 2027: `DocumentClashTests` has `Value.TestsRoot` and NO
+  `Tests` property, so the fork is genuinely needed.)
+
 ### Build and deploy
-1. Build: `msbuild ClashRuleEngine.csproj /p:Configuration=Release /p:Platform=x64 /p:NavisworksVersion=2027`
-   (version defaults to newest installed Navisworks; output goes to `bin\x64\Release\<version>\`)
-   MSBuild on this machine: VS2022 BuildTools (`C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe`) or VS 2026 Community. `tools\build.ps1` does dump→build→deploy in one go.
-2. Deploy: `tools\deploy.ps1 -Version 2027` — installs the bundle to
-   `C:\ProgramData\Autodesk\ApplicationPlugins\ClashRuleEngine.bundle\` (user-writable, no admin).
-   Alternatives: `-UserPlugins` → `%AppData%\Autodesk Navisworks Manage 2027\Plugins\ClashRuleEngine\`,
-   `-Flat` (elevated) → `C:\Program Files\Autodesk\Navisworks Manage 2027\Plugins\`.
-3. Restart Navisworks
-4. Panel appears via View → Windows → Clash Rule Engine
+1. Build one version: `msbuild ClashRuleEngine.csproj /p:Configuration=Release /p:Platform=x64 /p:NavisworksVersion=2027`
+   (version defaults to newest installed Navisworks; output → `bin\x64\Release\<version>\`)
+   MSBuild on this machine: VS2022 BuildTools (`C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe`) or VS 2026 Community.
+   `tools\build.ps1` = dump→build→deploy for one version; `tools\build-all.ps1` = every version.
+   The build copies the ribbon .ico files next to the DLL and **errors if they're missing**
+   (run `tools\make-icons.ps1`).
+2. Deploy for dev: `tools\deploy.ps1 -Version 2027` — self-elevates and copies
+   `ClashRuleEngine.dll` + the two .ico files to
+   `C:\Program Files\Autodesk\Navisworks Manage 2027\Plugins\ClashRuleEngine\`, then
+   **verifies every file by hash**. It refuses to run while `roamer.exe` is alive, because a
+   loaded plugin DLL is locked and the copy would silently leave the old build in place.
+3. Ship to the team: `tools\build-all.ps1 -Installer` → `Installer\Output\OConnorsClashEngine_Setup_<ver>.exe`.
+   See "Installer" below.
+4. Restart Navisworks → **OConnors Clash** tab → **Clash Engine** (also under Tool Add-ins).
+
+### Installer (`Installer\ClashRuleEngine.iss`, Inno Setup 6)
+Compiler: `winget install --id JRSoftware.InnoSetup`. NOTE it installs **per-user** at
+`%LocalAppData%\Programs\Inno Setup 6\ISCC.exe` — probing only Program Files finds nothing
+(`build-all.ps1` checks the per-user path and the uninstall registry key).
+- Packages **exactly** the years whose `bin\x64\Release\<year>\ClashRuleEngine.dll` exists at
+  compile time (`#if FileExists` → `Has20xx`), and offers a component only when that year is
+  BOTH packaged and installed — so a user can never tick a version that copies nothing.
+  Warns on launch if the machine has a Navisworks the setup has no build for.
+- **Destination is read from the registry at run time**, not hardcoded. Autodesk keys by API
+  MAJOR, not year (`major = year - 2003`):
+  `HKLM\SOFTWARE\Autodesk\Navisworks API Runtime\<major>\Navisworks Manage` → `Path`, or
+  `HKLM\SOFTWARE\Autodesk\Navisworks Manage\<major>.0\Location` → `Path`, else the default
+  Program Files path. The previous script probed
+  `HKLM\SOFTWARE\Autodesk\Navisworks Manage <year>` for `InstallDir` — **a key that exists in
+  no release**, so detection always fell through to the hardcoded path and a non-default
+  install location was invisible. Verified against the live 2027 registry 2026-08-10.
+- Blocks in `PrepareToInstall` if `roamer.exe` is running (tasklist+find; Navisworks exposes
+  no documented mutex or window class to probe).
+- To verify the Pascal logic without elevating, compile a copy of the `[Code]` section as a
+  `PrivilegesRequired=lowest` probe that dumps what it resolves and returns False from
+  `InitializeSetup`. Running the real setup from a non-interactive shell just exits 2 at the
+  UAC step with no log, which looks like a logic failure and isn't.
 
 ### Plugin loading notes — FINAL, debugged to ground truth 2026-06-12
 **The ONLY way third-party .NET plugins load in Navisworks 2027** (confirmed via Autodesk
@@ -187,7 +369,8 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
 - **Main panel = 3 tabs**: Rules · Clashes · General (light theme). The GROUPING control is a
   **global bar above the tabs** (applies to all tests). Header has **+ New Rule** and **Import**
   (load a `.clashre` OR a `clashre-kind-rules/1` `.json` from anywhere → saved to the global store, so it persists across files/instances).
-  Opened from the **Tool Add-ins** ribbon button.
+- **Opening it is one click** (fixed 2026-08-10): **OConnors Clash** ribbon tab → **Clash Engine**,
+  both carrying the OConnors icon; also under Tool Add-ins. No more ticking View → Windows.
 - **Learning pipeline**: `BatchClashExtractPlugin` (run headless via `tools\BatchExtractor` or the
   `tools\NwdClashLearner` GUI over coordinated NWDs) extracts per clash: each side's element kind
   (cat/family/type/system + diameter band), assignee, status, **clearance gap (mm, signed; <0 =

@@ -17,7 +17,8 @@ namespace ClashRuleEngine.BatchExtractor
     /// </summary>
     internal static class Program
     {
-        private const string PluginId = "ClashBatchExtract.ACME";
+        // Must match PluginIds.BatchExtract in the plugin (Plugin\PluginIds.cs).
+        private const string PluginId = "ClashBatchExtract.OCON";
 
         private static int Main(string[] args)
         {

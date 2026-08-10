@@ -19,14 +19,24 @@ namespace ClashRuleEngine.Plugin
     ///
     /// Driven by tools\BatchExtractor (Automation console app):
     ///   app.AddPluginAssembly(ClashRuleEngine.dll); app.OpenFile(nwd);
-    ///   app.ExecuteAddInPlugin("ClashBatchExtract.ACME", outputJsonlPath);
+    ///   app.ExecuteAddInPlugin("ClashBatchExtract.OCON", outputJsonlPath);
     ///
     /// The aggregated JSONL is the training data for the element-kind rule hierarchy:
     /// hand it to Claude → "Fire Flex → owner Fire", "Hyd Drainage >75mm → other", …
     /// </summary>
-    [Plugin("ClashBatchExtract", "ACME", DisplayName = "Clash Batch Extract",
+    [Plugin(PluginIds.BatchExtractName, PluginIds.Developer, DisplayName = "Clash Batch Extract",
         ToolTip = "Headless: extract element-kind vs assignee records from clashes")]
-    [AddInPlugin(AddInLocation.AddIn, LoadForCanExecute = true)]
+    // AddInLocation.None = registered but NOT placed in the GUI. That is what this enum value
+    // is for: an add-in invoked programmatically rather than clicked. This one is only ever
+    // driven headlessly via Automation.ExecuteAddInPlugin("ClashBatchExtract.OCON", …) from
+    // tools\BatchExtractor / tools\NwdClashLearner, and clicking it interactively would just
+    // dump a JSONL into %TEMP%.
+    //
+    // Changed from AddInLocation.AddIn on 2026-08-10 so that Navisworks' stock "Tool add-ins 1"
+    // panel disappears entirely, leaving the branded "Clash Rule Engine" tab as the only UI.
+    // If the headless learner ever fails to find this plugin, put AddInLocation.AddIn back —
+    // that is the whole revert.
+    [AddInPlugin(AddInLocation.None, LoadForCanExecute = false)]
     public class BatchClashExtractPlugin : AddInPlugin
     {
         // Property names that carry within-trade meaning (searched up the ancestor chain).

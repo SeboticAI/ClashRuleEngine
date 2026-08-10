@@ -162,6 +162,21 @@
                     <Button Grid.Column="3" Content="Refresh" Style="{StaticResource Btn}" Click="OnRefreshTests" Margin="6,0,0,0" FontSize="11"/>
                 </Grid>
 
+                <!-- RULE SET (shipped with the plugin — no file to import) -->
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Rule set (all tests):" VerticalAlignment="Center" Foreground="#6B7280"
+                               FontSize="12" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="cmbRuleSet" Grid.Column="1" FontSize="12" VerticalAlignment="Center"
+                              SelectionChanged="OnRuleSetChanged"
+                              ToolTip="Rule sets shipped inside the plugin. Switching REPLACES all per-test rules."/>
+                </Grid>
+                <TextBlock x:Name="txtRuleSetInfo" Grid.Column="1" Margin="0,3,0,0" FontSize="10"
+                           Foreground="#6B7280" TextWrapping="Wrap"/>
+
                 <!-- GLOBAL GROUPING (applies to all tests) -->
                 <Grid Margin="0,8,0,0">
                     <Grid.ColumnDefinitions>

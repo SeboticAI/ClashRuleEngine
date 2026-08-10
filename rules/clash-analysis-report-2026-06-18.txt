@@ -1,0 +1,397 @@
+==============================================================================
+CLASH ASSIGNMENT ANALYSIS
+==============================================================================
+rows (aggregated buckets) : 175327
+clashes (weighted)        : 436768
+source files              : 60
+canonical tests           : 33
+distinct assignees        : 143
+family/type/leaf          : present
+diaMm (for size splits)   : MISSING - re-extract with the current DLL to enable diameter splits
+
+------------------------------------------------------------------------------
+CONFIDENCE  (replay of the generated rules vs your historical assignments)
+------------------------------------------------------------------------------
+Reproduces 81.8% of your specific historical assignments overall.
+17.5% of assigned clashes are caught by a specific rule (the rest fall to the per-test default).
+(Scored on 64228 clashes that carry a real trade assignee; review/'check' notes excluded.)
+(In-sample: rules are mined from this same data, so read it as a ceiling, not out-of-sample accuracy.)
+Per-test, lowest reproduction first (where to look before trusting it):
+    FIRE vs SEC            reproduces  49.3%   rule-coverage  61.6%   (n=842)
+    ICT vs SEC             reproduces  74.1%   rule-coverage  61.7%   (n=548)
+    HYD vs MECH            reproduces  75.0%   rule-coverage  54.2%   (n=4855)
+    ICT vs MECH            reproduces  75.6%   rule-coverage  34.3%   (n=4737)
+    ELEC vs SEC            reproduces  76.0%   rule-coverage   9.8%   (n=600)
+    FIRE vs MECH           reproduces  76.9%   rule-coverage   9.6%   (n=9718)
+    DRUPS vs HYD           reproduces  77.6%   rule-coverage   0.0%   (n=76)
+    DRUPS vs MECH          reproduces  79.5%   rule-coverage  35.4%   (n=409)
+    ELEC vs MECH           reproduces  80.0%   rule-coverage   1.8%   (n=23193)
+    FIRE vs ICT            reproduces  82.0%   rule-coverage  46.3%   (n=1081)
+    ELEC vs ICT            reproduces  83.1%   rule-coverage  54.2%   (n=2325)
+    MECH vs SEC            reproduces  83.4%   rule-coverage   3.1%   (n=1298)
+
+------------------------------------------------------------------------------
+AI HANDOFF  (where the miner ran out of signal - refine these with AI/human)
+------------------------------------------------------------------------------
+Low-confidence tests (rules reproduce <70%% of your calls):
+    FIRE vs SEC             49.3%  (n=842)
+Tests with no clear trade default (a review label won - genuinely ambiguous):
+    ELEC vs FUEL           default-> BOTH-INTERFACE CHECK
+
+------------------------------------------------------------------------------
+PER-TEST: assignee mix, default (fallback) and rule coverage
+------------------------------------------------------------------------------
+DRUPS vs ELEC          n=7501   rules=16  default=DRUPS (93% of trade calls)
+    mix: DRUPS 85%, BOTH-CHECK EQUIP DUPLICATION 7%, ELEC 7%, ELEC-CLEARANCE 1%
+DRUPS vs FIRE          n=173    rules=0   default=DRUPS (100% of trade calls)
+    mix: DRUPS 98%, DRUPS - CHECK CLEARANCE 2%
+DRUPS vs HYD           n=76     rules=0   default=DRUPS (78% of trade calls)
+    mix: DRUPS 78%, HYD 22%
+DRUPS vs ICT           n=24     rules=0   default=DRUPS (100% of trade calls)
+    mix: DRUPS 100%
+DRUPS vs MECH          n=427    rules=7   default=DRUPS (82% of trade calls)
+    mix: DRUPS 78%, MECH 17%, MECH/DRUPS - CLEARANCE 4%, MECH - CHECK CLEARANCE 0%
+DRUPS vs SEC           n=11     rules=0   default=DRUPS (100% of trade calls)
+    mix: DRUPS 100%
+DRUPS vs STR           n=7219   rules=0   default=(none - low dominance)
+    mix: (unassigned) 100%
+ELEC vs FIRE           n=4249   rules=34  default=ELEC (77% of trade calls)
+    mix: ELEC 71%, FIRE 21%, COORD-CHECK 4%, FIRE - CLEARANCE 2%
+ELEC vs FUEL           n=153    rules=0   default=BOTH-INTERFACE CHECK (100% of trade calls)
+    mix: BOTH-INTERFACE CHECK 100%
+ELEC vs HYD            n=1361   rules=6   default=ELEC (94% of trade calls)
+    mix: ELEC 90%, HYD 6%, ELEC - CHECK CLEARANCE 2%, ELEC-BETWEEN PIPES? 1%
+ELEC vs ICT            n=2419   rules=31  default=ICT (59% of trade calls)
+    mix: ICT 57%, ELEC 39%, DOUBLED UP ITEM 2%, OVERLAP ITEM 1%
+ELEC vs MECH           n=24122  rules=26  default=ELEC (79% of trade calls)
+    mix: ELEC 76%, MECH 14%, RCP 5%, MECH - CLEARANCE 1%
+ELEC vs SEC            n=741    rules=3   default=ELEC (66% of trade calls)
+    mix: ELEC 53%, SEC 27%, SEC-CLEARANCE CHECK 9%, BOTH-CLEARANCE CHECK 6%
+ELEC vs STR            n=77920  rules=0   default=(none - low dominance)
+    mix: (unassigned) 100%
+FIRE vs FUEL           n=4      rules=0   default=FIRE (100% of trade calls)
+    mix: FIRE 100%
+FIRE vs HYD            n=2278   rules=2   default=FIRE (93% of trade calls)
+    mix: FIRE 86%, HYD 5%, FIRE-(HYD EMAIL RESPONSE 14.01.26) 2%, HYD-(FIRE PIPE ON TOP/CLOSE TO SLAB) 2%
+FIRE vs ICT            n=1247   rules=14  default=FIRE (61% of trade calls)
+    mix: FIRE 53%, ICT 34%, FIRE - CHECK CLEARANCE 8%, FIRE - CLEARANCE 3%
+FIRE vs MECH           n=10269  rules=35  default=FIRE (79% of trade calls)
+    mix: FIRE 74%, MECH 16%, FIRE-MISTING 2%, MECH HANGERS 1%
+FIRE vs SEC            n=903    rules=9   default=FIRE (80% of trade calls)
+    mix: FIRE 75%, SEC 17%, FIRE - CLEARANCE 6%, ICT 1%
+FIRE vs STR            n=34828  rules=0   default=(none - low dominance)
+    mix: (unassigned) 100%
+FUEL vs HYD            n=7      rules=0   default=HYD (100% of trade calls)
+    mix: HYD 100%
+FUEL vs MECH           n=1      rules=0   default=MECH (100% of trade calls)
+    mix: MECH 100%
+FUEL vs STR            n=188    rules=0   default=(none - low dominance)
+    mix: (unassigned) 100%
+HYD vs ICT             n=94     rules=2   default=ICT (77% of trade calls)
+    mix: ICT 76%, HYD 22%, ICT - CHECK CLEARANCE 2%
+HYD vs MECH            n=6464   rules=78  default=HYD (52% of trade calls)
+    mix: HYD 39%, MECH 25%, TUNDISH 10%, MECH/HYD - MECH HANGERS - HYD SMALL BORE 8%
+HYD vs SEC             n=47     rules=0   default=SEC (93% of trade calls)
+    mix: SEC 81%, SEC-TO ADVISE AS HYD CLOSE, MAYBE CLEARANCE ZONE IF NEEDED 13%, HYD 6%
+HYD vs STR             n=15883  rules=0   default=(none - low dominance)
+    mix: (unassigned) 100%
+ICT vs MECH            n=5177   rules=13  default=ICT (65% of trade calls)
+    mix: ICT 59%, MECH 32%, ICT-TRAY NOT UNDER MECH UNIT 2%, MECH - CHECK ACCESS 1%
+ICT vs SEC             n=884    rules=8   default=SEC (54% of trade calls)
+    mix: SEC 33%, ICT 29%, SHARED HANGER 10%, BOTH-CLEARANCE CHECK 7%
+ICT vs STR             n=15982  rules=0   default=(none - low dominance)
+    mix: (unassigned) 100%
+MECH vs SEC            n=1435   rules=8   default=SEC (82% of trade calls)
+    mix: SEC 74%, MECH 14%, SEC-CLEARANCE CHECK 3%, MECH - CLEARANCE 2%
+MECH vs STR            n=207056 rules=0   default=(none - low dominance)
+    mix: (unassigned) 100%
+SEC vs STR             n=7625   rules=0   default=(none - low dominance)
+    mix: (unassigned) 100%
+
+------------------------------------------------------------------------------
+APPROVE CALIBRATION
+------------------------------------------------------------------------------
+Global approval rate by gap band (negative band = hard penetration):
+    pen>=50mm        2.5% approved (n=56658)
+    pen10-50mm       4.1% approved (n=39606)
+    pen<10mm         3.0% approved (n=39306)
+    gap0-10mm        2.5% approved (n=42504)
+    gap10-25mm       4.9% approved (n=29465)
+    gap25-50mm       9.2% approved (n=35012)
+    gap50-100mm     10.1% approved (n=81348)
+    gap>100mm       12.0% approved (n=112869)
+
+Per-trade-pair clearance floor (auto-approve once gap >= floor; STR pairs excluded):
+    ELEC/MECH    minGap= 12mm   (hist approval 41%, n=24122)
+    FIRE/MECH    minGap= 19mm   (hist approval 60%, n=10269)
+    DRUPS/ELEC   minGap=  0mm   (hist approval 0%, n=7501)
+    HYD/MECH     minGap=  0mm   (hist approval 71%, n=6464)
+    ICT/MECH     minGap= 18mm   (hist approval 37%, n=5177)
+    ELEC/FIRE    minGap= 62mm   (hist approval 70%, n=4249)
+    ELEC/ICT     minGap=  8mm   (hist approval 22%, n=2419)
+    FIRE/HYD     minGap= 51mm   (hist approval 63%, n=2278)
+    MECH/SEC     minGap=  0mm   (hist approval 33%, n=1435)
+    ELEC/HYD     minGap= 56mm   (hist approval 73%, n=1361)
+    FIRE/ICT     minGap= 75mm   (hist approval 63%, n=1247)
+    FIRE/SEC     minGap= 68mm   (hist approval 51%, n=903)
+    ICT/SEC      minGap=  0mm   (hist approval 66%, n=884)
+    ELEC/SEC     minGap=  0mm   (hist approval 56%, n=741)
+    DRUPS/MECH   minGap= 79mm   (hist approval 3%, n=427)
+    ELEC/FUEL    minGap=  0mm   (hist approval 99%, n=153)
+    HYD/ICT      minGap=105mm   (hist approval 59%, n=94)
+    DRUPS/HYD    minGap=158mm   (hist approval 22%, n=76)
+    HYD/SEC      minGap=111mm   (hist approval 32%, n=47)
+    FUEL/HYD     minGap= 21mm   (hist approval 100%, n=7)
+
+Always-approve assignees (>=80% approved, gap-independent):
+    RCP, TUNDISH, MECH/HYD - MECH HANGERS - HYD SMALL BORE, FIRE-MISTING, MECH-CLEARANCE CHECK, COORD-CHECK, BOTH-INTERFACE CHECK, BOTH-CLEARANCE CHECK, SEC-CLEARANCE CHECK, SHARED HANGERS, L1, DOUBLED UP ITEM, SEC(CLEARANCE CHECK), FIRE PENOS, HYD-(FIRE PIPE ON TOP/CLOSE TO SLAB), MECH FLEX AND RCPS, FIRE-NOTE FLANGE CLASH IS CLEAREANCE CLASH WITH INSUALTION ON INSIDE, HYD-L1, TUNDISH / TRADE INTERFACE, HYD - INTERFACE POINT, L1 (HYD), MECH-CLEARANCE, FIRE-CLEARANCE, L1 (MECH), OVERLAP ITEM, FIRE-MECH DOCUMENTED FIRE PENO
+Always-approve kinds:
+    curated: flex
+    data-detected: ls_ceiling access panel (100%, n=164), speaker - ceiling - recessed - 6m (86%, n=125), oh_dc1 ceiling mounted mist nozzle (100%, n=78), supply linear_chb 1 spigot_generic (89%, n=54), 20_cs_pf_copper brazed-reducer straight1 (98%, n=46), plumbing_pumps_grundfos_crn32_seek (90%, n=40)
+
+------------------------------------------------------------------------------
+SERVICE-TYPE x CLEARANCE  (close clashes: gap <= 25mm, incl. penetrations)
+How you handled tight clashes, broken down by the service type involved.
+------------------------------------------------------------------------------
+DRUPS vs ELEC:
+    _ANZ-EL-CABLE-TRAY           n=5338  approved   0%  ->  DRUPS 100%
+    Cable Tray with Fittings     n=2031  approved   0%  ->  DRUPS 100%
+    Single                       n=909   approved   0%  ->  DRUPS 100%
+    Triple                       n=601   approved   0%  ->  DRUPS 100%
+    FRE_Tray Support             n=394   approved   0%  ->  DRUPS 100%
+    Cable Tray Horizontal Bend   n=331   approved   0%  ->  DRUPS 100%
+    MetroWest_Transformer        n=317   approved   0%  ->  BOTH-CHECK EQUIP DUPLICATION 100%, DRUPS 0%
+    _ANZ-Clearance               n=311   approved   0%  ->  BOTH-CHECK EQUIP DUPLICATION 56%, ELEC 43%
+DRUPS vs FIRE:
+    Single                       n=3     approved   0%  ->  DRUPS 100%
+    Cable Tray with Fittings     n=3     approved   0%  ->  DRUPS 100%
+DRUPS vs HYD:
+    _ANZ-Zone Clearance          n=27    approved   0%  ->  DRUPS 100%
+    50_HY_Cold Water             n=18    approved   0%  ->  DRUPS 100%
+    LS_Floor Penetration Round   n=9     approved   0%  ->  DRUPS 100%
+DRUPS vs ICT:
+    Cable Tray with Fittings     n=3     approved   0%  ->  DRUPS 100%
+DRUPS vs MECH:
+    Cable Tray with Fittings     n=67    approved   0%  ->  DRUPS 99%, MECH - CHECK CLEARANCE 1%
+    Single                       n=30    approved   0%  ->  DRUPS 97%, MECH - CHECK CLEARANCE 3%
+    BMA_Generic Access           n=26    approved   4%  ->  DRUPS 92%, MECH/DRUPS - CLEARANCE 4%
+    DGM Double 40x40 Profile Bea n=24    approved   0%  ->  MECH 75%, DRUPS 25%
+    BMA_Generic Penetration      n=24    approved   0%  ->  MECH 75%, DRUPS 25%
+    MetroWest_Unit Control Panel n=23    approved   0%  ->  MECH 100%
+    MSSB                         n=23    approved   0%  ->  MECH 100%
+    Triple                       n=17    approved   0%  ->  DRUPS 100%
+DRUPS vs STR:
+    WGA_Concrete                 n=1424  approved   0%  ->  (unassigned)
+    Single                       n=574   approved   0%  ->  (unassigned)
+    _ANZ-Zone Clearance          n=531   approved   0%  ->  (unassigned)
+    MetroWest_3500kVA Transforme n=488   approved   0%  ->  (unassigned)
+    PB1230                       n=394   approved   0%  ->  (unassigned)
+    BMA_Generic Penetration      n=339   approved   0%  ->  (unassigned)
+    Metal - Steel - ASTM A36     n=279   approved   0%  ->  (unassigned)
+    Clear Zone                   n=270   approved   0%  ->  (unassigned)
+ELEC vs FIRE:
+    _ANZ-EL-CABLE-TRAY           n=598   approved  21%  ->  ELEC 67%, FIRE 29%
+    40_FI_Fire Pre action        n=321   approved  17%  ->  ELEC 66%, FIRE 33%
+    40_FI_Sprinkler Mist         n=125   approved  28%  ->  ELEC 58%, FIRE 35%
+    Conduit with Fittings        n=69    approved   7%  ->  ELEC 71%, FIRE 29%
+    40_FI_Sprinkler Wet          n=33    approved  24%  ->  ELEC 79%, FIRE 21%
+    40_FI_N2 Generator & Tank    n=32    approved   0%  ->  ELEC 88%, ELEC - CONDUIT 12%
+    _ANZ-EL-Clearance            n=30    approved  23%  ->  ELEC 63%, FIRE 30%
+    _ANZ-Plastic-White-AECOM Blu n=29    approved  21%  ->  ELEC 79%, FIRE 21%
+ELEC vs FUEL:
+    Generic Models 2             n=34    approved  94%  ->  BOTH-INTERFACE CHECK 100%
+    _ANZ-Clearance               n=32    approved 100%  ->  BOTH-INTERFACE CHECK 100%
+    Generic Models 1             n=32    approved 100%  ->  BOTH-INTERFACE CHECK 100%
+    _ANZ-EL-DIESEL PIPE-SUPPLY   n=28    approved 100%  ->  BOTH-INTERFACE CHECK 100%
+    Glass                        n=28    approved 100%  ->  BOTH-INTERFACE CHECK 100%
+    GENSET                       n=24    approved 100%  ->  BOTH-INTERFACE CHECK 100%
+    _ANZ-EL-DIESEL PIPE-RETURN   n=20    approved 100%  ->  BOTH-INTERFACE CHECK 100%
+    Chrome - Polished            n=8     approved 100%  ->  BOTH-INTERFACE CHECK 100%
+ELEC vs HYD:
+    _ANZ-EL-CABLE-TRAY           n=97    approved  18%  ->  ELEC 97%, HYD 3%
+    50_HY_Hot Water              n=47    approved  30%  ->  ELEC 100%
+    50_HY_Waste Drain            n=23    approved   4%  ->  ELEC 100%
+    50_HY_NP_Cold Water          n=21    approved   0%  ->  ELEC 81%, HYD 14%
+    50_HY_Cold Water             n=20    approved   0%  ->  ELEC 100%
+    LS_Floor Penetration Round   n=19    approved  84%  ->  ELEC 100%
+    _ANZ-EL-Clearance            n=19    approved   0%  ->  ELEC 100%
+    50_HY_Sanitary               n=18    approved  78%  ->  ELEC 100%
+ELEC vs ICT:
+    Cable Tray with Fittings     n=1135  approved   2%  ->  ICT 75%, ELEC 25%
+    _ANZ-Copper                  n=819   approved   0%  ->  ICT 100%
+    _ANZ-EL-CABLE-TRAY           n=191   approved   3%  ->  ELEC 80%, ICT 17%
+    _ANZ-Plastic-White-AECOM Blu n=179   approved  11%  ->  ELEC 99%, ICT 1%
+    _ANZ-Metal-Powder Coated Whi n=113   approved  25%  ->  ICT 36%, ELEC 33%
+    N/A - Not Applicable to Serv n=92    approved  30%  ->  ICT 38%, ELEC 24%
+    _ANZ-Metal-Powder Coated Whi n=65    approved  31%  ->  ICT 38%, ELEC 23%
+    _ANZ-Rubber                  n=65    approved  31%  ->  ICT 38%, ELEC 23%
+ELEC vs MECH:
+    _ANZ-EL-CABLE-TRAY           n=5554  approved  13%  ->  ELEC 85%, MECH 11%
+    BMA_Generic Access           n=4033  approved  32%  ->  ELEC 59%, MECH 20%
+    BMA_Pipe Chilled Water - Cri n=1342  approved   3%  ->  ELEC 99%, MECH - CLEARANCE 0%
+    _ANZ-Metal-Powder Coated Whi n=1039  approved  51%  ->  ELEC 48%, RCP 34%
+    Frosted Glass Diffuser       n=853   approved  55%  ->  ELEC 43%, RCP 39%
+    Cable Tray with Fittings     n=581   approved  33%  ->  ELEC 63%, MECH 35%
+    _ANZ-Copper                  n=566   approved  15%  ->  ELEC 70%, MECH 20%
+    BMA_Generic Builders Items   n=476   approved  68%  ->  RCP 52%, ELEC 35%
+ELEC vs SEC:
+    Cable Tray with Fittings     n=173   approved  15%  ->  ELEC 89%, SEC 9%
+    DS - Clearance Zones         n=152   approved  76%  ->  ELEC 39%, SEC 30%
+    _ANZ-Plastic-White-AECOM Blu n=141   approved  48%  ->  ELEC 74%, SEC 13%
+    _ANZ-EL-CABLE-TRAY           n=71    approved   3%  ->  ELEC 90%, SEC 4%
+    _ANZ-EL-Clearance            n=62    approved  68%  ->  SEC 32%, ELEC 31%
+    Double-ESS                   n=19    approved  74%  ->  SEC 47%, SEC-CLEARANCE CHECK 21%
+    Double-UPS                   n=18    approved  83%  ->  ELEC 89%, SEC 11%
+    _ANZ-Metal-Powder Coated Whi n=8     approved   0%  ->  ELEC 75%, SEC 25%
+ELEC vs STR:
+    _ANZ-EL-CABLE-TRAY           n=13863 approved   0%  ->  (unassigned)
+    WGA_Concrete                 n=5493  approved   0%  ->  (unassigned)
+    _ANZ-Plastic, Black, Glossy- n=3894  approved   0%  ->  (unassigned)
+    _ANZ-Copper                  n=3810  approved   0%  ->  (unassigned)
+    8.8S                         n=2707  approved   0%  ->  (unassigned)
+    _ANZ-EL-Clearance            n=2248  approved   0%  ->  (unassigned)
+    FRE_Under Board Brace        n=1969  approved   0%  ->  (unassigned)
+    STEEL/300PLUS 78703          n=1880  approved   0%  ->  (unassigned)
+FIRE vs HYD:
+    40_FI_Sprinkler Mist         n=175   approved  43%  ->  FIRE 61%, FIRE-(HYD EMAIL RESPONSE 14.01.26) 22%
+    50_HY_Waste Drain            n=146   approved  25%  ->  FIRE 93%, HYD-(FIRE PIPE ON TOP/CLOSE TO SLAB) 4%
+    40_FI_Fire Pre action        n=125   approved  17%  ->  FIRE 85%, HYD-(FIRE PIPE ON TOP/CLOSE TO SLAB) 7%
+    50_HY_Sanitary               n=71    approved  35%  ->  FIRE 62%, FIRE-(HYD EMAIL RESPONSE 14.01.26) 17%
+    50_HY_Cold Water             n=65    approved  28%  ->  FIRE 68%, HYD 18%
+    40_FI_Sprinkler Wet          n=48    approved   0%  ->  FIRE 85%, HYD 8%
+    50_HY_Hot Water              n=44    approved   2%  ->  FIRE 95%, HYD-(FIRE PIPE ON TOP/CLOSE TO SLAB) 5%
+    50_HY_Vent                   n=34    approved  44%  ->  FIRE 85%, HYD - DROP VENT SLIGHTLY 3%
+FIRE vs ICT:
+    40_FI_Fire Pre action        n=75    approved   7%  ->  FIRE 61%, ICT 33%
+    Cable Tray with Fittings     n=65    approved   8%  ->  FIRE 75%, FIRE-CHECK CLEARANCE 11%
+    DS - Hanging Rods            n=25    approved  24%  ->  ICT 56%, FIRE 32%
+    Clearance Zone               n=17    approved   0%  ->  FIRE - CHECK CLEARANCE 29%, FIRE-CHECK CLEARANCE 29%
+    40_FI_Sprinkler Wet          n=13    approved  15%  ->  FIRE 92%, FIRE - CLEARANCE 8%
+    DS - Unistrut Hanger         n=11    approved   0%  ->  ICT 82%, FIRE - CHECK CLEARANCE 9%
+    DS - Clearance Zones         n=9     approved   0%  ->  FIRE - CHECK CLEARANCE 44%, FIRE 33%
+    Clearance Zone - FIRE        n=8     approved   0%  ->  FIRE - CHECK CLEARANCE 88%, ICT 12%
+FIRE vs MECH:
+    40_FI_Fire Pre action        n=1006  approved  60%  ->  FIRE 88%, MECH 9%
+    40_FI_Sprinkler Mist         n=718   approved  26%  ->  FIRE 72%, FIRE-MISTING 12%
+    BMA_Generic Access           n=626   approved  54%  ->  FIRE 75%, MECH 9%
+    BMA_Pipe Chilled Water - Cri n=427   approved  19%  ->  FIRE 86%, FIRE-MISTING 13%
+    DGM 40x40 Profile Bearer     n=353   approved  46%  ->  FIRE 68%, MECH 28%
+    40_FI_Sprinkler Wet          n=261   approved  23%  ->  FIRE 71%, MECH 16%
+    BMA_Duct SA                  n=132   approved  93%  ->  FIRE 67%, MECH 27%
+    DGM Straight: 1400           n=106   approved  55%  ->  FIRE 98%, MECH 2%
+FIRE vs SEC:
+    40_FI_Sprinkler Wet          n=116   approved  39%  ->  FIRE 81%, FIRE - CLEARANCE 19%
+    DS - Unistrut Hanger         n=97    approved  39%  ->  FIRE 80%, FIRE - CLEARANCE 20%
+    Cable Tray with Fittings     n=74    approved  20%  ->  FIRE 88%, SEC 5%
+    40_FI_Fire Pre action        n=60    approved   7%  ->  FIRE 97%, SEC 3%
+    DS - Hanging Rods            n=19    approved   5%  ->  FIRE 74%, SEC 26%
+    SFD Victaulic - FireLock - R n=12    approved  42%  ->  FIRE 83%, SEC 8%
+    DS - Clearance Zones         n=4     approved 100%  ->  BOTH-CLEARANCE CHECK 100%
+    Clearance Zone               n=4     approved 100%  ->  BOTH-CLEARANCE CHECK 100%
+FIRE vs STR:
+    Conduit with Fittings        n=1392  approved   0%  ->  (unassigned)
+    BMA_Generic Penetration      n=1317  approved   0%  ->  (unassigned)
+    40_FI_Sprinkler Mist         n=994   approved   0%  ->  (unassigned)
+    CABLE TRAY CLIP              n=833   approved   0%  ->  (unassigned)
+    40_FI_Fire Pre action        n=680   approved   0%  ->  (unassigned)
+    WGA_Concrete                 n=637   approved   0%  ->  (unassigned)
+    Cable Tray with Fittings     n=608   approved   0%  ->  (unassigned)
+    ø25-ø200                     n=546   approved   0%  ->  (unassigned)
+FUEL vs HYD:
+    50_HY_Cold Water             n=4     approved 100%  ->  HYD 100%
+FUEL vs STR:
+    WGA_Concrete                 n=84    approved   0%  ->  (unassigned)
+    Generic Models 1             n=28    approved   0%  ->  (unassigned)
+    Generic Models 2             n=28    approved   0%  ->  (unassigned)
+    IFC Surface Style            n=8     approved   0%  ->  (unassigned)
+    SEMI POLISHED                n=8     approved   0%  ->  (unassigned)
+    Chrome - Polished            n=8     approved   0%  ->  (unassigned)
+    76_76_76(1)                  n=8     approved   0%  ->  (unassigned)
+    76_76_76                     n=8     approved   0%  ->  (unassigned)
+HYD vs ICT:
+    DS - Hanging Rods            n=14    approved   0%  ->  ICT 100%
+    50_HY_Hot Water              n=9     approved   0%  ->  ICT 100%
+    50_HY_NP_Cold Water          n=8     approved   0%  ->  HYD 50%, ICT 50%
+    Cable Tray with Fittings     n=4     approved   0%  ->  HYD 75%, ICT 25%
+HYD vs MECH:
+    BMA_Generic Access           n=832   approved  69%  ->  HYD 42%, MECH 22%
+    50_HY_Waste Drain            n=721   approved  54%  ->  HYD-TUNDISH HITTING MECH STRUC 25%, HYD 24%
+    LS_Floor Penetration Round   n=369   approved  74%  ->  MECH 31%, HYD-TUNDISH HITTING MECH STRUC 23%
+    50_HY_Hot Water              n=314   approved  68%  ->  HYD 67%, MECH 27%
+    BMA_Pipe Mech Other          n=311   approved  63%  ->  TUNDISH 54%, HYD 12%
+    50_HY_Sanitary               n=301   approved  69%  ->  TUNDISH 39%, HYD 23%
+    tundish                      n=297   approved  72%  ->  TUNDISH 39%, HYD-TUNDISH HITTING MECH STRUC 31%
+    BMA_Generic Penetration      n=224   approved  53%  ->  HYD-TUNDISH HITTING MECH STRUC 36%, MECH 18%
+HYD vs SEC:
+    DS - Hanging Rods            n=19    approved   0%  ->  SEC 100%
+    50_HY_Hot Water              n=13    approved   0%  ->  SEC 100%
+    50_HY_Sanitary               n=3     approved   0%  ->  SEC 100%
+    50_HY_Vent                   n=3     approved   0%  ->  SEC 100%
+HYD vs STR:
+    WGA_Concrete                 n=7187  approved   0%  ->  (unassigned)
+    LS_Floor Penetration Round   n=3051  approved   0%  ->  (unassigned)
+    50_HY_Sanitary               n=1794  approved   0%  ->  (unassigned)
+    50_HY_Waste Drain            n=1766  approved   0%  ->  (unassigned)
+    Clearance Zone               n=854   approved   0%  ->  (unassigned)
+    50_HY_Vent                   n=663   approved   0%  ->  (unassigned)
+    50_HY_Cold Water             n=576   approved   0%  ->  (unassigned)
+    LS - Wall Penetration Round  n=449   approved   0%  ->  (unassigned)
+ICT vs MECH:
+    BMA_Generic Access           n=1464  approved  21%  ->  ICT 52%, MECH 34%
+    Cable Tray with Fittings     n=433   approved  18%  ->  ICT 70%, MECH 23%
+    DS - Hanging Rods            n=387   approved  15%  ->  ICT 74%, MECH 17%
+    DS - Clearance Zones         n=266   approved   0%  ->  ICT 46%, MECH 33%
+    DS - Unistrut Hanger         n=253   approved  19%  ->  ICT 64%, MECH 26%
+    Clearance Zone_Generic_BMAIF n=226   approved   6%  ->  ICT 48%, MECH 37%
+    Steel - Chatsworth - Glacier n=162   approved  22%  ->  MECH 66%, ICT 21%
+    45 RU x 1200D x 800W x 2140H n=136   approved   1%  ->  ICT 44%, MECH 40%
+ICT vs SEC:
+    Cable Tray with Fittings     n=233   approved  60%  ->  ICT 32%, SHARED HANGER 26%
+    DS - Clearance Zones         n=158   approved  63%  ->  BOTH-CLEARANCE CHECK 35%, SEC 20%
+    DS - Unistrut Hanger         n=141   approved  57%  ->  ICT 40%, SHARED HANGER 28%
+    DS - Hanger Clip             n=76    approved  80%  ->  SHARED HANGER 43%, SHARED HANGERS 30%
+    Steel - Pentair - Gray       n=43    approved  70%  ->  ICT 40%, SEC(CLEARANCE CHECK) 28%
+    45 RU x 1200D x 800W x 2140H n=27    approved  59%  ->  BOTH-CLEARANCE CHECK 74%, SEC - CHECK CLEARANCE 11%
+    DS - Hanging Rods            n=25    approved  36%  ->  SHARED HANGERS 32%, ICT 28%
+    Steel - Chatsworth - Black   n=21    approved 100%  ->  SEC(CLEARANCE CHECK) 43%, SEC 38%
+ICT vs STR:
+    BMA_Generic Penetration      n=3789  approved   0%  ->  (unassigned)
+    DS - Hanging Rods            n=2179  approved   0%  ->  (unassigned)
+    WGA_Concrete                 n=1230  approved   0%  ->  (unassigned)
+    STEEL/250                    n=366   approved   0%  ->  (unassigned)
+    STEEL/250 201                n=320   approved   0%  ->  (unassigned)
+    Floor                        n=291   approved   0%  ->  (unassigned)
+    8.8S                         n=255   approved   0%  ->  (unassigned)
+    STEEL/250 5496               n=252   approved   0%  ->  (unassigned)
+MECH vs SEC:
+    BMA_Generic Access           n=385   approved  27%  ->  SEC 75%, MECH 8%
+    Cable Tray with Fittings     n=367   approved  13%  ->  SEC 81%, MECH 11%
+    DS - Clearance Zones         n=89    approved  43%  ->  SEC-CLEARANCE CHECK 45%, SEC 25%
+    BMA_Generic Penetration      n=78    approved  23%  ->  SEC 76%, MECH - CHECK CLEARANCE 8%
+    DS - Hanging Rods            n=57    approved   9%  ->  SEC 84%, MECH 14%
+    DS - Unistrut Hanger         n=53    approved  25%  ->  SEC 74%, MECH 25%
+    DGM 40x40 Profile Bearer     n=45    approved   4%  ->  SEC 62%, MECH 29%
+    BMA_Pipe Chilled Water - Cri n=32    approved   0%  ->  SEC 100%
+MECH vs STR:
+    WGA_Concrete                 n=17957 approved   0%  ->  (unassigned)
+    50X50 SHS                    n=17943 approved   0%  ->  (unassigned)
+    Supply Grille_Generic        n=7877  approved   0%  ->  (unassigned)
+    WGA_Steel                    n=7637  approved   0%  ->  (unassigned)
+    BMA_Generic Access           n=7464  approved   0%  ->  (unassigned)
+    DGM 40x40 Profile Bearer     n=6303  approved   0%  ->  (unassigned)
+    OC_Support                   n=6228  approved   0%  ->  (unassigned)
+    M12 Rod DGM SHS              n=5117  approved   0%  ->  (unassigned)
+SEC vs STR:
+    DS - Hanging Rods            n=1089  approved   0%  ->  (unassigned)
+    BMA_Generic Penetration      n=998   approved   0%  ->  (unassigned)
+    Cable Tray with Fittings     n=568   approved   0%  ->  (unassigned)
+    WGA_Concrete                 n=201   approved   0%  ->  (unassigned)
+    STEEL/C350 518522            n=176   approved   0%  ->  (unassigned)
+    8.8S                         n=133   approved   0%  ->  (unassigned)
+    PB1230                       n=132   approved   0%  ->  (unassigned)
+    DS - Clearance Zones         n=129   approved   0%  ->  (unassigned)
+
+------------------------------------------------------------------------------
+DIAMETER-SPLIT SUGGESTIONS  (assignment that flips with bore - vet before adding)
+------------------------------------------------------------------------------
+    (none found - needs the enriched extract with diaMm to populate)

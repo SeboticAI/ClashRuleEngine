@@ -1,8 +1,9 @@
-# One-shot: verify API surface -> build -> deploy.
+# One-shot DEV loop for ONE Navisworks version: verify API surface -> build -> deploy.
+# For every version at once (and the installer), use build-all.ps1 instead.
 # NOTE: keep this file ASCII-only. PowerShell 5.1 misreads BOM-less UTF-8.
 #
-#   .\build.ps1                  # 2027, Release, deploy bundle
-#   .\build.ps1 -Version 2026    # needs Refs\2026\ API DLLs if 2026 isn't installed
+#   .\build.ps1                  # 2027, Release, deploy to the install's Plugins folder
+#   .\build.ps1 -Version 2026    # needs Refs\2026\ API DLLs (tools\harvest-refs.ps1)
 #   .\build.ps1 -NoDeploy
 param(
     [string]$Version = "2027",

@@ -1,4 +1,5 @@
-# Deploys the built plugin for a given Navisworks version.
+# Deploys the built plugin for a given Navisworks version (DEV loop - for the team,
+# ship Installer\ClashRuleEngine.iss instead).
 # NOTE: keep this file ASCII-only. PowerShell 5.1 misreads BOM-less UTF-8.
 #
 # Navisworks 2027 rules (learned the hard way, 2026-06-12):
@@ -9,6 +10,16 @@
 #   - "*.Plugin.dll" naming is for Autodesk-internal plugins only.
 #   This layout also works on <= 2026, so it is the single mechanism for all.
 #
+# DEPLOYED LAYOUT (do not flatten - each location is load-bearing):
+#   Plugins\ClashRuleEngine\
+#     ClashRuleEngine.dll
+#     en-US\ClashRuleEngineRibbon.xaml   <- [RibbonLayout]; NO custom ribbon tab without it
+#     en-US\ClashRuleEngine.name         <- [Strings]
+#     Images\*.ico  and  *.ico           <- [Command]/[AddInPlugin] Icon/LargeIcon
+# Navisworks reads the ribbon layout and strings as LOOSE FILES from a locale subfolder
+# next to the DLL, per the SDK CustomRibbon sample's post-build event - NOT as embedded
+# resources. Icons are shipped both flat and under Images\ because the SDK allows either.
+#
 # Requires elevation (Program Files) - the script self-elevates with a UAC prompt.
 param(
     [string]$Version = "2027",
@@ -16,9 +27,39 @@ param(
 )
 
 $root = Split-Path $PSScriptRoot -Parent
-$dll = Join-Path $root "bin\x64\$Configuration\$Version\ClashRuleEngine.dll"
+$srcDir = Join-Path $root "bin\x64\$Configuration\$Version"
+$dll = Join-Path $srcDir "ClashRuleEngine.dll"
+
 if (-not (Test-Path $dll)) {
     Write-Error "Build output not found: $dll - build first (tools\build.ps1 -Version $Version)"
+    exit 1
+}
+
+# Files that must land in the plugin folder, as paths RELATIVE to the build output. The
+# csproj target StagePluginPayload puts them there.
+$payload = @(
+    "ClashRuleEngine.dll",
+    "en-US\ClashRuleEngineRibbon.xaml",
+    "en-US\ClashRuleEngine.name",
+    "oconnors_clash_16.ico",
+    "oconnors_clash_32.ico",
+    "Images\oconnors_clash_16.ico",
+    "Images\oconnors_clash_32.ico"
+)
+foreach ($f in $payload) {
+    if (-not (Test-Path (Join-Path $srcDir $f))) {
+        Write-Error "Missing from build output: $f - rebuild (and run tools\make-icons.ps1 if an icon)."
+        exit 1
+    }
+}
+
+# A running Navisworks holds a lock on the loaded plugin DLL, so the copy silently
+# fails and leaves the OLD build in place. Catch that before wasting a UAC prompt.
+$running = @(Get-Process -Name "roamer" -ErrorAction SilentlyContinue)
+if ($running.Count -gt 0) {
+    Write-Error ("Navisworks is running (roamer.exe, PID " + ($running.Id -join ", ") +
+        "). Close it first - a loaded plugin DLL is locked and the deploy would " +
+        "silently keep the old build.")
     exit 1
 }
 
@@ -34,22 +75,30 @@ if (-not $isAdmin) {
         '-Version', $Version, '-Configuration', $Configuration
     )
 } else {
-    New-Item -ItemType Directory -Force -Path $dest | Out-Null
-    Copy-Item $dll (Join-Path $dest "ClashRuleEngine.dll") -Force
+    foreach ($f in $payload) {
+        $target = Join-Path $dest $f
+        New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+        Copy-Item (Join-Path $srcDir $f) $target -Force
+    }
 }
 
-# Verify by CONTENT, not mere existence: a cancelled UAC prompt or a locked DLL
-# (Navisworks still open) leaves a STALE copy in place, which a Test-Path check
-# would wrongly report as success.
-$destDll = Join-Path $dest "ClashRuleEngine.dll"
-$srcHash  = (Get-FileHash $dll).Hash
-$destHash = if (Test-Path $destDll) { (Get-FileHash $destDll).Hash } else { "" }
+# Verify by CONTENT, not mere existence: a cancelled UAC prompt or a locked file
+# leaves a STALE copy in place, which a Test-Path check would wrongly report as
+# success. Every payload file is checked, so a missing icon is caught too.
+$bad = @()
+foreach ($f in $payload) {
+    $destFile = Join-Path $dest $f
+    $srcHash = (Get-FileHash (Join-Path $srcDir $f)).Hash
+    $destHash = if (Test-Path $destFile) { (Get-FileHash $destFile).Hash } else { "" }
+    if ($srcHash -ne $destHash) { $bad += $f }
+}
 
-if ($srcHash -eq $destHash) {
-    Write-Host "Deployed and verified: $destDll"
-    Write-Host "Restart Navisworks, then: View -> Windows -> Clash Rule Engine"
+if ($bad.Count -eq 0) {
+    Write-Host "Deployed and verified to: $dest" -ForegroundColor Green
+    $payload | ForEach-Object { Write-Host "  $_" }
+    Write-Host "Restart Navisworks, then click OConnors Clash -> Clash Engine."
 } else {
-    Write-Error ("Deploy FAILED - $destDll does not match the build. " +
-        "The copy did not land: accept the UAC prompt, and close Navisworks first (a running instance locks the DLL).")
+    Write-Error ("Deploy FAILED - these do not match the build: " + ($bad -join ", ") +
+        ". Accept the UAC prompt, and make sure Navisworks is closed.")
     exit 1
 }

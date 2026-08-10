@@ -127,6 +127,14 @@ namespace ClashRuleEngine.Models
         /// <summary>Claude API key (stored locally, never shared)</summary>
         public string ApiKey { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Which SHIPPED rule set is active ("current" / "mined" — see Services\BuiltInRuleSets).
+        /// Empty means the rules came from a file the user imported by hand, so the panel shows
+        /// "Custom (imported)" and does not pretend a built-in is in force. Purely a label: the
+        /// engine only ever reads TestRuleSets/ApprovePolicy.
+        /// </summary>
+        public string ActiveRuleSetId { get; set; } = string.Empty;
+
         /// <summary>Get or create the rule set for a specific clash test (fuzzy-find first
         /// so imported rules apply even when the live test name differs slightly).</summary>
         public TestRuleSet GetOrCreateTestRuleSet(string testName)

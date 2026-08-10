@@ -82,7 +82,19 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
 
-  <!-- Navisworks API References — Private=False so they are NOT copied to output -->
+  <!-- Navisworks API References — Private=False so they are NOT copied to output.
+
+       REQUIRED: Api + Clash. Those are the ONLY two the plugin actually uses (verified
+       2026-08-10 by reading GetReferencedAssemblies() on the built DLL — the compiler
+       emits a reference only for an assembly a type is really used from).
+
+       OPTIONAL: Automation + Controls are conditional on the file existing. They were
+       declared but unused: the Automation API is driven from tools\BatchExtractor and
+       tools\NwdClashLearner, which are SEPARATE projects with their own references.
+       Making them conditional means harvesting a version's refs needs 2 DLLs, not 4 —
+       which matters because Automation.dll is the one file the community NuGet
+       reference packages do not carry. Re-add a hard reference if plugin code ever
+       genuinely needs one of these. -->
   <ItemGroup>
     <Reference Include="Autodesk.Navisworks.Api">
       <HintPath>$(NavisworksPath)\Autodesk.Navisworks.Api.dll</HintPath>
@@ -92,15 +104,22 @@
       <HintPath>$(NavisworksPath)\Autodesk.Navisworks.Clash.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Autodesk.Navisworks.Automation">
+    <Reference Include="Autodesk.Navisworks.Automation"
+              Condition="Exists('$(NavisworksPath)\Autodesk.Navisworks.Automation.dll')">
       <HintPath>$(NavisworksPath)\Autodesk.Navisworks.Automation.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Autodesk.Navisworks.Controls">
+    <Reference Include="Autodesk.Navisworks.Controls"
+              Condition="Exists('$(NavisworksPath)\Autodesk.Navisworks.Controls.dll')">
       <HintPath>$(NavisworksPath)\Autodesk.Navisworks.Controls.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="CheckNavisworksRefs" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(NavisworksPath)\Autodesk.Navisworks.Api.dll')"
+           Text="Navisworks $(NavisworksVersion) API references not found at '$(NavisworksPath)'. Install that version, or harvest its DLLs: tools\harvest-refs.ps1 -Version $(NavisworksVersion)" />
+  </Target>
 
   <!-- C# source files -->
   <ItemGroup>
@@ -109,10 +128,12 @@
     <Compile Include="Models\KindRule.cs" />
     <Compile Include="Models\ApprovePolicy.cs" />
     <Compile Include="Models\TestRuleSet.cs" />
+    <Compile Include="Plugin\PluginIds.cs" />
     <Compile Include="Plugin\ClashRuleEnginePlugin.cs" />
     <Compile Include="Plugin\ClashMarkerPlugins.cs" />
     <Compile Include="Plugin\BatchClashExtractPlugin.cs" />
     <Compile Include="Services\AiRuleGenerator.cs" />
+    <Compile Include="Services\BuiltInRuleSets.cs" />
     <Compile Include="Services\ClashApiCompat.cs" />
     <Compile Include="Services\ElementKind.cs" />
     <Compile Include="Services\KindRuleImport.cs" />
@@ -168,26 +189,98 @@
     </None>
   </ItemGroup>
 
-  <!-- Ribbon XAML — MUST be EmbeddedResource, and the resource name MUST be
-       <RootNamespace>.<RibbonLayout filename> (Navisworks looks it up that way).
-       The file lives in Plugin\, so set LogicalName to strip the folder segment —
-       otherwise the resource is "ClashRuleEngine.Plugin.ClashRuleEngineRibbon.xaml"
-       and Navisworks can't find it, so the custom ribbon tab never appears. -->
+  <!-- ============================================================
+       RIBBON LAYOUT + STRINGS — LOOSE FILES IN A LANGUAGE FOLDER
+       ============================================================
+       Navisworks resolves the [RibbonLayout] .xaml and [Strings] .name for a
+       CommandHandlerPlugin from a LOCALE SUBFOLDER NEXT TO THE PLUGIN DLL:
+
+           Plugins\ClashRuleEngine\
+               ClashRuleEngine.dll
+               en-US\ClashRuleEngineRibbon.xaml
+               en-US\ClashRuleEngine.name
+               Images\*.ico
+
+       Ground truth: the post-build event of the SDK sample
+       api\net\examples\Basic Examples\CSharp\CustomRibbon\CustomRibbon.csproj —
+           xcopy /Y "$(TargetPath)"    "...\Plugins\$(TargetName)\"
+           mkdir                       "...\Plugins\$(TargetName)\en-US"
+           copy /Y "CustomRibbon.xaml" "...\Plugins\$(TargetName)\en-US\"
+           copy /Y "CustomRibbon.name" "...\Plugins\$(TargetName)\en-US\"
+           xcopy /Y "Images\*.*"       "...\Plugins\$(TargetName)\Images\"
+       — where both files are plain <None> + CopyToOutputDirectory. Navisworks'
+       own ribbons ship the same way (<install>\en-US\Ribbon.xaml,
+       <install>\en-US\Clash.Plugin.name).
+
+       THIS WAS AN EMBEDDEDRESOURCE WITH A LogicalName UNTIL 2026-08-10, on the
+       belief that Navisworks looked the layout up as "<RootNamespace>.<file>".
+       It does not, and that is why the custom ribbon tab NEVER appeared — the
+       resource name was correct and irrelevant. Do not "restore" that.
+
+       A non-English Navisworks would need the same two files under its own locale
+       folder (de-DE, ja-JP, …); only en-US is shipped.
+       ============================================================ -->
   <ItemGroup>
-    <EmbeddedResource Include="Plugin\ClashRuleEngineRibbon.xaml">
-      <LogicalName>ClashRuleEngine.ClashRuleEngineRibbon.xaml</LogicalName>
+    <RibbonLayoutFile Include="Plugin\ClashRuleEngineRibbon.xaml" />
+    <RibbonLayoutFile Include="Plugin\ClashRuleEngine.name" />
+    <None Include="@(RibbonLayoutFile)" />
+  </ItemGroup>
+
+  <Target Name="StagePluginPayload" AfterTargets="Build">
+    <Error Condition="!Exists('%(RibbonLayoutFile.FullPath)')"
+           Text="Ribbon layout file missing: %(RibbonLayoutFile.Identity) — the custom ribbon tab will not appear without it." />
+    <Copy SourceFiles="@(RibbonLayoutFile)" DestinationFolder="$(OutDir)en-US" SkipUnchangedFiles="true" />
+    <!-- Icons go BOTH flat and in Images\: the SDK docs say Icon/LargeIcon resolve
+         next to the DLL *or* in an Images\ subfolder, and the sample uses Images\.
+         Shipping both costs ~5 KB and removes a guess. -->
+    <Copy SourceFiles="@(RibbonIcon)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(RibbonIcon)" DestinationFolder="$(OutDir)Images" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- ============================================================
+       SHIPPED RULE SETS — embedded so there is no file to send anyone
+       ============================================================
+       These ARE embedded resources (unlike the ribbon layout, which Navisworks itself
+       must find on disk — see the note further down). Nothing outside our own code
+       reads them: Services\BuiltInRuleSets looks them up by these exact LogicalNames,
+       and a mismatch throws at runtime listing the names that ARE present.
+
+       LogicalName is set explicitly because the default would embed the folder path
+       ("ClashRuleEngine.Resources.RuleSets.current.clashre"), which is noise.
+
+       current.clashre ~1 MB is deliberate: it is the real production config, a hybrid
+       that neither analyzer JSON reproduces alone (923 pair rules from the full set +
+       25 per-test defaults from the mined set). The installer's lzma2 squeezes it right
+       back down, so the setup.exe barely grows. Regenerate with tools\stage-rulesets.ps1.
+       ============================================================ -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\RuleSets\current.clashre">
+      <LogicalName>ClashRuleEngine.RuleSets.current.clashre</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\RuleSets\mined.json">
+      <LogicalName>ClashRuleEngine.RuleSets.mined.json</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 
-  <!-- Post-build: best-effort copy to the user Plugins folder for quick testing (Debug only).
-       Release deployment is handled by tools\deploy.ps1 -->
-  <Target Name="CopyToNavisworksPlugins" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-    <PropertyGroup>
-      <PluginFolder>$(AppData)\Autodesk Navisworks Manage $(NavisworksVersion)\Plugins</PluginFolder>
-    </PropertyGroup>
-    <MakeDir Directories="$(PluginFolder)" ContinueOnError="true" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginFolder)" ContinueOnError="true" />
+  <!-- Ribbon icons, staged by StagePluginPayload below (flat + Images\).
+       Regenerate them from the brand logo with tools\make-icons.ps1. -->
+  <ItemGroup>
+    <RibbonIcon Include="Resources\oconnors_clash_16.ico" />
+    <RibbonIcon Include="Resources\oconnors_clash_32.ico" />
+    <None Include="Resources\oconnors_logo.png" />
+  </ItemGroup>
+
+  <Target Name="CheckRibbonIcons" BeforeTargets="StagePluginPayload">
+    <Error Condition="!Exists('%(RibbonIcon.FullPath)')"
+           Text="Ribbon icon missing: %(RibbonIcon.Identity). Run tools\make-icons.ps1." />
   </Target>
+
+  <!-- NOTE: there is deliberately NO post-build copy into the Navisworks plugin folder.
+       The only location Navisworks 2027 honours is the INSTALL's Plugins folder, which
+       needs elevation - see tools\deploy.ps1 (dev) and Installer\ (team rollout). The
+       old target copied to %AppData%\Autodesk Navisworks Manage <ver>\Plugins, which
+       2027 ignores entirely, so it silently deployed nothing. -->
+
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 

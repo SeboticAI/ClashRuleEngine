@@ -12,7 +12,7 @@ namespace ClashRuleEngine.Plugin
     /// snapshot, so it never touches a live ClashResult. Toggled from the panel via
     /// ClashMarkerService.Enabled.
     /// </summary>
-    [Plugin("ClashRuleEngineMarkers.Render", "ACME", DisplayName = "Clash Rule Engine Markers")]
+    [Plugin(PluginIds.MarkerRenderName, PluginIds.Developer, DisplayName = "Clash Rule Engine Markers")]
     public class ClashMarkerRenderPlugin : RenderPlugin
     {
         public override void OverlayRender(View view, Graphics graphics)
@@ -29,7 +29,7 @@ namespace ClashRuleEngine.Plugin
     /// the clash and frames it). A click that misses every marker passes through to
     /// the active navigation tool unchanged.
     /// </summary>
-    [Plugin("ClashRuleEngineMarkers.Input", "ACME", DisplayName = "Clash Rule Engine Marker Input")]
+    [Plugin(PluginIds.MarkerInputName, PluginIds.Developer, DisplayName = "Clash Rule Engine Marker Input")]
     public class ClashMarkerInputPlugin : InputPlugin
     {
         public override bool MouseDown(View view, KeyModifiers modifiers, ushort button,

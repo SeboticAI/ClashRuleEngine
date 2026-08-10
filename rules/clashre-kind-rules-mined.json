@@ -1,0 +1,2889 @@
+{
+  "schema": "clashre-kind-rules/1",
+  "_generatedBy": "tools/analyze_clashes.py",
+  "_confidence": {
+    "reproducedPctOverall": 81.8,
+    "ruleCoveragePctOverall": 17.5,
+    "assignedClashesScored": 64228,
+    "perTest": [
+      {
+        "test": "ELEC vs MECH",
+        "n": 24070,
+        "specN": 23193,
+        "reproducedPct": 80.0,
+        "ruleCoveragePct": 1.8
+      },
+      {
+        "test": "FIRE vs MECH",
+        "n": 10257,
+        "specN": 9718,
+        "reproducedPct": 76.9,
+        "ruleCoveragePct": 9.6
+      },
+      {
+        "test": "DRUPS vs ELEC",
+        "n": 7501,
+        "specN": 6914,
+        "reproducedPct": 99.4,
+        "ruleCoveragePct": 15.0
+      },
+      {
+        "test": "HYD vs MECH",
+        "n": 6433,
+        "specN": 4855,
+        "reproducedPct": 75.0,
+        "ruleCoveragePct": 54.2
+      },
+      {
+        "test": "ICT vs MECH",
+        "n": 5167,
+        "specN": 4737,
+        "reproducedPct": 75.6,
+        "ruleCoveragePct": 34.3
+      },
+      {
+        "test": "ELEC vs FIRE",
+        "n": 4223,
+        "specN": 3887,
+        "reproducedPct": 84.5,
+        "ruleCoveragePct": 25.1
+      },
+      {
+        "test": "ELEC vs ICT",
+        "n": 2415,
+        "specN": 2325,
+        "reproducedPct": 83.1,
+        "ruleCoveragePct": 54.2
+      },
+      {
+        "test": "FIRE vs HYD",
+        "n": 2269,
+        "specN": 2100,
+        "reproducedPct": 93.6,
+        "ruleCoveragePct": 0.6
+      },
+      {
+        "test": "MECH vs SEC",
+        "n": 1435,
+        "specN": 1298,
+        "reproducedPct": 83.4,
+        "ruleCoveragePct": 3.1
+      },
+      {
+        "test": "ELEC vs HYD",
+        "n": 1361,
+        "specN": 1296,
+        "reproducedPct": 96.4,
+        "ruleCoveragePct": 3.8
+      },
+      {
+        "test": "FIRE vs ICT",
+        "n": 1244,
+        "specN": 1081,
+        "reproducedPct": 82.0,
+        "ruleCoveragePct": 46.3
+      },
+      {
+        "test": "FIRE vs SEC",
+        "n": 902,
+        "specN": 842,
+        "reproducedPct": 49.3,
+        "ruleCoveragePct": 61.6
+      },
+      {
+        "test": "ICT vs SEC",
+        "n": 870,
+        "specN": 548,
+        "reproducedPct": 74.1,
+        "ruleCoveragePct": 61.7
+      },
+      {
+        "test": "ELEC vs SEC",
+        "n": 713,
+        "specN": 600,
+        "reproducedPct": 76.0,
+        "ruleCoveragePct": 9.8
+      },
+      {
+        "test": "DRUPS vs MECH",
+        "n": 427,
+        "specN": 409,
+        "reproducedPct": 79.5,
+        "ruleCoveragePct": 35.4
+      },
+      {
+        "test": "DRUPS vs FIRE",
+        "n": 173,
+        "specN": 169,
+        "reproducedPct": 100.0,
+        "ruleCoveragePct": 0.0
+      },
+      {
+        "test": "ELEC vs FUEL",
+        "n": 153,
+        "specN": 0,
+        "reproducedPct": 0.0,
+        "ruleCoveragePct": 0.0
+      },
+      {
+        "test": "HYD vs ICT",
+        "n": 94,
+        "specN": 92,
+        "reproducedPct": 89.1,
+        "ruleCoveragePct": 13.8
+      },
+      {
+        "test": "DRUPS vs HYD",
+        "n": 76,
+        "specN": 76,
+        "reproducedPct": 77.6,
+        "ruleCoveragePct": 0.0
+      },
+      {
+        "test": "HYD vs SEC",
+        "n": 47,
+        "specN": 41,
+        "reproducedPct": 92.7,
+        "ruleCoveragePct": 0.0
+      },
+      {
+        "test": "DRUPS vs ICT",
+        "n": 24,
+        "specN": 24,
+        "reproducedPct": 100.0,
+        "ruleCoveragePct": 0.0
+      },
+      {
+        "test": "DRUPS vs SEC",
+        "n": 11,
+        "specN": 11,
+        "reproducedPct": 100.0,
+        "ruleCoveragePct": 0.0
+      },
+      {
+        "test": "FUEL vs HYD",
+        "n": 7,
+        "specN": 7,
+        "reproducedPct": 100.0,
+        "ruleCoveragePct": 0.0
+      },
+      {
+        "test": "FIRE vs FUEL",
+        "n": 4,
+        "specN": 4,
+        "reproducedPct": 100.0,
+        "ruleCoveragePct": 0.0
+      },
+      {
+        "test": "FUEL vs MECH",
+        "n": 1,
+        "specN": 1,
+        "reproducedPct": 100.0,
+        "ruleCoveragePct": 0.0
+      }
+    ]
+  },
+  "tests": [
+    {
+      "test": "DRUPS vs ELEC",
+      "assign": "DRUPS"
+    },
+    {
+      "test": "DRUPS vs FIRE",
+      "assign": "DRUPS"
+    },
+    {
+      "test": "DRUPS vs HYD",
+      "assign": "DRUPS"
+    },
+    {
+      "test": "DRUPS vs ICT",
+      "assign": "DRUPS"
+    },
+    {
+      "test": "DRUPS vs MECH",
+      "assign": "DRUPS"
+    },
+    {
+      "test": "DRUPS vs SEC",
+      "assign": "DRUPS"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "assign": "ELEC"
+    },
+    {
+      "test": "ELEC vs FUEL",
+      "assign": "BOTH-INTERFACE CHECK"
+    },
+    {
+      "test": "ELEC vs HYD",
+      "assign": "ELEC"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "assign": "ICT"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "assign": "ELEC"
+    },
+    {
+      "test": "ELEC vs SEC",
+      "assign": "ELEC"
+    },
+    {
+      "test": "FIRE vs FUEL",
+      "assign": "FIRE"
+    },
+    {
+      "test": "FIRE vs HYD",
+      "assign": "FIRE"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "assign": "FIRE"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "assign": "FIRE"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "assign": "FIRE"
+    },
+    {
+      "test": "FUEL vs HYD",
+      "assign": "HYD"
+    },
+    {
+      "test": "FUEL vs MECH",
+      "assign": "MECH"
+    },
+    {
+      "test": "HYD vs ICT",
+      "assign": "ICT"
+    },
+    {
+      "test": "HYD vs MECH",
+      "assign": "HYD"
+    },
+    {
+      "test": "HYD vs SEC",
+      "assign": "SEC"
+    },
+    {
+      "test": "ICT vs MECH",
+      "assign": "ICT"
+    },
+    {
+      "test": "ICT vs SEC",
+      "assign": "SEC"
+    },
+    {
+      "test": "MECH vs SEC",
+      "assign": "SEC"
+    }
+  ],
+  "testRules": [
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | MetroWest_3500kVA Transformer + _ANZ-EL-CONDUIT",
+      "a": "MetroWest_3500kVA Transformer",
+      "b": "_ANZ-EL-CONDUIT",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | MetroWest_Unit Control Panel + _ANZ-Clearance",
+      "a": "MetroWest_Unit Control Panel",
+      "b": "_ANZ-Clearance",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | MetroWest_Unit Control Panel + _ANZ-Metal-Powder Coated-Electric Orange, Orange-AECOM Orange",
+      "a": "MetroWest_Unit Control Panel",
+      "b": "_ANZ-Metal-Powder Coated-Electric Orange, Orange-AECOM Orange",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | _ANZ-EL-CONDUIT + _ANZ-Zone Clearance",
+      "a": "_ANZ-EL-CONDUIT",
+      "b": "_ANZ-Zone Clearance",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | Door Zone + MetroWest_Unit Control Panel",
+      "a": "Door Zone",
+      "b": "MetroWest_Unit Control Panel",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | RMU3 + _ANZ-Zone Clearance",
+      "a": "RMU3",
+      "b": "_ANZ-Zone Clearance",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | _ANZ-Clearance + _ANZ-Clearance",
+      "a": "_ANZ-Clearance",
+      "b": "_ANZ-Clearance",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | Clear Zone + RMU3",
+      "a": "Clear Zone",
+      "b": "RMU3",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | _ANZ-Clearance + _ANZ-Zone Clearance",
+      "a": "_ANZ-Clearance",
+      "b": "_ANZ-Zone Clearance",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | BMA_Generic Penetration + _ANZ-EL-CONDUIT",
+      "a": "BMA_Generic Penetration",
+      "b": "_ANZ-EL-CONDUIT",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | MetroWest_Unit Control Panel + _ANZ-Plastic White-AECOM Orange",
+      "a": "MetroWest_Unit Control Panel",
+      "b": "_ANZ-Plastic White-AECOM Orange",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | Electrical Equipment (cat)",
+      "a": "Electrical Equipment",
+      "b": "",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | Conduits (cat)",
+      "a": "Conduits",
+      "b": "",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | Conduits + Electrical Equipment (cat)",
+      "a": "Conduits",
+      "b": "Electrical Equipment",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | Electrical Equipment + Mass (cat)",
+      "a": "Electrical Equipment",
+      "b": "Mass",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "DRUPS vs ELEC",
+      "name": "DRUPS vs ELEC | Electrical Equipment + Electrical Equipment (cat)",
+      "a": "Electrical Equipment",
+      "b": "Electrical Equipment",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "DRUPS vs MECH",
+      "name": "DRUPS vs MECH | MSSB + MetroWest_Unit Control Panel",
+      "a": "MSSB",
+      "b": "MetroWest_Unit Control Panel",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs MECH",
+      "name": "DRUPS vs MECH | BMA_Generic Penetration + DGM Double 40x40 Profile Bearer",
+      "a": "BMA_Generic Penetration",
+      "b": "DGM Double 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs MECH",
+      "name": "DRUPS vs MECH | DGM Double 40x40 Profile Bearer + Metal",
+      "a": "DGM Double 40x40 Profile Bearer",
+      "b": "Metal",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs MECH",
+      "name": "DRUPS vs MECH | BMA_Generic Penetration + Duct Pt",
+      "a": "BMA_Generic Penetration",
+      "b": "Duct Pt",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "DRUPS vs MECH",
+      "name": "DRUPS vs MECH | Mechanical Equipment (cat)",
+      "a": "Mechanical Equipment",
+      "b": "",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "DRUPS vs MECH",
+      "name": "DRUPS vs MECH | Electrical Equipment + MEP Fabrication Hangers (cat)",
+      "a": "Electrical Equipment",
+      "b": "MEP Fabrication Hangers",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "DRUPS vs MECH",
+      "name": "DRUPS vs MECH | MEP Fabrication Hangers (cat)",
+      "a": "MEP Fabrication Hangers",
+      "b": "",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | 40_FI_Sprinkler Mist + _ANZ-Copper",
+      "a": "40_FI_Sprinkler Mist",
+      "b": "_ANZ-Copper",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | FIRE-RED + _ANZ-Plastic-White-AECOM Blue",
+      "a": "FIRE-RED",
+      "b": "_ANZ-Plastic-White-AECOM Blue",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Cable Tray Vertical Outside Bend + _ANZ-EL-CABLE-TRAY",
+      "a": "Cable Tray Vertical Outside Bend",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | 40_FI_Fire Pre action + Frosted Glass Diffuser",
+      "a": "40_FI_Fire Pre action",
+      "b": "Frosted Glass Diffuser",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | SPEAKER - CEILING - RECESSED - 8m + _ANZ-EL-CABLE-TRAY",
+      "a": "SPEAKER - CEILING - RECESSED - 8m",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | 40_FI_Fire Pre action + _ANZ-EL-Clearance",
+      "a": "40_FI_Fire Pre action",
+      "b": "_ANZ-EL-Clearance",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | SPRINKLER - EXPOSED - PENDANT - CLOSED MIST - 3.6m + _ANZ-EL-CABLE-TRAY",
+      "a": "SPRINKLER - EXPOSED - PENDANT - CLOSED MIST - 3.6m",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Clearance Zone - FIRE + _ANZ-EL-CABLE-TRAY",
+      "a": "Clearance Zone - FIRE",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | 40_FI_Sprinkler Wet + _ANZ-Metal-Powder Coated White-AECOM Grey",
+      "a": "40_FI_Sprinkler Wet",
+      "b": "_ANZ-Metal-Powder Coated White-AECOM Grey",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | 40_FI_Sprinkler Wet + Frosted Glass Diffuser",
+      "a": "40_FI_Sprinkler Wet",
+      "b": "Frosted Glass Diffuser",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | 40_FI_Sprinkler Mist + Frosted Glass Diffuser",
+      "a": "40_FI_Sprinkler Mist",
+      "b": "Frosted Glass Diffuser",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | DETECTOR - SMOKE 10m + _ANZ-Metal-Powder Coated White-AECOM Grey",
+      "a": "DETECTOR - SMOKE 10m",
+      "b": "_ANZ-Metal-Powder Coated White-AECOM Grey",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | DETECTOR - SMOKE 10m + Frosted Glass Diffuser",
+      "a": "DETECTOR - SMOKE 10m",
+      "b": "Frosted Glass Diffuser",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | 40_FI_Sprinkler Mist + _ANZ-Metal-Powder Coated White-AECOM Grey",
+      "a": "40_FI_Sprinkler Mist",
+      "b": "_ANZ-Metal-Powder Coated White-AECOM Grey",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | NSG_Support + _ANZ-EL-CABLE-TRAY",
+      "a": "NSG_Support",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | FIRE-BLACK + _ANZ-Metal-Powder Coated-Electric Orange, Orange-AECOM Orange",
+      "a": "FIRE-BLACK",
+      "b": "_ANZ-Metal-Powder Coated-Electric Orange, Orange-AECOM Orange",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | FIRE-RED + _ANZ-Metal-Powder Coated-Electric Orange, Orange-AECOM Orange",
+      "a": "FIRE-RED",
+      "b": "_ANZ-Metal-Powder Coated-Electric Orange, Orange-AECOM Orange",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | 40_FI_Fire Pre action + _ANZ-EL-CONDUIT",
+      "a": "40_FI_Fire Pre action",
+      "b": "_ANZ-EL-CONDUIT",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | OC_Support_Transparent + _ANZ-EL-CABLE-TRAY",
+      "a": "OC_Support_Transparent",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Conduit with Fittings + Frosted Glass Diffuser",
+      "a": "Conduit with Fittings",
+      "b": "Frosted Glass Diffuser",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | 40_FI_Fire Pre action + Plastic - Diffuser",
+      "a": "40_FI_Fire Pre action",
+      "b": "Plastic - Diffuser",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Cable Trays + Conduits (cat)",
+      "a": "Cable Trays",
+      "b": "Conduits",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Cable Trays + Pipes (cat)",
+      "a": "Cable Trays",
+      "b": "Pipes",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Cable Tray Fittings + Cable Trays (cat)",
+      "a": "Cable Tray Fittings",
+      "b": "Cable Trays",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Cable Trays + Flex Pipes (cat)",
+      "a": "Cable Trays",
+      "b": "Flex Pipes",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Cable Trays + Pipe Fittings (cat)",
+      "a": "Cable Trays",
+      "b": "Pipe Fittings",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Lighting Fixtures + Sprinklers (cat)",
+      "a": "Lighting Fixtures",
+      "b": "Sprinklers",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Lighting Fixtures + Pipe Fittings (cat)",
+      "a": "Lighting Fixtures",
+      "b": "Pipe Fittings",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Duct Accessories + Pipes (cat)",
+      "a": "Duct Accessories",
+      "b": "Pipes",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Cable Trays + Conduit Fittings (cat)",
+      "a": "Cable Trays",
+      "b": "Conduit Fittings",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Cable Trays + Lighting Fixtures (cat)",
+      "a": "Cable Trays",
+      "b": "Lighting Fixtures",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Pipe Fittings (cat)",
+      "a": "Pipe Fittings",
+      "b": "",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Duct Accessories + Pipe Fittings (cat)",
+      "a": "Duct Accessories",
+      "b": "Pipe Fittings",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs FIRE",
+      "name": "ELEC vs FIRE | Cable Trays + Sprinklers (cat)",
+      "a": "Cable Trays",
+      "b": "Sprinklers",
+      "assign": "FIRE",
+      "group": "FIRE"
+    },
+    {
+      "test": "ELEC vs HYD",
+      "name": "ELEC vs HYD | 50_HY_Warm Water + BMA_Generic Penetration",
+      "a": "50_HY_Warm Water",
+      "b": "BMA_Generic Penetration",
+      "assign": "HYD",
+      "group": "HYD",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs HYD",
+      "name": "ELEC vs HYD | 50_HY_Cold Water + N/A - Not Applicable to Services Fixtures",
+      "a": "50_HY_Cold Water",
+      "b": "N/A - Not Applicable to Services Fixtures",
+      "assign": "HYD",
+      "group": "HYD",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs HYD",
+      "name": "ELEC vs HYD | 20_CS_PF_Reducer Straight - Soldered - CU1 + BMA_Generic Penetration",
+      "a": "20_CS_PF_Reducer Straight - Soldered - CU1",
+      "b": "BMA_Generic Penetration",
+      "assign": "HYD",
+      "group": "HYD",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs HYD",
+      "name": "ELEC vs HYD | 50_HY_Warm Water + _ANZ-EL-CABLE-TRAY",
+      "a": "50_HY_Warm Water",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "HYD",
+      "group": "HYD",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs HYD",
+      "name": "ELEC vs HYD | 50_HY_NP_Cold Water + Frosted Glass Diffuser",
+      "a": "50_HY_NP_Cold Water",
+      "b": "Frosted Glass Diffuser",
+      "assign": "HYD",
+      "group": "HYD",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs HYD",
+      "name": "ELEC vs HYD | Lighting Fixtures + Pipes (cat)",
+      "a": "Lighting Fixtures",
+      "b": "Pipes",
+      "assign": "HYD",
+      "group": "HYD"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray with Fittings + _ANZ-EL-CABLE-TRAY",
+      "a": "Cable Tray with Fittings",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray with Fittings + _ANZ-Plastic-White-AECOM Blue",
+      "a": "Cable Tray with Fittings",
+      "b": "_ANZ-Plastic-White-AECOM Blue",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | DS - Unistrut Hanger + _ANZ-EL-CABLE-TRAY",
+      "a": "DS - Unistrut Hanger",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | DS - Unistrut Hanger + Fixture - White Finish",
+      "a": "DS - Unistrut Hanger",
+      "b": "Fixture - White Finish",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | DS - Hanger Clip + _ANZ-EL-CABLE-TRAY",
+      "a": "DS - Hanger Clip",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray with Fittings + _ANZ-Metal-Powder Coated White-AECOM Grey",
+      "a": "Cable Tray with Fittings",
+      "b": "_ANZ-Metal-Powder Coated White-AECOM Grey",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray Horizontal Cross + _ANZ-EL-CABLE-TRAY",
+      "a": "Cable Tray Horizontal Cross",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | DS - Hanging Rods + _ANZ-Copper",
+      "a": "DS - Hanging Rods",
+      "b": "_ANZ-Copper",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray with Fittings + Frosted Glass Diffuser",
+      "a": "Cable Tray with Fittings",
+      "b": "Frosted Glass Diffuser",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | DS - Unistrut Hanger + _ANZ-Plastic-White-AECOM Blue",
+      "a": "DS - Unistrut Hanger",
+      "b": "_ANZ-Plastic-White-AECOM Blue",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Steel - Pentair - Gray + _ANZ-Plastic-White-AECOM Blue",
+      "a": "Steel - Pentair - Gray",
+      "b": "_ANZ-Plastic-White-AECOM Blue",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Steel - Pentair - Gray + _ANZ-EL-Clearance",
+      "a": "Steel - Pentair - Gray",
+      "b": "_ANZ-EL-Clearance",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | DS - Hanger Clip + _ANZ-Plastic-White-AECOM Blue",
+      "a": "DS - Hanger Clip",
+      "b": "_ANZ-Plastic-White-AECOM Blue",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | DS - Unistrut Hanger + Diffuser",
+      "a": "DS - Unistrut Hanger",
+      "b": "Diffuser",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | BMA_Generic Penetration + _ANZ-Plastic-White-AECOM Blue",
+      "a": "BMA_Generic Penetration",
+      "b": "_ANZ-Plastic-White-AECOM Blue",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | BMA_Generic Penetration + Single-ESS",
+      "a": "BMA_Generic Penetration",
+      "b": "Single-ESS",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | BMA_Generic Penetration + _ANZ-EL-Clearance",
+      "a": "BMA_Generic Penetration",
+      "b": "_ANZ-EL-Clearance",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | DS - Unistrut Hanger + _ANZ-Copper",
+      "a": "DS - Unistrut Hanger",
+      "b": "_ANZ-Copper",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray Horizontal Cross + _ANZ-Plastic-White-AECOM Blue",
+      "a": "Cable Tray Horizontal Cross",
+      "b": "_ANZ-Plastic-White-AECOM Blue",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Double-ESS + Steel - Pentair - Gray",
+      "a": "Double-ESS",
+      "b": "Steel - Pentair - Gray",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Single-ESS + Steel - Pentair - Gray",
+      "a": "Single-ESS",
+      "b": "Steel - Pentair - Gray",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray Horizontal Bend + _ANZ-EL-CABLE-TRAY",
+      "a": "Cable Tray Horizontal Bend",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray Fittings + Cable Trays (cat)",
+      "a": "Cable Tray Fittings",
+      "b": "Cable Trays",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Trays + Electrical Fixtures (cat)",
+      "a": "Cable Trays",
+      "b": "Electrical Fixtures",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray Fittings + Mechanical Equipment (cat)",
+      "a": "Cable Tray Fittings",
+      "b": "Mechanical Equipment",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Trays + Lighting Fixtures (cat)",
+      "a": "Cable Trays",
+      "b": "Lighting Fixtures",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Duct Accessories + Mechanical Equipment (cat)",
+      "a": "Duct Accessories",
+      "b": "Mechanical Equipment",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Electrical Fixtures + Mechanical Equipment (cat)",
+      "a": "Electrical Fixtures",
+      "b": "Mechanical Equipment",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Electrical Fixtures (cat)",
+      "a": "Electrical Fixtures",
+      "b": "",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray Fittings + Cable Tray Fittings (cat)",
+      "a": "Cable Tray Fittings",
+      "b": "Cable Tray Fittings",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "ELEC vs ICT",
+      "name": "ELEC vs ICT | Cable Tray Fittings + Electrical Fixtures (cat)",
+      "a": "Cable Tray Fittings",
+      "b": "Electrical Fixtures",
+      "assign": "ELEC",
+      "group": "ELEC"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Conduit with Fittings + _ANZ-EL-CABLE-TRAY",
+      "a": "Conduit with Fittings",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Flex Duct Round + _ANZ-EL-CABLE-TRAY",
+      "a": "Flex Duct Round",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | BMA_Generic Access + H-HF",
+      "a": "BMA_Generic Access",
+      "b": "H-HF",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | DGM 40x40 Profile Bearer + _ANZ-EL-CONDUIT",
+      "a": "DGM 40x40 Profile Bearer",
+      "b": "_ANZ-EL-CONDUIT",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | BMA_Pipe Mech Other + _ANZ-Metal-Powder Coated-Electric Orange, Orange-AECOM Orange",
+      "a": "BMA_Pipe Mech Other",
+      "b": "_ANZ-Metal-Powder Coated-Electric Orange, Orange-AECOM Orange",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | BMA_Duct EA + L5",
+      "a": "BMA_Duct EA",
+      "b": "L5",
+      "assign": "RCP",
+      "group": "RCP",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | MSSB + TwoWay",
+      "a": "MSSB",
+      "b": "TwoWay",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | MSSB + _ANZ-EL-Clearance",
+      "a": "MSSB",
+      "b": "_ANZ-EL-Clearance",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | BMA_Duct TE + _ANZ-EL-Clearance",
+      "a": "BMA_Duct TE",
+      "b": "_ANZ-EL-Clearance",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | DGM Straight: 895 + _ANZ-EL-CABLE-TRAY",
+      "a": "DGM Straight: 895",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | BMA_Generic Access + L1",
+      "a": "BMA_Generic Access",
+      "b": "L1",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | BMA_Generic Access + Track - L1",
+      "a": "BMA_Generic Access",
+      "b": "Track - L1",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Conduit with Fittings + Frosted Glass Diffuser",
+      "a": "Conduit with Fittings",
+      "b": "Frosted Glass Diffuser",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | BMA_Generic Access + EX2",
+      "a": "BMA_Generic Access",
+      "b": "EX2",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Cable Tray with Fittings + Metal - Steel - C450",
+      "a": "Cable Tray with Fittings",
+      "b": "Metal - Steel - C450",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | BMA_Generic Access + _ANZ-Metal-Powder Coated White-AECOM Copper",
+      "a": "BMA_Generic Access",
+      "b": "_ANZ-Metal-Powder Coated White-AECOM Copper",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | BMA_Generic Access + Single",
+      "a": "BMA_Generic Access",
+      "b": "Single",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | 2300 + Metal - Steel - C450",
+      "a": "2300",
+      "b": "Metal - Steel - C450",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | DGM Straight: 1095 + _ANZ-EL-CABLE-TRAY",
+      "a": "DGM Straight: 1095",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Cable Tray Vertical Outside Bend + _ANZ-EL-CABLE-TRAY",
+      "a": "Cable Tray Vertical Outside Bend",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Fabrication Skin: DGM Spiral Straight: 2395 + _ANZ-EL-CABLE-TRAY",
+      "a": "Fabrication Skin: DGM Spiral Straight: 2395",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Cable Trays + Conduits (cat)",
+      "a": "Cable Trays",
+      "b": "Conduits",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Conduits + MEP Fabrication Hangers (cat)",
+      "a": "Conduits",
+      "b": "MEP Fabrication Hangers",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Conduits + Lighting Fixtures (cat)",
+      "a": "Conduits",
+      "b": "Lighting Fixtures",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Electrical Equipment + Pipes (cat)",
+      "a": "Electrical Equipment",
+      "b": "Pipes",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "ELEC vs MECH",
+      "name": "ELEC vs MECH | Conduit Fittings + Lighting Fixtures (cat)",
+      "a": "Conduit Fittings",
+      "b": "Lighting Fixtures",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "ELEC vs SEC",
+      "name": "ELEC vs SEC | DS - Hanging Rods + _ANZ-EL-CABLE-TRAY",
+      "a": "DS - Hanging Rods",
+      "b": "_ANZ-EL-CABLE-TRAY",
+      "assign": "SEC",
+      "group": "SEC",
+      "match": "tree"
+    },
+    {
+      "test": "ELEC vs SEC",
+      "name": "ELEC vs SEC | Cable Trays + Mechanical Equipment (cat)",
+      "a": "Cable Trays",
+      "b": "Mechanical Equipment",
+      "assign": "SEC",
+      "group": "SEC"
+    },
+    {
+      "test": "ELEC vs SEC",
+      "name": "ELEC vs SEC | Cable Trays + Lighting Fixtures (cat)",
+      "a": "Cable Trays",
+      "b": "Lighting Fixtures",
+      "assign": "SEC",
+      "group": "SEC"
+    },
+    {
+      "test": "FIRE vs HYD",
+      "name": "FIRE vs HYD | 50_HY_Sanitary + BMA_Generic Penetration",
+      "a": "50_HY_Sanitary",
+      "b": "BMA_Generic Penetration",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs HYD",
+      "name": "FIRE vs HYD | 40_FI_Nitrogen + 50_HY_Sanitary",
+      "a": "40_FI_Nitrogen",
+      "b": "50_HY_Sanitary",
+      "assign": "HYD - AVOID TRAY",
+      "group": "HYD - AVOID TRAY",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | 40_FI_Sprinkler Wet + DS - Hanging Rods",
+      "a": "40_FI_Sprinkler Wet",
+      "b": "DS - Hanging Rods",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | 40_FI_Sprinkler Wet + DS - Unistrut Hanger",
+      "a": "40_FI_Sprinkler Wet",
+      "b": "DS - Unistrut Hanger",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | 40_FI_Fire Pre action + DS - Hanging Rods",
+      "a": "40_FI_Fire Pre action",
+      "b": "DS - Hanging Rods",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | Conduit with Fittings + DS - Hanging Rods",
+      "a": "Conduit with Fittings",
+      "b": "DS - Hanging Rods",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | 40_FI_Nitrogen + DS - Hanging Rods",
+      "a": "40_FI_Nitrogen",
+      "b": "DS - Hanging Rods",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | Cable Tray with Fittings + DS - Hanging Rods",
+      "a": "Cable Tray with Fittings",
+      "b": "DS - Hanging Rods",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | RED BOOSTER + Steel - Pentair - Gray",
+      "a": "RED BOOSTER",
+      "b": "Steel - Pentair - Gray",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | Clearance Zone - FIRE + DS - Hanger Clip",
+      "a": "Clearance Zone - FIRE",
+      "b": "DS - Hanger Clip",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | Mechanical Equipment + Pipes (cat)",
+      "a": "Mechanical Equipment",
+      "b": "Pipes",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | Conduits + Mechanical Equipment (cat)",
+      "a": "Conduits",
+      "b": "Mechanical Equipment",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | Electrical Fixtures + Fire Alarm Devices (cat)",
+      "a": "Electrical Fixtures",
+      "b": "Fire Alarm Devices",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | Mechanical Equipment + Sprinklers (cat)",
+      "a": "Mechanical Equipment",
+      "b": "Sprinklers",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | Flex Pipes + Mechanical Equipment (cat)",
+      "a": "Flex Pipes",
+      "b": "Mechanical Equipment",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "FIRE vs ICT",
+      "name": "FIRE vs ICT | Cable Trays + Mechanical Equipment (cat)",
+      "a": "Cable Trays",
+      "b": "Mechanical Equipment",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Cable Tray with Fittings + DETECTOR - ASPIRATED SAMPLING - 5m",
+      "a": "Cable Tray with Fittings",
+      "b": "DETECTOR - ASPIRATED SAMPLING - 5m",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | 40_FI_Sprinkler Mist + Flex Duct Round",
+      "a": "40_FI_Sprinkler Mist",
+      "b": "Flex Duct Round",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Conduit with Fittings + OC_Support",
+      "a": "Conduit with Fittings",
+      "b": "OC_Support",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | 30_EL_CO_Elbow without Fittings_RNC + Cable Tray with Fittings",
+      "a": "30_EL_CO_Elbow without Fittings_RNC",
+      "b": "Cable Tray with Fittings",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | DGM 40x40 Profile Bearer + SPEAKER - CEILING - RECESSED - 8m",
+      "a": "DGM 40x40 Profile Bearer",
+      "b": "SPEAKER - CEILING - RECESSED - 8m",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | BMA_Generic Access + CARBON DIOXIDE EXTINGUISHER",
+      "a": "BMA_Generic Access",
+      "b": "CARBON DIOXIDE EXTINGUISHER",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | 40_FI_Fire Hydrant + Penetration_Round_Floor_Generic_BMAIFM",
+      "a": "40_FI_Fire Hydrant",
+      "b": "Penetration_Round_Floor_Generic_BMAIFM",
+      "assign": "FIRE PENOS",
+      "group": "FIRE PENOS",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | BMA_Generic Access + DRY CHEMICAL POWDER EXTINGUISHER",
+      "a": "BMA_Generic Access",
+      "b": "DRY CHEMICAL POWDER EXTINGUISHER",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | 40_FI_Sprinkler Wet + M12 Rod",
+      "a": "40_FI_Sprinkler Wet",
+      "b": "M12 Rod",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | 30_EL_CO_Elbow without Fittings_RNC + DGM 40x40 Profile Bearer",
+      "a": "30_EL_CO_Elbow without Fittings_RNC",
+      "b": "DGM 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Conduit with Fittings + Flex Duct Round",
+      "a": "Conduit with Fittings",
+      "b": "Flex Duct Round",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | DGM 40x40 Profile Bearer + FIRE-BLACK",
+      "a": "DGM 40x40 Profile Bearer",
+      "b": "FIRE-BLACK",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | 40_FI_Sprinkler Mist + BMA_Generic Penetration",
+      "a": "40_FI_Sprinkler Mist",
+      "b": "BMA_Generic Penetration",
+      "assign": "FIRE (FIRE PENO)",
+      "group": "FIRE (FIRE PENO)",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | 40_FI_Fire Pre action + _ANZ-ME-CHWF",
+      "a": "40_FI_Fire Pre action",
+      "b": "_ANZ-ME-CHWF",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | DGM Spiral Straight: 4000 + SFD Victaulic - FireLock - Rigid Coupling - Style 005 (FITTINGS)",
+      "a": "DGM Spiral Straight: 4000",
+      "b": "SFD Victaulic - FireLock - Rigid Coupling - Style 005 (FITTINGS)",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | 40_FI_Fire Pre action + DGM 90 Easy Oval Bend",
+      "a": "40_FI_Fire Pre action",
+      "b": "DGM 90 Easy Oval Bend",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | FP_GAL MAL + Flex Duct Round",
+      "a": "FP_GAL MAL",
+      "b": "Flex Duct Round",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | 30_EL_CO_Elbow without Fittings_RNC + DGM Straight: 1150",
+      "a": "30_EL_CO_Elbow without Fittings_RNC",
+      "b": "DGM Straight: 1150",
+      "assign": "FIRE-MISTING",
+      "group": "FIRE-MISTING",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | SEISMIC HANGER SUPA50 SINGLE + SFD Victaulic - FireLock - Rigid Coupling - Style 005 (FITTINGS)",
+      "a": "SEISMIC HANGER SUPA50 SINGLE",
+      "b": "SFD Victaulic - FireLock - Rigid Coupling - Style 005 (FITTINGS)",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | BMA_Duct SA + SPEAKER - CEILING - RECESSED - 6m",
+      "a": "BMA_Duct SA",
+      "b": "SPEAKER - CEILING - RECESSED - 6m",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | DGM Double 40x40 Profile Bearer + SPEAKER - SURFACE MOUNTED",
+      "a": "DGM Double 40x40 Profile Bearer",
+      "b": "SPEAKER - SURFACE MOUNTED",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | BMA_Generic Penetration + Penetration_Round_Floor_Generic_BMAIFM",
+      "a": "BMA_Generic Penetration",
+      "b": "Penetration_Round_Floor_Generic_BMAIFM",
+      "assign": "FIRE PENOS",
+      "group": "FIRE PENOS",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Conduit with Fittings + Conduit with Fittings",
+      "a": "Conduit with Fittings",
+      "b": "Conduit with Fittings",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Conduit with Fittings + MASD",
+      "a": "Conduit with Fittings",
+      "b": "MASD",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Conduit with Fittings + NDY_Plastic",
+      "a": "Conduit with Fittings",
+      "b": "NDY_Plastic",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | BMA_Generic Access + SPRINKLER - EXPOSED - PENDANT - CLOSED MIST - 3.6m",
+      "a": "BMA_Generic Access",
+      "b": "SPRINKLER - EXPOSED - PENDANT - CLOSED MIST - 3.6m",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Cable Trays + Fire Alarm Devices (cat)",
+      "a": "Cable Trays",
+      "b": "Fire Alarm Devices",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Cable Trays + Conduit Fittings (cat)",
+      "a": "Cable Trays",
+      "b": "Conduit Fittings",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Fire Protection (cat)",
+      "a": "Fire Protection",
+      "b": "",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Air Terminals + Pipes (cat)",
+      "a": "Air Terminals",
+      "b": "Pipes",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | MEP Fabrication Hangers + Sprinklers (cat)",
+      "a": "MEP Fabrication Hangers",
+      "b": "Sprinklers",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Conduits (cat)",
+      "a": "Conduits",
+      "b": "",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Conduits + Fire Alarm Devices (cat)",
+      "a": "Conduits",
+      "b": "Fire Alarm Devices",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Conduit Fittings + MEP Fabrication Hangers (cat)",
+      "a": "Conduit Fittings",
+      "b": "MEP Fabrication Hangers",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "FIRE vs MECH",
+      "name": "FIRE vs MECH | Conduits + Flex Ducts (cat)",
+      "a": "Conduits",
+      "b": "Flex Ducts",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "name": "FIRE vs SEC | 40_FI_Fire Pre action + DS - Hanging Rods",
+      "a": "40_FI_Fire Pre action",
+      "b": "DS - Hanging Rods",
+      "assign": "SEC",
+      "group": "SEC",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "name": "FIRE vs SEC | 40_FI_Sprinkler Mist + DS - Hanging Rods",
+      "a": "40_FI_Sprinkler Mist",
+      "b": "DS - Hanging Rods",
+      "assign": "SEC",
+      "group": "SEC",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "name": "FIRE vs SEC | Conduit with Fittings + DS - Hanging Rods",
+      "a": "Conduit with Fittings",
+      "b": "DS - Hanging Rods",
+      "assign": "SEC",
+      "group": "SEC",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "name": "FIRE vs SEC | BMA_Generic Penetration + Cable Tray with Fittings",
+      "a": "BMA_Generic Penetration",
+      "b": "Cable Tray with Fittings",
+      "assign": "SEC",
+      "group": "SEC",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "name": "FIRE vs SEC | Cable Tray with Fittings + Cable Tray with Fittings",
+      "a": "Cable Tray with Fittings",
+      "b": "Cable Tray with Fittings",
+      "assign": "SEC",
+      "group": "SEC",
+      "match": "tree"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "name": "FIRE vs SEC | Cable Trays + Mechanical Equipment (cat)",
+      "a": "Cable Trays",
+      "b": "Mechanical Equipment",
+      "assign": "SEC",
+      "group": "SEC"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "name": "FIRE vs SEC | Conduits + Mechanical Equipment (cat)",
+      "a": "Conduits",
+      "b": "Mechanical Equipment",
+      "assign": "SEC",
+      "group": "SEC"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "name": "FIRE vs SEC | Cable Trays (cat)",
+      "a": "Cable Trays",
+      "b": "",
+      "assign": "SEC",
+      "group": "SEC"
+    },
+    {
+      "test": "FIRE vs SEC",
+      "name": "FIRE vs SEC | Cable Trays + Cable Trays (cat)",
+      "a": "Cable Trays",
+      "b": "Cable Trays",
+      "assign": "SEC",
+      "group": "SEC"
+    },
+    {
+      "test": "HYD vs ICT",
+      "name": "HYD vs ICT | 50_HY_NP_Cold Water + BMA_Generic Penetration",
+      "a": "50_HY_NP_Cold Water",
+      "b": "BMA_Generic Penetration",
+      "assign": "HYD",
+      "group": "HYD",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs ICT",
+      "name": "HYD vs ICT | 50_HY_NP_Cold Water + Cable Tray with Fittings",
+      "a": "50_HY_NP_Cold Water",
+      "b": "Cable Tray with Fittings",
+      "assign": "HYD",
+      "group": "HYD",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | BMA_Generic Access + LS_Floor Penetration Round",
+      "a": "BMA_Generic Access",
+      "b": "LS_Floor Penetration Round",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + BMA_Pipe Mech Other",
+      "a": "50_HY_Sanitary",
+      "b": "BMA_Pipe Mech Other",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | LS_Floor Penetration Round + tundish",
+      "a": "LS_Floor Penetration Round",
+      "b": "tundish",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | BMA_Pipe Mech Other + CONNECT TO HDPE",
+      "a": "BMA_Pipe Mech Other",
+      "b": "CONNECT TO HDPE",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + DGM 40x40 Profile Bearer",
+      "a": "50_HY_Sanitary",
+      "b": "DGM 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Waste Drain + BMA_Pipe Mech Other",
+      "a": "50_HY_Waste Drain",
+      "b": "BMA_Pipe Mech Other",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_NP_Cold Water + DGM 40x40 Profile Bearer",
+      "a": "50_HY_NP_Cold Water",
+      "b": "DGM 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Waste Drain + DGM 40x40 Profile Bearer",
+      "a": "50_HY_Waste Drain",
+      "b": "DGM 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Vent + DGM 40x40 Profile Bearer",
+      "a": "50_HY_Vent",
+      "b": "DGM 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + tundish",
+      "a": "50_HY_Sanitary",
+      "b": "tundish",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water + BMA_Duct EA",
+      "a": "50_HY_Hot Water",
+      "b": "BMA_Duct EA",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Waste Drain + DGM Double 40x40 Profile Bearer",
+      "a": "50_HY_Waste Drain",
+      "b": "DGM Double 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | BMA_Generic Access + HY_PA INSPECTION OPENING INTERNAL",
+      "a": "BMA_Generic Access",
+      "b": "HY_PA INSPECTION OPENING INTERNAL",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water Return + DGM Wrap Round Hanger",
+      "a": "50_HY_Hot Water Return",
+      "b": "DGM Wrap Round Hanger",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + DGM Straight: 0",
+      "a": "50_HY_Sanitary",
+      "b": "DGM Straight: 0",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Vent + DGM Straight: 1000",
+      "a": "50_HY_Vent",
+      "b": "DGM Straight: 1000",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Vent + DGM Bend Square",
+      "a": "50_HY_Vent",
+      "b": "DGM Bend Square",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Waste Drain + BMA_Plastic uPVC",
+      "a": "50_HY_Waste Drain",
+      "b": "BMA_Plastic uPVC",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Vent + Cable Tray with Fittings",
+      "a": "50_HY_Vent",
+      "b": "Cable Tray with Fittings",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + DGM Straight: 1400",
+      "a": "50_HY_Sanitary",
+      "b": "DGM Straight: 1400",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + BMA_Plastic uPVC",
+      "a": "50_HY_Sanitary",
+      "b": "BMA_Plastic uPVC",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | BMA_Generic Builders Items + Clearance Zone_Generic_BMAIFM",
+      "a": "BMA_Generic Builders Items",
+      "b": "Clearance Zone_Generic_BMAIFM",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water + DGM Double 40x40 Profile Bearer",
+      "a": "50_HY_Hot Water",
+      "b": "DGM Double 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + DGM Bend Radius",
+      "a": "50_HY_Sanitary",
+      "b": "DGM Bend Radius",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Stormwater + DGM Straight: 1400",
+      "a": "50_HY_Stormwater",
+      "b": "DGM Straight: 1400",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Vent + BMA_Pipe Chilled Water - Critical Flow",
+      "a": "50_HY_Vent",
+      "b": "BMA_Pipe Chilled Water - Critical Flow",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | Clearance Zone + DGM 40x40 Profile Bearer",
+      "a": "Clearance Zone",
+      "b": "DGM 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + BMA_Duct EA",
+      "a": "50_HY_Sanitary",
+      "b": "BMA_Duct EA",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + BMA_Generic Penetration",
+      "a": "50_HY_Sanitary",
+      "b": "BMA_Generic Penetration",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | DGM varriable height-Clearance + LS_Floor Penetration Round",
+      "a": "DGM varriable height-Clearance",
+      "b": "LS_Floor Penetration Round",
+      "assign": "L1 (MECH)",
+      "group": "L1 (MECH)",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Waste Drain + Clearance Zone_Generic_BMAIFM",
+      "a": "50_HY_Waste Drain",
+      "b": "Clearance Zone_Generic_BMAIFM",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | LS_Floor Penetration Round + Penetration_Square_Floor_Generic_BMAIFM",
+      "a": "LS_Floor Penetration Round",
+      "b": "Penetration_Square_Floor_Generic_BMAIFM",
+      "assign": "HYD-L1",
+      "group": "HYD-L1",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water + DGM 20x20 Profile Bearer",
+      "a": "50_HY_Hot Water",
+      "b": "DGM 20x20 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water + DGM Straight: 1400",
+      "a": "50_HY_Hot Water",
+      "b": "DGM Straight: 1400",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water + DGM Straight: 590",
+      "a": "50_HY_Hot Water",
+      "b": "DGM Straight: 590",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | BMA_Generic Access + metal",
+      "a": "BMA_Generic Access",
+      "b": "metal",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Warm Water + DGM 40x40 Profile Bearer",
+      "a": "50_HY_Warm Water",
+      "b": "DGM 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Stormwater + DGM 40x40 Profile Bearer",
+      "a": "50_HY_Stormwater",
+      "b": "DGM 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | BMA_Plastic uPVC + LS_Floor Penetration Round",
+      "a": "BMA_Plastic uPVC",
+      "b": "LS_Floor Penetration Round",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Waste Drain + SG1-D5",
+      "a": "50_HY_Waste Drain",
+      "b": "SG1-D5",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_NP_Cold Water + Steel, Carbon",
+      "a": "50_HY_NP_Cold Water",
+      "b": "Steel, Carbon",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | BMA_Generic Concrete Plinth + CONNECT TO HDPE",
+      "a": "BMA_Generic Concrete Plinth",
+      "b": "CONNECT TO HDPE",
+      "assign": "TUNDISH",
+      "group": "TUNDISH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Waste Drain + OC_Support",
+      "a": "50_HY_Waste Drain",
+      "b": "OC_Support",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water + DGM Bird Mesh Screen",
+      "a": "50_HY_Hot Water",
+      "b": "DGM Bird Mesh Screen",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water + Cable Tray with Fittings",
+      "a": "50_HY_Hot Water",
+      "b": "Cable Tray with Fittings",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_NP_Cold Water + DGM 20x20 Profile Bearer",
+      "a": "50_HY_NP_Cold Water",
+      "b": "DGM 20x20 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Cold Water + DGM Straight: 370",
+      "a": "50_HY_Cold Water",
+      "b": "DGM Straight: 370",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + Metal - Steel - 345 MPa",
+      "a": "50_HY_Sanitary",
+      "b": "Metal - Steel - 345 MPa",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | DGM 40x40 Profile Bearer + LS - Wall Penetration Round",
+      "a": "DGM 40x40 Profile Bearer",
+      "b": "LS - Wall Penetration Round",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + DGM Straight: 1085",
+      "a": "50_HY_Sanitary",
+      "b": "DGM Straight: 1085",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Cold Water + DGM Straight: 590",
+      "a": "50_HY_Cold Water",
+      "b": "DGM Straight: 590",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Waste Drain + DGM Oval Straight: 2215",
+      "a": "50_HY_Waste Drain",
+      "b": "DGM Oval Straight: 2215",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + DGM Straight: 435",
+      "a": "50_HY_Sanitary",
+      "b": "DGM Straight: 435",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Sanitary + Clearance Zone_Generic_BMAIFM",
+      "a": "50_HY_Sanitary",
+      "b": "Clearance Zone_Generic_BMAIFM",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Cold Water + BMA_Pipe DCW",
+      "a": "50_HY_Cold Water",
+      "b": "BMA_Pipe DCW",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water + BMA_Pipe Chilled Water - Critical Flow",
+      "a": "50_HY_Hot Water",
+      "b": "BMA_Pipe Chilled Water - Critical Flow",
+      "assign": "FIRE",
+      "group": "FIRE",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_NP_Cold Water + DGM Double 40x40 Profile Bearer",
+      "a": "50_HY_NP_Cold Water",
+      "b": "DGM Double 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Hot Water + DGM Straight: 1220",
+      "a": "50_HY_Hot Water",
+      "b": "DGM Straight: 1220",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Vent + DGM Double 40x40 Profile Bearer",
+      "a": "50_HY_Vent",
+      "b": "DGM Double 40x40 Profile Bearer",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "HYD vs MECH",
+      "name": "HYD vs MECH | 50_HY_Waste Drain + Supply Grille_Generic",
+      "a": "50_HY_Waste Drain",
+      "b": "Supply Grille_Generic",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | BMA_Generic Access + Steel - Chatsworth - Glacier White",
+      "a": "BMA_Generic Access",
+      "b": "Steel - Chatsworth - Glacier White",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | BMA_Generic Access + Steel - Chatsworth - Glacier White, Perforated",
+      "a": "BMA_Generic Access",
+      "b": "Steel - Chatsworth - Glacier White, Perforated",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | Clearance Zone_Generic_BMAIFM + Steel - Chatsworth - Glacier White",
+      "a": "Clearance Zone_Generic_BMAIFM",
+      "b": "Steel - Chatsworth - Glacier White",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | 45 RU S6 + Clearance Zone_Generic_BMAIFM",
+      "a": "45 RU S6",
+      "b": "Clearance Zone_Generic_BMAIFM",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | SCG_Plastic_Black + Steel - Pentair - Gray",
+      "a": "SCG_Plastic_Black",
+      "b": "Steel - Pentair - Gray",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | 45 RU x 1200D x 800W + BMA_Generic Access",
+      "a": "45 RU x 1200D x 800W",
+      "b": "BMA_Generic Access",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | BMA_Pipe Mech Other + Steel - Pentair - Gray",
+      "a": "BMA_Pipe Mech Other",
+      "b": "Steel - Pentair - Gray",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | BMA_Pipe Mech Other + Steel - Pentair - Silver",
+      "a": "BMA_Pipe Mech Other",
+      "b": "Steel - Pentair - Silver",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | Cable Tray with Fittings + DGM Bird Mesh Screen",
+      "a": "Cable Tray with Fittings",
+      "b": "DGM Bird Mesh Screen",
+      "assign": "ELEC",
+      "group": "ELEC",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | DGM Double 40x40 Profile Bearer + Steel - Chatsworth - Glacier White",
+      "a": "DGM Double 40x40 Profile Bearer",
+      "b": "Steel - Chatsworth - Glacier White",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | Data Devices (cat)",
+      "a": "Data Devices",
+      "b": "",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | Cable Trays + Flex Ducts (cat)",
+      "a": "Cable Trays",
+      "b": "Flex Ducts",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "ICT vs MECH",
+      "name": "ICT vs MECH | Electrical Fixtures + Pipes (cat)",
+      "a": "Electrical Fixtures",
+      "b": "Pipes",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "ICT vs SEC",
+      "name": "ICT vs SEC | Cable Tray with Fittings + DS - Unistrut Hanger",
+      "a": "Cable Tray with Fittings",
+      "b": "DS - Unistrut Hanger",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs SEC",
+      "name": "ICT vs SEC | DS - Unistrut Hanger + DS - Unistrut Hanger",
+      "a": "DS - Unistrut Hanger",
+      "b": "DS - Unistrut Hanger",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs SEC",
+      "name": "ICT vs SEC | DS - Hanger Clip + DS - Unistrut Hanger",
+      "a": "DS - Hanger Clip",
+      "b": "DS - Unistrut Hanger",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs SEC",
+      "name": "ICT vs SEC | DS - Hanger Clip + DS - Hanging Rods",
+      "a": "DS - Hanger Clip",
+      "b": "DS - Hanging Rods",
+      "assign": "ICT",
+      "group": "ICT",
+      "match": "tree"
+    },
+    {
+      "test": "ICT vs SEC",
+      "name": "ICT vs SEC | Cable Trays + Mechanical Equipment (cat)",
+      "a": "Cable Trays",
+      "b": "Mechanical Equipment",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "ICT vs SEC",
+      "name": "ICT vs SEC | Electrical Fixtures (cat)",
+      "a": "Electrical Fixtures",
+      "b": "",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "ICT vs SEC",
+      "name": "ICT vs SEC | Mechanical Equipment + Mechanical Equipment (cat)",
+      "a": "Mechanical Equipment",
+      "b": "Mechanical Equipment",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "ICT vs SEC",
+      "name": "ICT vs SEC | Cable Trays + Electrical Fixtures (cat)",
+      "a": "Cable Trays",
+      "b": "Electrical Fixtures",
+      "assign": "ICT",
+      "group": "ICT"
+    },
+    {
+      "test": "MECH vs SEC",
+      "name": "MECH vs SEC | BMA_Pipe Compressed Air + Cable Tray Horizontal Bend1",
+      "a": "BMA_Pipe Compressed Air",
+      "b": "Cable Tray Horizontal Bend1",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "MECH vs SEC",
+      "name": "MECH vs SEC | BMA_Pipe Compressed Air + DS - Unistrut Hanger",
+      "a": "BMA_Pipe Compressed Air",
+      "b": "DS - Unistrut Hanger",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "MECH vs SEC",
+      "name": "MECH vs SEC | BMA_Pipe Compressed Air + DS - Hanging Rods",
+      "a": "BMA_Pipe Compressed Air",
+      "b": "DS - Hanging Rods",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "MECH vs SEC",
+      "name": "MECH vs SEC | DGM 40x40 Profile Bearer + DS - Unistrut Hanger",
+      "a": "DGM 40x40 Profile Bearer",
+      "b": "DS - Unistrut Hanger",
+      "assign": "MECH",
+      "group": "MECH",
+      "match": "tree"
+    },
+    {
+      "test": "MECH vs SEC",
+      "name": "MECH vs SEC | Cable Tray Fittings + Pipes (cat)",
+      "a": "Cable Tray Fittings",
+      "b": "Pipes",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "MECH vs SEC",
+      "name": "MECH vs SEC | Mechanical Equipment + Pipes (cat)",
+      "a": "Mechanical Equipment",
+      "b": "Pipes",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "MECH vs SEC",
+      "name": "MECH vs SEC | Mechanical Equipment + Pipe Fittings (cat)",
+      "a": "Mechanical Equipment",
+      "b": "Pipe Fittings",
+      "assign": "MECH",
+      "group": "MECH"
+    },
+    {
+      "test": "MECH vs SEC",
+      "name": "MECH vs SEC | Mechanical Equipment + Pipe Accessories (cat)",
+      "a": "Mechanical Equipment",
+      "b": "Pipe Accessories",
+      "assign": "MECH",
+      "group": "MECH"
+    }
+  ],
+  "approve": {
+    "enabled": true,
+    "minGapMm": 25,
+    "maxGapMm": 0,
+    "useTestNameGuard": true,
+    "protectedTrades": [
+      "STR",
+      "Structure",
+      "Structural"
+    ],
+    "pairFloors": [
+      {
+        "a": "DRUPS",
+        "b": "ELEC",
+        "minGapMm": 0
+      },
+      {
+        "a": "DRUPS",
+        "b": "HYD",
+        "minGapMm": 158
+      },
+      {
+        "a": "DRUPS",
+        "b": "MECH",
+        "minGapMm": 79
+      },
+      {
+        "a": "ELEC",
+        "b": "FIRE",
+        "minGapMm": 62
+      },
+      {
+        "a": "ELEC",
+        "b": "FUEL",
+        "minGapMm": 0
+      },
+      {
+        "a": "ELEC",
+        "b": "HYD",
+        "minGapMm": 56
+      },
+      {
+        "a": "ELEC",
+        "b": "ICT",
+        "minGapMm": 8
+      },
+      {
+        "a": "ELEC",
+        "b": "MECH",
+        "minGapMm": 12
+      },
+      {
+        "a": "ELEC",
+        "b": "SEC",
+        "minGapMm": 0
+      },
+      {
+        "a": "FIRE",
+        "b": "HYD",
+        "minGapMm": 51
+      },
+      {
+        "a": "FIRE",
+        "b": "ICT",
+        "minGapMm": 75
+      },
+      {
+        "a": "FIRE",
+        "b": "MECH",
+        "minGapMm": 19
+      },
+      {
+        "a": "FIRE",
+        "b": "SEC",
+        "minGapMm": 68
+      },
+      {
+        "a": "FUEL",
+        "b": "HYD",
+        "minGapMm": 21
+      },
+      {
+        "a": "HYD",
+        "b": "ICT",
+        "minGapMm": 105
+      },
+      {
+        "a": "HYD",
+        "b": "MECH",
+        "minGapMm": 0
+      },
+      {
+        "a": "HYD",
+        "b": "SEC",
+        "minGapMm": 111
+      },
+      {
+        "a": "ICT",
+        "b": "MECH",
+        "minGapMm": 18
+      },
+      {
+        "a": "ICT",
+        "b": "SEC",
+        "minGapMm": 0
+      },
+      {
+        "a": "MECH",
+        "b": "SEC",
+        "minGapMm": 0
+      }
+    ],
+    "approveAssignees": [
+      "RCP",
+      "TUNDISH",
+      "MECH/HYD - MECH HANGERS - HYD SMALL BORE",
+      "FIRE-MISTING",
+      "MECH-CLEARANCE CHECK",
+      "COORD-CHECK",
+      "BOTH-INTERFACE CHECK",
+      "BOTH-CLEARANCE CHECK",
+      "SEC-CLEARANCE CHECK",
+      "SHARED HANGERS",
+      "L1",
+      "DOUBLED UP ITEM",
+      "SEC(CLEARANCE CHECK)",
+      "FIRE PENOS",
+      "HYD-(FIRE PIPE ON TOP/CLOSE TO SLAB)",
+      "MECH FLEX AND RCPS",
+      "FIRE-NOTE FLANGE CLASH IS CLEAREANCE CLASH WITH INSUALTION ON INSIDE",
+      "HYD-L1",
+      "TUNDISH / TRADE INTERFACE",
+      "HYD - INTERFACE POINT",
+      "L1 (HYD)",
+      "MECH-CLEARANCE",
+      "FIRE-CLEARANCE",
+      "L1 (MECH)",
+      "OVERLAP ITEM",
+      "FIRE-MECH DOCUMENTED FIRE PENO"
+    ],
+    "approveKinds": [
+      {
+        "name": "Flexible pipe/duct",
+        "keywords": [
+          "flex"
+        ]
+      },
+      {
+        "name": "ls_ceiling access panel",
+        "keywords": [
+          "ls_ceiling access panel"
+        ]
+      },
+      {
+        "name": "speaker - ceiling - recessed - 6m",
+        "keywords": [
+          "speaker - ceiling - recessed - 6m"
+        ]
+      },
+      {
+        "name": "oh_dc1 ceiling mounted mist nozzle",
+        "keywords": [
+          "oh_dc1 ceiling mounted mist nozzle"
+        ]
+      },
+      {
+        "name": "supply linear_chb 1 spigot_generic",
+        "keywords": [
+          "supply linear_chb 1 spigot_generic"
+        ]
+      },
+      {
+        "name": "20_cs_pf_copper brazed-reducer straight1",
+        "keywords": [
+          "20_cs_pf_copper brazed-reducer straight1"
+        ]
+      },
+      {
+        "name": "plumbing_pumps_grundfos_crn32_seek",
+        "keywords": [
+          "plumbing_pumps_grundfos_crn32_seek"
+        ]
+      }
+    ]
+  },
+  "_aiHandoff": {
+    "note": "Miner is confident elsewhere; focus AI/human refinement here.",
+    "lowConfidenceTests": [
+      {
+        "test": "FIRE vs SEC",
+        "reproducedPct": 49.3,
+        "n": 842
+      }
+    ],
+    "softDefaultTests": [
+      {
+        "test": "ELEC vs FUEL",
+        "default": "BOTH-INTERFACE CHECK"
+      }
+    ]
+  }
+}
