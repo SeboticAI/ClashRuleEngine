@@ -28,9 +28,9 @@ from rules learned off previously-coordinated models — instead of by hand, cla
    the only location Navisworks 2027 loads third-party plugins from).
 4. It auto-detects your Navisworks versions and installs for each one it has a build for. If you
    have a version it does not cover, it says so instead of silently skipping.
-5. Start Navisworks → **OConnors Clash** tab → **Clash Engine**.
+5. Start Navisworks → **Clash Rule Engine** tab → **Open Panel**.
 
-The panel opens on click. (It is also under **Tool Add-ins → Clash Engine**.)
+The panel opens on click — no ticking boxes in View → Windows.
 
 Supported: **Navisworks Manage 2024–2027**, x64. Which versions a given setup.exe actually
 contains depends on which were built into it — the welcome screen lists them.
@@ -63,6 +63,19 @@ Settings → Apps → *OConnors Clash Engine*. Your rules are **not** deleted; t
 
 Tabs: **Rules** (the per-test pair rules) · **Clashes** (list, 3D markers, inspector) ·
 **General** (exports, AI assist).
+
+A banner above the rule list says what a Run will actually do for the selected test — the default
+assignee and how many pair rules override it. **A test showing no pair rules is usually not
+broken**: rules only encode the *exceptions* to a test's default assignee, and structure (`_STR`)
+tests carry none at all by design.
+
+### Batch Extract (ribbon tab → Batch Extract)
+
+Records this model's clash data — each side's element kind, assignee, status, clearance gap, grid
+and level — to a `.jsonl` file, which is the input for mining a rule set
+(`tools\run-analyze.ps1`). It **appends**, so several models can build one dataset; it asks before
+adding to an existing file, since extracting the same model twice would count it twice. For many
+models at once, use `tools\NwdClashLearner` instead — it drives Navisworks headlessly.
 
 ---
 

@@ -93,21 +93,36 @@ ClashRuleEngine/
 - **Light theme UI**: white cards on `#F8F9FA`, dark `#1A1A2E` text, blue `#2563EB` accent, `#E5E7EB` borders. (A dark-theme attempt was reverted — it produced unreadable light-on-light fields.)
 - **Ribbon / naming** (all "Clash Rule Engine" as of 2026-08-10): the dock pane is **Clash Rule
   Engine** (DockPanePlugin DisplayName → View→Windows entry + pane title). A custom ribbon tab
-  **Clash Rule Engine** (CommandHandlerPlugin + RibbonLayout) holds an **Open Panel** button;
-  an `AddInPlugin` (DisplayName **Clash Rule Engine**) under Tool Add-ins does the same. Both
-  carry the OConnors icon. The tab's label comes from `Title` in the ribbon XAML, which
-  overrides the `[RibbonTab] DisplayName` — both are set identically so they can't drift.
+  **Clash Rule Engine** (CommandHandlerPlugin + RibbonLayout) is the ONLY entry point, with two
+  Large buttons, each with its own icon:
+  | Button | Command id | Does | Enabled |
+  |---|---|---|---|
+  | **Open Panel** | `ID_OpenPanel` | `ClashRuleEnginePlugin.ShowPanel()` | always (`CallCanExecute.Always`) |
+  | **Batch Extract** | `ID_BatchExtract` | `RunBatchExtract()` → the extractor over the OPEN model | only with a model open (`CallCanExecute.DocumentNotClear`) |
+
+  `DocumentNotClear` does the greying for free: an **uncalled** `CanExecuteCommand` leaves a
+  command DISABLED, so with no document Navisworks never asks and the button greys itself.
+  The tab's label comes from `Title` in the ribbon XAML, which overrides the
+  `[RibbonTab] DisplayName` — both are set identically so they can't drift.
   **A custom RibbonTab is the ONLY way to get your own name on the ribbon**: an `AddInPlugin`
   button lands in Navisworks' stock "Tool Add-ins" tab, in a panel Navisworks names itself
   ("Tool add-ins 1"), and no plugin can rename that. **CONFIRMED WORKING 2026-08-10** — the tab
-  now shows, with the icon, alongside Navisworks' own tabs.
+  now shows, with the icons, alongside Navisworks' own tabs.
   Consequently there are **no GUI AddInPlugins left**: the duplicate panel-opener add-in was
   deleted, and `BatchClashExtractPlugin` moved to **`AddInLocation.None`** — registered and
   still reachable via `Automation.ExecuteAddInPlugin("ClashBatchExtract.OCON", …)` from
   `tools\BatchExtractor` / `tools\NwdClashLearner`, but placed nowhere in the UI, which makes
   the stock "Tool add-ins" tab disappear entirely. `AddInLocation.None` exists for exactly this
-  (programmatically-invoked add-ins). If the headless learner ever can't find the plugin, put
-  `AddInLocation.AddIn` back — that is the whole revert.
+  (programmatically-invoked add-ins), and the ribbon button reaches it the same way the headless
+  drivers do (`FindPlugin` → `TryLoadPlugin` → `Execute(path)`) — so **clicking Batch Extract
+  once is also the test that the headless learner still works**. If it ever can't find the
+  plugin, put `AddInLocation.AddIn` back — that is the whole revert.
+- **`BatchClashExtractPlugin.Execute` returns the row count, or `-1` on error** (not `0` for
+  everything). It swallows all exceptions on purpose — one bad file must not abort a batch — which
+  left an interactive caller unable to tell success from failure from no-data. Both headless
+  drivers ignore the return value, so the change costs them nothing. It **APPENDS** by design, so
+  several models build one dataset; the ribbon button therefore CONFIRMS before appending to an
+  existing file, because re-extracting the same model would double-count it.
   The XAML can be syntax-checked offline against Navisworks' own types:
   ```powershell
   [void][Reflection.Assembly]::LoadFrom("$nav\AdWindows.dll")
@@ -287,7 +302,7 @@ install that Navisworks version on the build machine) **or** harvested into `Ref
    loaded plugin DLL is locked and the copy would silently leave the old build in place.
 3. Ship to the team: `tools\build-all.ps1 -Installer` → `Installer\Output\OConnorsClashEngine_Setup_<ver>.exe`.
    See "Installer" below.
-4. Restart Navisworks → **OConnors Clash** tab → **Clash Engine** (also under Tool Add-ins).
+4. Restart Navisworks → **Clash Rule Engine** tab → **Open Panel** / **Batch Extract**.
 
 ### Installer (`Installer\ClashRuleEngine.iss`, Inno Setup 6)
 Compiler: `winget install --id JRSoftware.InnoSetup`. NOTE it installs **per-user** at
@@ -369,8 +384,13 @@ Other tabs available: Mechanical, Mechanical - Flow, Constraints, Identity Data,
 - **Main panel = 3 tabs**: Rules · Clashes · General (light theme). The GROUPING control is a
   **global bar above the tabs** (applies to all tests). Header has **+ New Rule** and **Import**
   (load a `.clashre` OR a `clashre-kind-rules/1` `.json` from anywhere → saved to the global store, so it persists across files/instances).
-- **Opening it is one click** (fixed 2026-08-10): **OConnors Clash** ribbon tab → **Clash Engine**,
-  both carrying the OConnors icon; also under Tool Add-ins. No more ticking View → Windows.
+- **Opening it is one click** (fixed 2026-08-10): **Clash Rule Engine** ribbon tab → **Open Panel**.
+  No more ticking View → Windows. **Batch Extract** sits beside it.
+- **Rules work out of the box**: the Standard rule set is embedded in the DLL and seeded on first
+  run, with a picker to trial the newer mined set. Nothing to import, no file to send anyone.
+- **The Rules tab states what each test will do** — active rule set, the per-test default assignee,
+  and how many pair rules override it — so "0 pair rules" reads as the healthy state it usually is
+  rather than looking like the rules vanished.
 - **Learning pipeline**: `BatchClashExtractPlugin` (run headless via `tools\BatchExtractor` or the
   `tools\NwdClashLearner` GUI over coordinated NWDs) extracts per clash: each side's element kind
   (cat/family/type/system + diameter band), assignee, status, **clearance gap (mm, signed; <0 =
