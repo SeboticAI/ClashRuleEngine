@@ -13,6 +13,9 @@ tools/*.exe
 *.user
 *.suo
 
+# Per-machine Claude Code settings (personal permissions — not team-wide)
+.claude/settings.local.json
+
 # Local Navisworks API reference DLLs (per-version, machine-local copies)
 Refs/
 
