@@ -328,10 +328,16 @@ namespace ClashRuleEngine.UI
         private void UpdateUI()
         {
             string testName = GetSelectedTestName();
+            string defaultAssignee = _currentTestRuleSet != null
+                ? (_currentTestRuleSet.DefaultAssignee ?? string.Empty).Trim()
+                : string.Empty;
+            bool hasDefault = !string.IsNullOrEmpty(defaultAssignee);
+
             if (_currentTestRuleSet != null)
             {
                 int count = _currentTestRuleSet.Rules.Count;
-                txtStatus.Text = $"{testName}: {count} rule{(count != 1 ? "s" : "")}";
+                txtStatus.Text = $"{testName}: {count} rule{(count != 1 ? "s" : "")}"
+                    + (hasDefault ? $" · default {defaultAssignee}" : "");
             }
             else
             {
@@ -341,8 +347,68 @@ namespace ClashRuleEngine.UI
             bool hasRules = _rules.Count > 0;
             pnlEmptyState.Visibility = hasRules ? Visibility.Collapsed : Visibility.Visible;
 
+            // Spell out what will actually happen on a Run for THIS test. The two-tier model
+            // means "0 pair rules" is a perfectly healthy state — the per-test default assignee
+            // does the work and pair rules only encode exceptions to it. Before this existed,
+            // switching to a rule set with fewer pair rules looked like the rules had vanished.
+            UpdateTestRuleInfo(hasRules, hasDefault, defaultAssignee);
+
             bool hasClashes = _clashResults.Count > 0;
             pnlClashEmptyState.Visibility = hasClashes ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void UpdateTestRuleInfo(bool hasRules, bool hasDefault, string defaultAssignee)
+        {
+            if (txtTestRuleInfo == null) return;
+
+            var activeSet = BuiltInRuleSets.Find(_config?.ActiveRuleSetId);
+            string setName = activeSet != null ? activeSet.Label.Split('—')[0].Trim() : "Custom";
+
+            if (_currentTestRuleSet == null)
+            {
+                bdTestRuleInfo.Visibility = Visibility.Collapsed;
+                if (pnlEmptyState.Visibility == Visibility.Visible)
+                {
+                    txtEmptyTitle.Text = "No clash test selected";
+                    txtEmptyHint.Text = "Pick a clash test above.";
+                }
+                return;
+            }
+
+            bdTestRuleInfo.Visibility = Visibility.Visible;
+            int ruleCount = _rules.Count;
+
+            if (hasDefault)
+            {
+                txtTestRuleInfo.Text =
+                    $"{setName} · every clash in this test goes to {defaultAssignee} by default"
+                    + (ruleCount > 0
+                        ? $", and {ruleCount} pair rule{(ruleCount != 1 ? "s" : "")} below override that for specific element pairs."
+                        : ". No pair-rule exceptions in this rule set — that is normal.");
+            }
+            else
+            {
+                txtTestRuleInfo.Text = ruleCount > 0
+                    ? $"{setName} · {ruleCount} pair rule{(ruleCount != 1 ? "s" : "")}. No default assignee, so clashes matching no rule are left unassigned for review."
+                    : $"{setName} · nothing configured for this test. Clashes will be left unassigned for review.";
+            }
+
+            if (!hasRules)
+            {
+                if (hasDefault)
+                {
+                    txtEmptyTitle.Text = $"All clashes here go to {defaultAssignee}";
+                    txtEmptyHint.Text = "This rule set has no pair-rule exceptions for this test, "
+                        + "so the default handles everything. Add one with '+ New Rule' if a "
+                        + "particular element pair should go elsewhere.";
+                }
+                else
+                {
+                    txtEmptyTitle.Text = "Nothing configured for this test";
+                    txtEmptyHint.Text = "Clashes will be left unassigned for review. Add a rule "
+                        + "with '+ New Rule', or set a default assignee for the test.";
+                }
+            }
         }
 
         private void SyncRulesToTestSet()
@@ -1294,7 +1360,23 @@ namespace ClashRuleEngine.UI
                 string summary = ApplyRuleSetText(
                     BuiltInRuleSets.LoadText(chosen), chosen.Id, replaceAllRules: true);
                 RefreshAfterRuleSetChange();
-                MessageBox.Show($"Now using \"{chosen.Label}\".\n\n• {summary}\n\n" +
+
+                // Say this plainly, because it is the first thing a user notices and it looks
+                // like a fault: a set that encodes only deviations leaves many tests with no
+                // pair rules at all, relying on the per-test default instead.
+                int defaultOnly = _config.TestRuleSets?.Count(t =>
+                    (t.Rules == null || t.Rules.Count == 0)
+                    && !string.IsNullOrWhiteSpace(t.DefaultAssignee)) ?? 0;
+                int withRules = _config.TestRuleSets?.Count(t => t.Rules != null && t.Rules.Count > 0) ?? 0;
+
+                MessageBox.Show($"Now using \"{chosen.Label}\".\n\n• {summary}\n" +
+                                $"• {withRules} test(s) have pair rules; {defaultOnly} rely on their " +
+                                "default assignee alone.\n\n" +
+                                (defaultOnly > 0
+                                    ? "A test showing no rules in the Rules tab is NOT broken — pair rules " +
+                                      "only encode exceptions, and the banner above the list tells you what " +
+                                      "each test will actually do.\n\n"
+                                    : "") +
                                 "Select a test and Run to apply it.",
                                 "Rule set switched", MessageBoxButton.OK, MessageBoxImage.Information);
             }

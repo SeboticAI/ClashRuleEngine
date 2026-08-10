@@ -245,9 +245,21 @@
 
             <!-- RULES TAB CONTENT -->
             <Grid Grid.Row="1" x:Name="pnlTabRules">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>   <!-- what's in force for this test -->
+                    <RowDefinition Height="*"/>      <!-- rule list -->
+                </Grid.RowDefinitions>
+
+                <!-- WHAT IS ACTUALLY IN FORCE for the selected test. Without this, a test whose
+                     clashes are all handled by its default assignee looks like a broken/empty
+                     test, because pair rules only encode the EXCEPTIONS. -->
+                <Border Grid.Row="0" x:Name="bdTestRuleInfo" Background="#EFF6FF" Padding="10,6"
+                        BorderBrush="#DBEAFE" BorderThickness="0,0,0,1">
+                    <TextBlock x:Name="txtTestRuleInfo" FontSize="11" Foreground="#1E40AF" TextWrapping="Wrap"/>
+                </Border>
 
                 <!-- Rule list -->
-                <ListBox x:Name="lstRules" Background="Transparent" BorderThickness="0" Padding="8"
+                <ListBox Grid.Row="1" x:Name="lstRules" Background="Transparent" BorderThickness="0" Padding="8"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          AllowDrop="True"
                          PreviewMouseLeftButtonDown="OnRuleListPreviewMouseDown"
@@ -344,12 +356,17 @@
                 </ListBox>
 
                 <!-- Empty state (rules) -->
-                <StackPanel x:Name="pnlEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
+                <!-- Text is set in UpdateUI: "no pair rules" means something very different
+                     when the test has a default assignee than when it has nothing at all. -->
+                <StackPanel Grid.Row="1" x:Name="pnlEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
                             Visibility="Collapsed">
-                    <TextBlock Text="No rules for this test" FontSize="14" Foreground="#6B7280" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Select a clash test above, then click '+ New Rule'" FontSize="11" Foreground="#6B7280"
-                               HorizontalAlignment="Center" Margin="0,4,0,0" TextWrapping="Wrap"
-                               TextAlignment="Center" MaxWidth="240"/>
+                    <TextBlock x:Name="txtEmptyTitle" Text="No rules for this test" FontSize="14"
+                               Foreground="#6B7280" HorizontalAlignment="Center" TextAlignment="Center"
+                               TextWrapping="Wrap" MaxWidth="280"/>
+                    <TextBlock x:Name="txtEmptyHint" Text="Select a clash test above, then click '+ New Rule'"
+                               FontSize="11" Foreground="#6B7280"
+                               HorizontalAlignment="Center" Margin="0,6,0,0" TextWrapping="Wrap"
+                               TextAlignment="Center" MaxWidth="280"/>
                 </StackPanel>
             </Grid>
 
