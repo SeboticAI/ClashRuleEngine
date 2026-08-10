@@ -40,8 +40,13 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <!-- e.g. NW2027 — for version-specific conditional compilation -->
     <NavisDefine>NW$(NavisworksVersion)</NavisDefine>
-    <!-- 2027 moved the tests collection into a folder tree (see Services\ClashApiCompat.cs) -->
-    <NavisDefine Condition="'$(NavisworksVersion)' &gt;= '2027'">$(NavisDefine);NW_TESTS_TREE</NavisDefine>
+    <!-- Clash tests live in a ClashTestFolder TREE (see Services\ClashApiCompat.cs).
+         Threshold is 2026, NOT 2027: verified by reflection 2026-08-10 that Navisworks 2026
+         already has ClashTestsData.TestsRoot AND the ClashTestFolder type, so it supports
+         clash-test folders too. It also still has the legacy flat DocumentClashTests.Tests,
+         which 2027 dropped — but enumerating that on 2026 would silently MISS any test filed
+         inside a folder, so both versions use the folder-aware path. -->
+    <NavisDefine Condition="'$(NavisworksVersion)' &gt;= '2026'">$(NavisDefine);NW_TESTS_TREE</NavisDefine>
   </PropertyGroup>
 
   <!-- Debug config -->

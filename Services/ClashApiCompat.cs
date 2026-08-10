@@ -5,15 +5,24 @@ using Autodesk.Navisworks.Api.Clash;
 namespace ClashRuleEngine.Services
 {
     /// <summary>
-    /// Version compatibility layer for the Clash API surface that moved in
-    /// Navisworks 2027 (verified via tools\Dump-NavisApi.ps1):
+    /// Version compatibility layer for how clash tests are reached.
     ///
-    ///   ≤2026:  DocumentClashTests.Tests            — flat SavedItemCollection
-    ///   2027+:  DocumentClashTests.Value.TestsRoot  — ClashTestFolder tree
-    ///            (2027 introduced clash test folders)
+    ///   2026+:  DocumentClashTests.Value.TestsRoot  — ClashTestFolder tree, walked recursively
+    ///   ≤2025:  DocumentClashTests.Tests            — flat SavedItemCollection
     ///
-    /// NW_TESTS_TREE is defined by the csproj for NavisworksVersion >= 2027,
-    /// so each per-version build compiles the matching typed code path.
+    /// NW_TESTS_TREE is defined by the csproj for NavisworksVersion >= 2026.
+    ///
+    /// The threshold is 2026, not 2027. Reflecting both installs on 2026-08-10 showed:
+    ///   - 2026 has BOTH `DocumentClashTests.Tests` and `Value.TestsRoot`, and the
+    ///     `ClashTestFolder` type — so 2026 supports clash-test folders as well.
+    ///   - 2027 has `Value.TestsRoot` only; `Tests` is gone.
+    /// So the earlier note that 2027 *introduced* clash-test folders was wrong. Using the flat
+    /// `.Tests` collection on 2026 would compile and appear to work while silently MISSING every
+    /// test filed inside a folder — a wrong-but-quiet result, which is worse than a build error.
+    /// Both supported versions therefore take the same folder-aware path.
+    ///
+    /// The ≤2025 branch has never been compiled against a real 2024/2025 reference set (neither
+    /// is installed here, and the company does not use them). Treat it as untested.
     /// </summary>
     internal static class ClashApiCompat
     {

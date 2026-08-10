@@ -32,8 +32,9 @@ from rules learned off previously-coordinated models — instead of by hand, cla
 
 The panel opens on click — no ticking boxes in View → Windows.
 
-Supported: **Navisworks Manage 2024–2027**, x64. Which versions a given setup.exe actually
-contains depends on which were built into it — the welcome screen lists them.
+Supported and shipping: **Navisworks Manage 2026 and 2027**, x64 — one build each, because the
+Navisworks API assemblies are strong-named per release. The setup.exe lists what it contains on
+the welcome screen, and warns if it finds a Navisworks version it has no build for.
 
 ### Uninstall
 Settings → Apps → *OConnors Clash Engine*. Your rules are **not** deleted; they live in

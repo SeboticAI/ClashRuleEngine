@@ -3,7 +3,7 @@
 ## Project overview
 This is a **Navisworks Manage** dockable panel plugin (C# / WPF / .NET Framework 4.8) for BIM coordination clash management. It assigns and groups clash-detection results using **per-test element-pair rules** learned from historically-coordinated models, plus an **auto-approve engine** (clearance-based) and grid-aware grouping.
 
-Builds are per-Navisworks-version (`/p:NavisworksVersion=2027`, default = newest installed). **This machine has Navisworks Manage 2027** (2026 was removed in the 2026-04 upgrade cycle); older-version builds need that version's API DLLs dropped in `Refs\<version>\`.
+Builds are per-Navisworks-version (`/p:NavisworksVersion=2027`, default = newest installed). **This machine has Navisworks Manage 2026 AND 2027** (2026 re-installed 2026-08-10), and **those are the only two versions the company uses** — so they are what ships. Any other year needs that version's API DLLs in `Refs\<version>\`.
 
 The business context: we're building a product to help companies automate BIM coordination workflows. **Direction (2026-06):** assignment is driven by the *actual clashing elements* (category/family/size) per clash test, learned from ~28+ coordinated NWDs — NOT by a fixed discipline hierarchy (that system was removed). "In test _ELEC vs _HYD, a Cable Tray Fitting vs a Pipe → ELEC." Ambiguous element pairs are left unassigned for human review rather than guessed.
 
@@ -54,7 +54,7 @@ ClashRuleEngine/
 │   ├── oconnors_logo.png         # brand lockup (source for every icon)
 │   └── oconnors_clash_{16,32}.ico# ribbon icons — MUST deploy next to the DLL
 ├── Installer/
-│   ├── ClashRuleEngine.iss       # Inno Setup installer script (2024-2027, multi-version)
+│   ├── ClashRuleEngine.iss       # Inno Setup installer script (ships 2026 + 2027)
 │   └── oconnors_clash.ico        # setup.exe icon (multi-size 16/32/48)
 ├── rules/                        # DISTRIBUTABLE rule sets + analyzer report (see rules\README.md)
 │   ├── clashre-kind-rules-2026-06-18-mined.json  # current 2-tier model, 81.8% replay
@@ -156,11 +156,22 @@ These were discovered through trial and error during development (2026/2027 APIs
    `ClashResult.Description/Status/AssignedTo/Center/Guid` are all RW, `AssignedTo` is typed `Assignee`,
    `TestsReplaceWithCopy`/`TestsAddCopy`/`CreateCopyWithoutChildren` all present.
 
-0b. **2027 moved the tests collection**: `DocumentClashTests.Tests` no longer exists.
-   2027+ uses `TestsData.Value.TestsRoot` — a `ClashTestFolder` TREE (2027 added clash
-   test folders), so tests must be collected recursively. ALL test enumeration goes
-   through `ClashApiCompat.GetAllTests()` (typed per-version via the `NW_TESTS_TREE`
-   define) — never enumerate `TestsData` directly.
+0b. **Clash tests live in a FOLDER TREE, and 2027 dropped the flat collection.** Reflected
+   from both installed products 2026-08-10:
+   | | `DocumentClashTests.Tests` | `.Value.TestsRoot` | `ClashTestFolder` type |
+   |---|---|---|---|
+   | 2026 | yes (legacy) | **yes** | **yes** |
+   | 2027 | **gone** | yes | yes |
+   So **2026 has clash-test folders too** — the old note claiming 2027 *introduced* them was
+   wrong. Both shipping versions therefore take the recursive `TestsData.Value.TestsRoot`
+   path (`NW_TESTS_TREE`, threshold **2026**). Enumerating 2026's flat `.Tests` would compile
+   and look fine while silently MISSING every test filed inside a folder — quietly wrong beats
+   a build error only in the sense that it is worse.
+   ALL test enumeration goes through `ClashApiCompat.GetAllTests()` — never enumerate
+   `TestsData` directly.
+   The `≤2025` `#else` branch **does compile** (verified 2026-08-10 by building it against the
+   2026 reference set; that throwaway output was discarded). It is still folder-blind, so if
+   2024/2025 ever ship, check whether they have `TestsRoot` and lower the threshold instead.
 1. **Showing a dock pane from a button (CORRECTED 2026-08-10 — this was the "janky ribbon
    button"):** `DockPanePluginRecord` has no `IsVisible`/`Enabled`, but the members that
    matter live on the **loaded plugin** and on the **base record**, not on
@@ -257,7 +268,11 @@ These were discovered through trial and error during development (2026/2027 APIs
   3. The CommandHandlerPlugin should override `CanExecuteCommand => new CommandState(true)` and
      `CanExecuteRibbonTab => true` so the button isn't greyed out / the tab always shows.
 
-### Multi-version support (2024–2027) — ONE BUILD PER VERSION IS MANDATORY
+### Multi-version support — ONE BUILD PER VERSION IS MANDATORY
+**SHIPPING: 2026 and 2027** (both installed here; the only two the company uses). Both build
+clean and both are packaged by the installer. 2024/2025 are supported by the scripts but have
+never been built.
+
 The Navisworks API assemblies are **strong-named and version-stamped per release** —
 `Autodesk.Navisworks.Api` is `21.0.0.0` (2024), `22.0` (2025), `23.0` (2026), `24.0` (2027),
 all `PublicKeyToken=d85e58fa5af9b484`. `roamer.exe.config` pins each one to its own release
@@ -281,12 +296,10 @@ install that Navisworks version on the build machine) **or** harvested into `Ref
 - Only **Api + Clash** are required references. Automation and Controls are conditional in
   the csproj (declared-but-unused; the Automation API is driven from the separate
   `tools\BatchExtractor` / `tools\NwdClashLearner` projects), so a partial ref set builds.
-- Only ONE compile-time fork exists: `NW_TESTS_TREE` (≥2027) in `Services\ClashApiCompat.cs`.
-  **The ≤2026 branch (`DocumentClashTests.Tests`) has never been compiled** — 2026 was
-  removed from this machine before it was written, so the "verified" note on it is inherited,
-  not tested. Expect the FIRST 2024–2026 build to be where that surfaces; the fix is local to
-  that one `#else`. (Confirmed for 2027: `DocumentClashTests` has `Value.TestsRoot` and NO
-  `Tests` property, so the fork is genuinely needed.)
+- Only ONE compile-time fork exists: `NW_TESTS_TREE` (**≥2026**) in `Services\ClashApiCompat.cs`
+  — see API quirk 0b for why the threshold is 2026 and not 2027. Both shipping versions compile
+  the SAME folder-aware branch, so there is no untested code path in what ships. The `≤2025`
+  `#else` compiles but is folder-blind; it is dead code unless 2024/2025 are ever added.
 
 ### Build and deploy
 1. Build one version: `msbuild ClashRuleEngine.csproj /p:Configuration=Release /p:Platform=x64 /p:NavisworksVersion=2027`
